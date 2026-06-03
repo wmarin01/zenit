@@ -223,15 +223,21 @@ async function dbCargarSuscripciones() {
 
 // Indicador de conexión
 async function verificarConexion() {
+  const ind = document.getElementById('sb-status');
+  // Ámbar mientras verifica
+  if (ind) { ind.style.background = 'var(--amber)'; ind.title = 'Verificando conexión...'; }
   try {
-    const { error } = await supa.from('clientes').select('id').limit(1);
+    const { data, error } = await supa.from('clientes').select('id').limit(1);
     if (!error) {
       console.log('✓ Conectado a Supabase');
-      const ind = document.getElementById('sb-status');
       if (ind) { ind.style.background = 'var(--green)'; ind.title = 'Conectado a base de datos'; }
+    } else {
+      console.warn('Error Supabase:', error.message);
+      if (ind) { ind.style.background = 'var(--red)'; ind.title = 'Error: ' + error.message; }
     }
   } catch(e) {
-    console.warn('Sin conexión a Supabase — modo local');
+    console.warn('Sin conexión a Supabase:', e.message);
+    if (ind) { ind.style.background = 'var(--red)'; ind.title = 'Sin conexión: ' + e.message; }
   }
 }
 
