@@ -224,17 +224,16 @@ async function dbCargarSuscripciones() {
 // Indicador de conexión
 async function verificarConexion() {
   const ind = document.getElementById('sb-status');
-  // Ámbar mientras verifica
   if (ind) { ind.style.background = 'var(--amber)'; ind.title = 'Verificando conexión...'; }
   try {
-    const { data, error } = await supa.from('clientes').select('id').limit(1);
-    if (!error) {
-      console.log('✓ Conectado a Supabase');
-      if (ind) { ind.style.background = 'var(--green)'; ind.title = 'Conectado a base de datos'; }
-    } else {
-      console.warn('Error Supabase:', error.message);
-      if (ind) { ind.style.background = 'var(--red)'; ind.title = 'Error: ' + error.message; }
-    }
+    // Usar count para verificar sin depender de que haya datos
+    const { count, error } = await supa
+      .from('clientes')
+      .select('*', { count: 'exact', head: true });
+    if (error) throw error;
+    // Si llegamos aquí sin error, la conexión es exitosa (aunque count sea 0)
+    console.log('✓ Conectado a Supabase — clientes:', count);
+    if (ind) { ind.style.background = 'var(--green)'; ind.title = 'Conectado · ' + (count||0) + ' clientes'; }
   } catch(e) {
     console.warn('Sin conexión a Supabase:', e.message);
     if (ind) { ind.style.background = 'var(--red)'; ind.title = 'Sin conexión: ' + e.message; }
