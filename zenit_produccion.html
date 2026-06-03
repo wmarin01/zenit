@@ -134,7 +134,7 @@ async function dbCheckComprobante(doc) {
 
 // Cargar clientes al iniciar
 async function dbCargarClientes() {
-  const { data, error } = await supa.from('clientes').select('*, contactos(*)').order('created_at');
+  const { data, error } = await supa.from('clientes').select('*').order('created_at');
   if (error) { console.error('Error cargando clientes:', error); return; }
   if (data && data.length > 0) {
     // Convertir formato Supabase → formato interno
