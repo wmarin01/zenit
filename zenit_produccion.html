@@ -588,10 +588,10 @@ select option{background:var(--bg3)}
 <!-- INVENTARIO -->
 <div class="view" id="v-inventario">
   <div class="mg" style="margin-bottom:14px">
-    <div class="mc" style="--mc-c:var(--green)"><div class="ml">Disponibles</div><div class="mv" style="color:var(--green)">28</div></div>
-    <div class="mc" style="--mc-c:var(--accent)"><div class="ml">Ocupados</div><div class="mv">459</div></div>
-    <div class="mc" style="--mc-c:var(--red)"><div class="ml">Vencidos</div><div class="mv" style="color:var(--red)">3</div></div>
-    <div class="mc" style="--mc-c:var(--amber)"><div class="ml">Bloqueados</div><div class="mv" style="color:var(--amber)">2</div></div>
+    <div class="mc" style="--mc-c:var(--green)"><div class="ml">Disponibles</div><div class="mv" style="color:var(--green)" id="inv-cnt-disp">—</div></div>
+    <div class="mc" style="--mc-c:var(--accent)"><div class="ml">Ocupados</div><div class="mv" id="inv-cnt-ocup">—</div></div>
+    <div class="mc" style="--mc-c:var(--red)"><div class="ml">Vencidos</div><div class="mv" style="color:var(--red)" id="inv-cnt-venc">—</div></div>
+    <div class="mc" style="--mc-c:var(--amber)"><div class="ml">Bloqueados</div><div class="mv" style="color:var(--amber)" id="inv-cnt-bloq">—</div></div>
   </div>
   <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap">
     <div class="sbox" style="flex:1;max-width:280px"><i class="ti ti-search"></i><input type="text" placeholder="Buscar cuenta..."></div>
@@ -1748,7 +1748,7 @@ function goTo(v,el){
   else if (v==='cobros')        ha.innerHTML=`<button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
   else if (v==='suscripciones') ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
   else if (v==='cobranza')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Registrar pago</button>`;
-  else if (v==='inventario')    ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-cuenta')"><i class="ti ti-plus"></i>Nueva cuenta</button><button class="hbtn" onclick="openModal('m-cambio')"><i class="ti ti-arrows-exchange"></i>Cambio de cuenta</button>`;
+  else if (v==='inventario')    { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-cuenta')"><i class="ti ti-plus"></i>Nueva cuenta</button><button class="hbtn" onclick="openModal('m-cambio')"><i class="ti ti-arrows-exchange"></i>Cambio de cuenta</button>`; cargarInventario(); }
   else if (v==='proveedores')   ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-proveedor')"><i class="ti ti-plus"></i>Nuevo proveedor</button>`;
   else if (v==='egresos')       ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-egreso')"><i class="ti ti-plus"></i>Nuevo egreso</button>`;
   else if (v==='reportes')      ha.innerHTML='';
@@ -5261,6 +5261,83 @@ window.addEventListener('load', () => {
 
 // Cargar parámetros cuando se navega a esa sección
 const _origGoToParam = goTo;
+
+
+// ═══════════════════════════════════════════════════════════
+// INVENTARIO — CARGAR DESDE SUPABASE
+// ═══════════════════════════════════════════════════════════
+const PLAT_NAMES = {NF:'Netflix', DS:'Disney+', HB:'HBO Max', PV:'Prime Video'};
+
+async function cargarInventario() {
+  try {
+    // Cargar inventario
+    let all = [];
+    let page = 0;
+    while(true) {
+      const {data, error} = await supa.from('inventario').select('*').order('plataforma').order('id').range(page*1000, page*1000+999);
+      if (error) throw error;
+      if (!data || !data.length) break;
+      all = all.concat(data);
+      if (data.length < 1000) break;
+      page++;
+    }
+
+    // Contadores
+    const disp = all.filter(i=>i.estado==='Activa').length;
+    const ocup = all.filter(i=>i.estado==='Ocupada').length;
+    const venc = all.filter(i=>i.estado==='Vencida').length;
+    const bloq = all.filter(i=>i.estado==='Bloqueada').length;
+    document.getElementById('inv-cnt-disp').textContent = disp;
+    document.getElementById('inv-cnt-ocup').textContent = ocup;
+    document.getElementById('inv-cnt-venc').textContent = venc;
+    document.getElementById('inv-cnt-bloq').textContent = bloq;
+
+    // Agrupar por plataforma
+    const grupos = {};
+    all.forEach(inv => {
+      const plat = inv.plataforma || 'NF';
+      if (!grupos[plat]) grupos[plat] = [];
+      grupos[plat].push(inv);
+    });
+
+    const tbody = document.getElementById('tb-inv');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    Object.entries(grupos).forEach(([plat, cuentas]) => {
+      // Fila de grupo
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="12" style="background:var(--bg3);font-weight:600;font-size:12px;padding:8px 12px;color:var(--accent)">${PLAT_NAMES[plat]||plat} (${cuentas.length})</td>`;
+      tbody.appendChild(tr);
+
+      cuentas.forEach(inv => {
+        const vcto = inv.fecha_vcto_prov ? inv.fecha_vcto_prov.split('-').reverse().join('/') : '—';
+        const compra = inv.fecha_compra ? inv.fecha_compra.split('-').reverse().join('/') : '—';
+        const estadoClass = inv.estado==='Activa'?'bg':inv.estado==='Vencida'?'br':inv.estado==='Bloqueada'?'ba':'bi';
+        const tr2 = document.createElement('tr');
+        tr2.innerHTML = `
+          <td><strong>${inv.id}</strong></td>
+          <td>${PLAT_NAMES[inv.plataforma]||inv.plataforma||'—'}</td>
+          <td style="font-size:11px">${inv.correo||'—'}</td>
+          <td style="font-size:11px;color:var(--text3)">${inv.clave||'—'}</td>
+          <td style="text-align:center">${inv.max_perfiles||'—'}</td>
+          <td style="text-align:center">—</td>
+          <td style="text-align:center">—</td>
+          <td>${compra}</td>
+          <td>${vcto}</td>
+          <td>${inv.costo ? '$'+parseFloat(inv.costo).toFixed(2) : '—'}</td>
+          <td><span class="b ${estadoClass}">${inv.estado||'—'}</span></td>
+          <td class="tda">
+            <button class="btn btn-sm btn-ic" onclick="editarCuenta('${inv.id}')"><i class="ti ti-edit"></i></button>
+          </td>`;
+        tbody.appendChild(tr2);
+      });
+    });
+  } catch(e) {
+    console.error('Error inventario:', e);
+    document.getElementById('tb-inv').innerHTML = '<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--text3)">Error al cargar inventario</td></tr>';
+  }
+}
 
 </script>
 </body>
