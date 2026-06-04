@@ -445,6 +445,7 @@ select option{background:var(--bg3)}
     <div class="ni" onclick="goTo('proveedores',this)"><i class="ti ti-building-store"></i>Proveedores</div>
     <div class="ni" onclick="goTo('egresos',this)"><i class="ti ti-trending-down"></i>Egresos</div>
     <div class="ni" onclick="goTo('reportes',this)"><i class="ti ti-chart-bar"></i>Reportes</div>
+    <div class="ni" onclick="goTo('tablas',this)"><i class="ti ti-table"></i>Tablas</div>
   </div>
   <div class="sb-sec"><div class="sb-lbl">Sistema</div>
     <div class="ni" onclick="goTo('parametros',this)"><i class="ti ti-settings"></i>Parámetros</div>
@@ -618,12 +619,28 @@ select option{background:var(--bg3)}
 </div>
 <!-- REPORTES -->
 <div class="view" id="v-reportes">
-  <!-- Barra de controles -->
+  <div class="g2">
+    <div class="card"><div class="ct"><i class="ti ti-chart-bar" style="color:var(--green)"></i>Rentabilidad</div>
+      <div class="sum">
+        <div class="sr"><span class="sl">Próximamente</span><span style="color:var(--text3)">—</span></div>
+      </div>
+    </div>
+    <div class="card"><div class="ct"><i class="ti ti-users" style="color:var(--accent)"></i>Clientes activos</div>
+      <div class="sum">
+        <div class="sr"><span class="sl">Próximamente</span><span style="color:var(--text3)">—</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABLAS -->
+<div class="view" id="v-tablas">
   <div class="card" style="margin-bottom:12px">
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
       <div style="flex:1;min-width:160px">
         <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Tabla</label>
         <select id="rpt-tabla" onchange="rptCargar()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text1);font-size:13px">
+          <option value="">— Selecciona una tabla —</option>
           <option value="clientes">Clientes</option>
           <option value="suscripciones">Suscripciones</option>
           <option value="inventario">Inventario (Cuentas)</option>
@@ -643,20 +660,18 @@ select option{background:var(--bg3)}
         <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Buscar</label>
         <input id="rpt-buscar" type="text" placeholder="Filtrar resultados..." oninput="rptFiltrar()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text1);font-size:13px;box-sizing:border-box">
       </div>
-      <div style="flex:1;min-width:160px" id="rpt-filtro-extra"></div>
-      <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="btn btn-sm" onclick="rptExportar('excel')" title="Exportar Excel" style="background:#1D6F42;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
-        <button class="btn btn-sm" onclick="rptExportar('csv')" title="Exportar CSV" style="background:#2563EB;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-text"></i>CSV</button>
-        <button class="btn btn-sm" onclick="rptExportar('txt')" title="Exportar Texto" style="background:#6B7280;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file"></i>TXT</button>
-        <button class="btn btn-sm" onclick="rptExportar('pdf')" title="Imprimir / PDF" style="background:#DC2626;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+      <div style="display:flex;gap:6px;flex-shrink:0;align-items:flex-end">
+        <button onclick="rptExportar('excel')" style="background:#1D6F42;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportar('csv')" style="background:#2563EB;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-text"></i>CSV</button>
+        <button onclick="rptExportar('txt')" style="background:#6B7280;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file"></i>TXT</button>
+        <button onclick="rptExportar('pdf')" style="background:#DC2626;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
       </div>
     </div>
-    <div style="margin-top:10px;font-size:12px;color:var(--text3)" id="rpt-info">Selecciona una tabla para cargar los datos.</div>
+    <div style="margin-top:10px;font-size:12px;color:var(--text3)" id="rpt-info">Selecciona una tabla para ver los datos.</div>
   </div>
-  <!-- Tabla de resultados -->
   <div class="card">
     <div class="tw" id="rpt-wrap">
-      <table id="rpt-table"><thead id="rpt-thead"></thead><tbody id="rpt-tbody"></tbody></table>
+      <table id="rpt-table"><thead id="rpt-thead"></thead><tbody id="rpt-tbody"><tr><td style="text-align:center;padding:30px;color:var(--text3)">Selecciona una tabla arriba</td></tr></tbody></table>
     </div>
   </div>
 </div>
@@ -1708,7 +1723,7 @@ const WA={
   cambio:(n,p,m,ctx)=>`Hola <span class="wav">${n}</span> 🔄\n\nActualizamos tu cuenta de <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Perfil: <span class="wav">${ctx?.perfil||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n\nTu vencimiento no cambia. 🙏`,
   clave:(n,p,m)=>`Hola <span class="wav">${n}</span> 🔐\n\nPor seguridad actualizamos la clave de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${correo||'—'}</span>\n🔑 Clave nueva: <span class="wav">${claveNueva||'—'}</span>\n👤 Perfil: <span class="wav">${perfil||'—'}</span>\n🔢 PIN: <span class="wav">${pin||'—'}</span>\n📅 Vence: <span class="wav">${vcto||'—'}</span>\n\nCualquier duda escríbenos. 🙏`,
 };
-const TITLES={dashboard:'Dashboard',clientes:'Clientes',ventas:'Ventas',cobranza:'Cobranza',inventario:'Inventario',proveedores:'Proveedores',egresos:'Egresos',reportes:'Reportes',parametros:'Parámetros',historial:'Historial',usuarios:'Usuarios y permisos'};
+const TITLES={dashboard:'Dashboard',clientes:'Clientes',ventas:'Ventas',cobranza:'Cobranza',inventario:'Inventario',proveedores:'Proveedores',egresos:'Egresos',reportes:'Reportes',tablas:'Tablas',parametros:'Parámetros',historial:'Historial',usuarios:'Usuarios y permisos'};
 
 function goTo(v,el){
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
@@ -1726,7 +1741,8 @@ function goTo(v,el){
   else if (v==='inventario')    ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-cuenta')"><i class="ti ti-plus"></i>Nueva cuenta</button><button class="hbtn" onclick="openModal('m-cambio')"><i class="ti ti-arrows-exchange"></i>Cambio de cuenta</button>`;
   else if (v==='proveedores')   ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-proveedor')"><i class="ti ti-plus"></i>Nuevo proveedor</button>`;
   else if (v==='egresos')       ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-egreso')"><i class="ti ti-plus"></i>Nuevo egreso</button>`;
-  else if (v==='reportes')      { ha.innerHTML=''; rptCargar(); }
+  else if (v==='reportes')      ha.innerHTML='';
+  else if (v==='tablas')        ha.innerHTML='';
   else if (v==='parametros')    ha.innerHTML='';
   else if (v==='accesos')       ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`;
   else if (v==='historial')     ha.innerHTML='';
