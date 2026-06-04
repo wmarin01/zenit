@@ -457,7 +457,7 @@ select option{background:var(--bg3)}
 </nav>
 <div id="main">
   <header id="hdr">
-    <div><div class="hdr-title" id="htitle">Dashboard</div><div class="hdr-sub">26 de mayo, 2026</div></div>
+    <div><div class="hdr-title" id="htitle">Dashboard</div><div class="hdr-sub" id="hdr-fecha"></div></div>
     <div class="hdr-acts" id="hacts">
       <button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button>
       <button class="hbtn" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Registrar pago</button>
@@ -1723,6 +1723,16 @@ const WA={
   cambio:(n,p,m,ctx)=>`Hola <span class="wav">${n}</span> 🔄\n\nActualizamos tu cuenta de <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Perfil: <span class="wav">${ctx?.perfil||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n\nTu vencimiento no cambia. 🙏`,
   clave:(n,p,m)=>`Hola <span class="wav">${n}</span> 🔐\n\nPor seguridad actualizamos la clave de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${correo||'—'}</span>\n🔑 Clave nueva: <span class="wav">${claveNueva||'—'}</span>\n👤 Perfil: <span class="wav">${perfil||'—'}</span>\n🔢 PIN: <span class="wav">${pin||'—'}</span>\n📅 Vence: <span class="wav">${vcto||'—'}</span>\n\nCualquier duda escríbenos. 🙏`,
 };
+// Fecha dinámica en el header
+function actualizarFechaHeader() {
+  const el = document.getElementById('hdr-fecha');
+  if (!el) return;
+  const now = new Date();
+  const opciones = { day: 'numeric', month: 'long', year: 'numeric' };
+  el.textContent = now.toLocaleDateString('es-PA', opciones);
+}
+actualizarFechaHeader();
+
 const TITLES={dashboard:'Dashboard',clientes:'Clientes',ventas:'Ventas',cobranza:'Cobranza',inventario:'Inventario',proveedores:'Proveedores',egresos:'Egresos',reportes:'Reportes',tablas:'Tablas',parametros:'Parámetros',historial:'Historial',usuarios:'Usuarios y permisos'};
 
 function goTo(v,el){
@@ -1743,7 +1753,7 @@ function goTo(v,el){
   else if (v==='egresos')       ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-egreso')"><i class="ti ti-plus"></i>Nuevo egreso</button>`;
   else if (v==='reportes')      ha.innerHTML='';
   else if (v==='tablas')        ha.innerHTML='';
-  else if (v==='parametros')    ha.innerHTML='';
+  else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); }
   else if (v==='accesos')       ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`;
   else if (v==='historial')     ha.innerHTML='';
   else if (v==='usuarios')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-usuario')"><i class="ti ti-plus"></i>Nuevo usuario</button>`;
@@ -5023,6 +5033,234 @@ function hoy() {
 
 // Auto-cargar cuando se entra a reportes
 const _origGoTo = typeof goTo === 'function' ? goTo : null;
+
+
+// ═══════════════════════════════════════════════════════════
+// PARÁMETROS — CARGAR DESDE SUPABASE
+// ═══════════════════════════════════════════════════════════
+async function cargarParametros() {
+  // Bancos
+  try {
+    const {data} = await supa.from('bancos').select('*').eq('estado','Activo').order('nombre');
+    if (data && data.length) {
+      document.getElementById('tb-bancos').innerHTML = data.map(b=>`
+        <tr>
+          <td><strong>${b.nombre}</strong></td>
+          <td>${b.pais||''}</td>
+          <td><span class="b bg">Activo</span></td>
+          <td class="tda">
+            <button class="btn btn-sm btn-ic" onclick="editarFila(this,'banco')"><i class="ti ti-edit"></i></button>
+          </td>
+        </tr>`).join('');
+    }
+  } catch(e) {}
+
+  // Formas de pago
+  try {
+    const {data} = await supa.from('formas_pago').select('*').eq('estado','Activa').order('nombre');
+    if (data && data.length) {
+      document.getElementById('tb-formas').innerHTML = data.map(f=>`
+        <tr>
+          <td><strong>${f.nombre}</strong></td>
+          <td><span class="b bp">${f.tipo||''}</span></td>
+          <td>${f.genera_comision ? '<strong style="color:var(--amber)">Sí</strong>' : 'No'}</td>
+          <td>${f.comprobante||''}</td>
+          <td><span class="b bg">Activa</span></td>
+          <td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'forma')"><i class="ti ti-edit"></i></button></td>
+        </tr>`).join('');
+    }
+  } catch(e) {}
+
+  // Categorías egresos
+  try {
+    const {data} = await supa.from('categorias_egresos').select('*').eq('estado','Activa').order('nombre');
+    if (data && data.length) {
+      document.getElementById('tb-cats').innerHTML = data.map(c=>`
+        <tr>
+          <td><strong>${c.nombre}</strong></td>
+          <td>${c.descripcion||''}</td>
+          <td><span class="b bg">Activa</span></td>
+          <td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'categoria')"><i class="ti ti-edit"></i></button></td>
+        </tr>`).join('');
+    }
+  } catch(e) {}
+
+  // Motivos cambio
+  try {
+    const {data} = await supa.from('motivos_cambio').select('*').eq('estado','Activo').order('motivo');
+    if (data && data.length) {
+      document.getElementById('tb-motivos').innerHTML = data.map(m=>`
+        <tr>
+          <td><strong>${m.motivo}</strong></td>
+          <td><span class="b bi">${m.tipo||''}</span></td>
+          <td><span class="b bg">Activo</span></td>
+          <td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'motivo')"><i class="ti ti-edit"></i></button></td>
+        </tr>`).join('');
+    }
+  } catch(e) {}
+
+  // Planes y precios
+  try {
+    const {data} = await supa.from('planes_precios').select('*').eq('estado','Vigente').order('plataformas');
+    if (data && data.length) {
+      document.getElementById('tb-planes').innerHTML = data.map(p=>`
+        <tr>
+          <td>${p.plataformas||''}</td>
+          <td><span class="b bi">${p.tipo||''}</span></td>
+          <td>${p.perfiles||''}</td>
+          <td style="color:var(--green);font-weight:500">$${parseFloat(p.precio||0).toFixed(2)}</td>
+          <td style="font-size:11px;color:var(--text3)">${p.desglose||'—'}</td>
+          <td>${p.vigente_desde||''}</td>
+          <td><span class="b bg">Vigente</span></td>
+          <td class="tda"><button class="btn btn-sm btn-ic" onclick="openModal('m-precio')"><i class="ti ti-edit"></i></button></td>
+        </tr>`).join('');
+    }
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════
+// MENSAJERÍA INTERNA
+// ═══════════════════════════════════════════════════════════
+let CHAT_OPEN = false;
+let CHAT_INTERVALO = null;
+let CHAT_ULTIMO_ID = 0;
+
+function initChat() {
+  // Crear el widget flotante
+  const widget = document.createElement('div');
+  widget.id = 'chat-widget';
+  widget.innerHTML = `
+    <div id="chat-btn" onclick="toggleChat()" title="Mensajería interna"
+      style="position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;
+             background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;
+             cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.3);z-index:9999;font-size:22px;
+             transition:transform .2s">
+      <i class="ti ti-message-circle"></i>
+      <span id="chat-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--red);
+            color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;
+            align-items:center;justify-content:center;"></span>
+    </div>
+    <div id="chat-panel" style="display:none;position:fixed;bottom:88px;right:24px;width:340px;height:460px;
+         background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);
+         z-index:9998;display:none;flex-direction:column;overflow:hidden">
+      <div style="padding:12px 16px;background:var(--accent);color:#fff;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-message-circle" style="font-size:18px"></i>
+        <span style="font-weight:600;font-size:14px">Mensajería Interna</span>
+        <button onclick="toggleChat()" style="margin-left:auto;background:none;border:none;color:#fff;cursor:pointer;font-size:18px;line-height:1">×</button>
+      </div>
+      <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center">
+        <label style="font-size:11px;color:var(--text3)">Para:</label>
+        <select id="chat-para" style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text1);font-size:12px">
+          <option value="">Todos</option>
+          <option value="wmarin01">wmarin01</option>
+          <option value="Ariadna01">Ariadna01</option>
+          <option value="Maria01">Maria01</option>
+        </select>
+      </div>
+      <div id="chat-msgs" style="flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;height:300px"></div>
+      <div style="padding:8px 12px;border-top:1px solid var(--border);display:flex;gap:6px">
+        <input id="chat-input" type="text" placeholder="Escribe un mensaje..." maxlength="500"
+          style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text1);font-size:13px"
+          onkeydown="if(event.key==='Enter')enviarMensaje()">
+        <button onclick="enviarMensaje()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:16px">
+          <i class="ti ti-send"></i>
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(widget);
+  cargarMensajes();
+  CHAT_INTERVALO = setInterval(cargarMensajes, 10000);
+}
+
+function toggleChat() {
+  CHAT_OPEN = !CHAT_OPEN;
+  const panel = document.getElementById('chat-panel');
+  const btn = document.getElementById('chat-btn');
+  panel.style.display = CHAT_OPEN ? 'flex' : 'none';
+  btn.style.transform = CHAT_OPEN ? 'scale(0.9)' : 'scale(1)';
+  if (CHAT_OPEN) {
+    marcarLeidos();
+    setTimeout(()=>{ const m=document.getElementById('chat-msgs'); m.scrollTop=m.scrollHeight; },100);
+  }
+}
+
+async function cargarMensajes() {
+  try {
+    const usuario = document.querySelector('.sb-user div div')?.textContent || 'Sistema';
+    const {data} = await supa.from('mensajes').select('*').order('created_at').limit(100);
+    if (!data) return;
+
+    // Badge de no leídos
+    const noLeidos = data.filter(m => !m.leido && m.de !== usuario).length;
+    const badge = document.getElementById('chat-badge');
+    if (badge) {
+      badge.style.display = noLeidos > 0 ? 'flex' : 'none';
+      badge.textContent = noLeidos;
+    }
+
+    const cont = document.getElementById('chat-msgs');
+    if (!cont) return;
+
+    cont.innerHTML = data.map(m => {
+      const esMio = m.de === usuario;
+      const hora = new Date(m.created_at).toLocaleTimeString('es-PA', {hour:'2-digit',minute:'2-digit'});
+      const fecha = new Date(m.created_at).toLocaleDateString('es-PA', {day:'numeric',month:'short'});
+      return `
+        <div style="display:flex;flex-direction:column;align-items:${esMio?'flex-end':'flex-start'}">
+          <div style="max-width:85%;background:${esMio?'var(--accent)':'var(--bg3)'};color:${esMio?'#fff':'var(--text1)'};
+               padding:8px 12px;border-radius:${esMio?'12px 12px 2px 12px':'12px 12px 12px 2px'};font-size:13px;line-height:1.4">
+            ${!esMio ? `<div style="font-size:10px;font-weight:600;margin-bottom:3px;color:var(--accent2)">${m.de}${m.para?' → '+m.para:''}</div>` : ''}
+            ${m.mensaje}
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">${fecha} ${hora}</div>
+        </div>`;
+    }).join('');
+
+    const autoScroll = cont.scrollHeight - cont.scrollTop - cont.clientHeight < 60;
+    if (autoScroll || CHAT_OPEN) cont.scrollTop = cont.scrollHeight;
+
+    CHAT_ULTIMO_ID = data.length;
+  } catch(e) {}
+}
+
+async function enviarMensaje() {
+  const input = document.getElementById('chat-input');
+  const para = document.getElementById('chat-para')?.value || '';
+  const msg = input?.value?.trim();
+  if (!msg) return;
+
+  const usuario = document.querySelector('.sb-user div div')?.textContent || 'Usuario';
+  try {
+    await supa.from('mensajes').insert({
+      de: usuario,
+      para: para || null,
+      mensaje: msg,
+      leido: false
+    });
+    input.value = '';
+    await cargarMensajes();
+    const cont = document.getElementById('chat-msgs');
+    if (cont) cont.scrollTop = cont.scrollHeight;
+  } catch(e) { toast('Error al enviar mensaje','err'); }
+}
+
+async function marcarLeidos() {
+  try {
+    const usuario = document.querySelector('.sb-user div div')?.textContent || 'Usuario';
+    await supa.from('mensajes').update({leido:true}).neq('de', usuario).eq('leido', false);
+    const badge = document.getElementById('chat-badge');
+    if (badge) badge.style.display = 'none';
+  } catch(e) {}
+}
+
+// Inicializar chat y parámetros al cargar
+window.addEventListener('load', () => {
+  initChat();
+  // Cargar parámetros cuando se abra esa sección
+});
+
+// Cargar parámetros cuando se navega a esa sección
+const _origGoToParam = goTo;
 
 </script>
 </body>
