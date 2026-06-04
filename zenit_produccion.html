@@ -2515,17 +2515,22 @@ async function ejecutarImportacionMasiva() {
   let cliOk = 0;
   for (const c of D.clientes) {
     try {
-      // Usar upsert con telefono como clave única
       const tel = (c.telefono && c.telefono !== '507' && c.telefono.trim() !== '') ? c.telefono : null;
-      const { data, error } = await supa.from('clientes').upsert(
+      // Insertar cliente
+      const { error: insErr } = await supa.from('clientes').upsert(
         { nombre: c.nombre, apellido: c.apellido, telefono: tel,
           email: c.correo || null, estado: 'activo' },
         { onConflict: 'telefono', ignoreDuplicates: false }
-      ).select('id, telefono').single();
-      if (error) throw error;
-      if (data) {
+      );
+      if (insErr) throw insErr;
+      // Obtener id del cliente recién insertado
+      const buscar = tel
+        ? supa.from('clientes').select('id').eq('telefono', tel)
+        : supa.from('clientes').select('id').eq('nombre', c.nombre).eq('apellido', c.apellido);
+      const { data: found } = await buscar.limit(1).single();
+      if (found) {
         const key = tel || `${c.nombre.toUpperCase()}_${c.apellido.toUpperCase()}`;
-        clienteIdMap[key] = data.id;
+        clienteIdMap[key] = found.id;
       }
       cliOk++; ok++;
     } catch(e) { err++; logMsg(`  ✗ Cliente ${c.nombre} ${c.apellido}: ${e.message}`, 'err'); }
