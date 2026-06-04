@@ -594,9 +594,9 @@ select option{background:var(--bg3)}
     <div class="mc" style="--mc-c:var(--amber)"><div class="ml">Bloqueados</div><div class="mv" style="color:var(--amber)" id="inv-cnt-bloq">—</div></div>
   </div>
   <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap">
-    <div class="sbox" style="flex:1;max-width:280px"><i class="ti ti-search"></i><input type="text" placeholder="Buscar cuenta..."></div>
-    <select><option>Todas las plataformas</option><option>Netflix</option><option>Disney+</option><option>HBO Max</option><option>Prime Video</option></select>
-    <select><option>Todos los estados</option><option>Disponible</option><option>Ocupado</option><option>Vencido</option><option>Bloqueado</option></select>
+    <div class="sbox" style="flex:1;max-width:280px"><i class="ti ti-search"></i><input type="text" id="inv-busca" placeholder="Buscar cuenta..." oninput="filtrarInventario()"></div>
+    <select id="inv-plat" onchange="filtrarInventario()"><option value="">Todas las plataformas</option><option value="NF">Netflix</option><option value="DS">Disney+</option><option value="HB">HBO Max</option><option value="PV">Prime Video</option></select>
+    <select id="inv-estado" onchange="filtrarInventario()"><option value="">Todos los estados</option><option value="Activa">Disponible</option><option value="Ocupada">Ocupado</option><option value="Vencida">Vencido</option><option value="Bloqueada">Bloqueado</option></select>
 
   </div>
   <div class="card"><div class="tw"><table><thead><tr><th>Cuenta</th><th>Plataforma</th><th>Correo</th><th>Clave</th><th>Perfiles</th><th>Disp.</th><th>Ocup.</th><th>F. compra</th><th>Vcto prov.</th><th>Costo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tb-inv"></tbody></table></div></div>
@@ -5268,9 +5268,12 @@ const _origGoToParam = goTo;
 // ═══════════════════════════════════════════════════════════
 const PLAT_NAMES = {NF:'Netflix', DS:'Disney+', HB:'HBO Max', PV:'Prime Video'};
 
+// Cache global del inventario y subs para filtrado rápido
+let INV_CACHE = [];
+let INV_SUBS_MAP = {}; // { cuenta_id: perfiles_ocupados }
+
 async function cargarInventario() {
   try {
-    // Cargar inventario
     let all = [];
     let page = 0;
     while(true) {
@@ -5281,31 +5284,75 @@ async function cargarInventario() {
       if (data.length < 1000) break;
       page++;
     }
+    INV_CACHE = all;
 
-    // Contadores
-    const disp = all.filter(i=>i.estado==='Activa').length;
-    const ocup = all.filter(i=>i.estado==='Ocupada').length;
-    const venc = all.filter(i=>i.estado==='Vencida').length;
-    const bloq = all.filter(i=>i.estado==='Bloqueada').length;
-    document.getElementById('inv-cnt-disp').textContent = disp;
-    document.getElementById('inv-cnt-ocup').textContent = ocup;
-    document.getElementById('inv-cnt-venc').textContent = venc;
-    document.getElementById('inv-cnt-bloq').textContent = bloq;
-
-    // Agrupar por plataforma
-    const grupos = {};
-    all.forEach(inv => {
-      const plat = inv.plataforma || 'NF';
-      if (!grupos[plat]) grupos[plat] = [];
-      grupos[plat].push(inv);
+    // Cargar suscripciones para calcular Disp./Ocup.
+    // El perfil tiene formato: DS00022 → cuenta DS0002 (primeros 6 chars)
+    let subs = [];
+    let sp = 0;
+    while(true) {
+      const {data: sd} = await supa.from('suscripciones').select('perfil,estado').range(sp*1000, sp*1000+999);
+      if (!sd || !sd.length) break;
+      subs = subs.concat(sd);
+      if (sd.length < 1000) break;
+      sp++;
+    }
+    INV_SUBS_MAP = {};
+    subs.forEach(s => {
+      if (!s.perfil) return;
+      // Extraer cuenta_id: "DS00022" → "DS0002" (quitar último dígito)
+      const cuentaId = s.perfil.slice(0, -1);
+      if (!INV_SUBS_MAP[cuentaId]) INV_SUBS_MAP[cuentaId] = 0;
+      if ((s.estado||'').toLowerCase() === 'activo') INV_SUBS_MAP[cuentaId]++;
     });
 
-    const tbody = document.getElementById('tb-inv');
-    if (!tbody) return;
-    tbody.innerHTML = '';
+    renderInventario(all);
+  } catch(e) {
+    console.error('Error inventario:', e);
+    document.getElementById('tb-inv').innerHTML = '<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--text3)">Error al cargar inventario</td></tr>';
+  }
+}
 
-    Object.entries(grupos).forEach(([plat, cuentas]) => {
-      // Fila de grupo
+function filtrarInventario() {
+  const busca = (document.getElementById('inv-busca')?.value || '').toLowerCase().trim();
+  const plat  = document.getElementById('inv-plat')?.value || '';
+  const estado = document.getElementById('inv-estado')?.value || '';
+  let lista = INV_CACHE;
+  if (plat)   lista = lista.filter(i => i.plataforma === plat);
+  if (estado) lista = lista.filter(i => i.estado === estado);
+  if (busca)  lista = lista.filter(i =>
+    (i.id||'').toLowerCase().includes(busca) ||
+    (i.correo||'').toLowerCase().includes(busca) ||
+    (i.proveedor||'').toLowerCase().includes(busca)
+  );
+  renderInventario(lista);
+}
+
+function renderInventario(lista) {
+  const disp = lista.filter(i=>i.estado==='Activa').length;
+  const ocup = lista.filter(i=>i.estado==='Ocupada').length;
+  const venc = lista.filter(i=>i.estado==='Vencida').length;
+  const bloq = lista.filter(i=>i.estado==='Bloqueada').length;
+  document.getElementById('inv-cnt-disp').textContent = disp;
+  document.getElementById('inv-cnt-ocup').textContent = ocup;
+  document.getElementById('inv-cnt-venc').textContent = venc;
+  document.getElementById('inv-cnt-bloq').textContent = bloq;
+
+  const grupos = {};
+  lista.forEach(inv => {
+    const plat = inv.plataforma || 'NF';
+    if (!grupos[plat]) grupos[plat] = [];
+    grupos[plat].push(inv);
+  });
+
+  const tbody = document.getElementById('tb-inv');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const platOrder = ['NF','DS','HB','PV'];
+  Object.entries(grupos)
+    .sort((a,b) => platOrder.indexOf(a[0]) - platOrder.indexOf(b[0]))
+    .forEach(([plat, cuentas]) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `<td colspan="12" style="background:var(--bg3);font-weight:600;font-size:12px;padding:8px 12px;color:var(--accent)">${PLAT_NAMES[plat]||plat} (${cuentas.length})</td>`;
       tbody.appendChild(tr);
@@ -5314,15 +5361,18 @@ async function cargarInventario() {
         const vcto = inv.fecha_vcto_prov ? inv.fecha_vcto_prov.split('-').reverse().join('/') : '—';
         const compra = inv.fecha_compra ? inv.fecha_compra.split('-').reverse().join('/') : '—';
         const estadoClass = inv.estado==='Activa'?'bg':inv.estado==='Vencida'?'br':inv.estado==='Bloqueada'?'ba':'bi';
+        const maxP = parseInt(inv.max_perfiles) || 0;
+        const ocupP = INV_SUBS_MAP[inv.id] || 0;
+        const dispP = Math.max(0, maxP - ocupP);
         const tr2 = document.createElement('tr');
         tr2.innerHTML = `
           <td><strong>${inv.id}</strong></td>
           <td>${PLAT_NAMES[inv.plataforma]||inv.plataforma||'—'}</td>
           <td style="font-size:11px">${inv.correo||'—'}</td>
           <td style="font-size:11px;color:var(--text3)">${inv.clave||'—'}</td>
-          <td style="text-align:center">${inv.max_perfiles||'—'}</td>
-          <td style="text-align:center">—</td>
-          <td style="text-align:center">—</td>
+          <td style="text-align:center">${maxP||'—'}</td>
+          <td style="text-align:center;color:var(--green);font-weight:600">${maxP ? dispP : '—'}</td>
+          <td style="text-align:center;color:var(--accent)">${maxP ? ocupP : '—'}</td>
           <td>${compra}</td>
           <td>${vcto}</td>
           <td>${inv.costo ? '$'+parseFloat(inv.costo).toFixed(2) : '—'}</td>
@@ -5333,10 +5383,6 @@ async function cargarInventario() {
         tbody.appendChild(tr2);
       });
     });
-  } catch(e) {
-    console.error('Error inventario:', e);
-    document.getElementById('tb-inv').innerHTML = '<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--text3)">Error al cargar inventario</td></tr>';
-  }
 }
 
 </script>
