@@ -475,6 +475,124 @@ select option{background:var(--bg3)}
 </style>
 </head>
 <body>
+<!-- ═══════════════════════════════════════════════════════
+     PANTALLA DE BIENVENIDA Y LOGIN — ZENIT
+═══════════════════════════════════════════════════════ -->
+<div id="zenit-welcome" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0a0a0f 0%,#0f0f1a 40%,#080d18 100%);display:flex;align-items:stretch;overflow:hidden;font-family:'Inter','Segoe UI',system-ui,sans-serif;">
+  <!-- Panel izquierdo — branding -->
+  <div style="flex:1.1;display:flex;flex-direction:column;justify-content:center;padding:60px 70px;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:-80px;left:-80px;width:400px;height:400px;background:radial-gradient(circle,rgba(99,102,241,.12) 0%,transparent 70%);pointer-events:none"></div>
+    <div style="position:absolute;bottom:-60px;right:-40px;width:300px;height:300px;background:radial-gradient(circle,rgba(56,193,114,.08) 0%,transparent 70%);pointer-events:none"></div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:52px;">
+      <div style="width:52px;height:52px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(99,102,241,.35);">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <div>
+        <div style="font-size:28px;font-weight:700;color:#fff;letter-spacing:.04em;line-height:1">ZENIT</div>
+        <div style="font-size:11px;color:#6366f1;font-weight:500;letter-spacing:.12em;text-transform:uppercase;margin-top:2px">Gestión Streaming</div>
+      </div>
+    </div>
+    <div style="margin-bottom:36px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <div style="width:2px;height:22px;background:linear-gradient(to bottom,#6366f1,#38c172);border-radius:2px"></div>
+        <span style="font-size:11px;color:#6366f1;font-weight:600;letter-spacing:.1em;text-transform:uppercase">Del árabe «samt» — el punto más alto del cielo</span>
+      </div>
+      <h1 style="font-size:38px;font-weight:700;color:#fff;line-height:1.15;margin:0 0 14px 0;">El punto más alto<br><span style="background:linear-gradient(90deg,#6366f1,#38c172);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">de tu negocio.</span></h1>
+      <p style="font-size:15px;color:#94a3b8;line-height:1.7;margin:0;max-width:420px;">Plataforma integral para la gestión de suscripciones de streaming. Controla clientes, inventario, cobros y cobranza desde un solo lugar, con precisión y en tiempo real.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:440px;margin-bottom:48px;">
+      <div style="display:flex;align-items:center;gap:9px;"><div style="width:28px;height:28px;background:rgba(99,102,241,.12);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><span style="font-size:12px;color:#94a3b8;">Gestión de clientes</span></div>
+      <div style="display:flex;align-items:center;gap:9px;"><div style="width:28px;height:28px;background:rgba(56,193,114,.1);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38c172" stroke-width="2.5"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><span style="font-size:12px;color:#94a3b8;">Cobros y cobranza</span></div>
+      <div style="display:flex;align-items:center;gap:9px;"><div style="width:28px;height:28px;background:rgba(245,158,11,.1);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div><span style="font-size:12px;color:#94a3b8;">Inventario streaming</span></div>
+      <div style="display:flex;align-items:center;gap:9px;"><div style="width:28px;height:28px;background:rgba(139,92,246,.1);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><span style="font-size:12px;color:#94a3b8;">Reportes en tiempo real</span></div>
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,.06);padding-top:24px;">
+      <p style="font-size:12px;color:#475569;line-height:1.6;margin:0;">Desarrollado por <span style="color:#e2e8f0;font-weight:600;">Wilfredo Marín</span> &nbsp;·&nbsp; Con el apoyo de <span style="color:#6366f1;font-weight:600;">Claude AI</span> — Anthropic<br><span style="font-size:11px;color:#334155;">© 2026 ZENIT &nbsp;·&nbsp; Todos los derechos reservados</span></p>
+    </div>
+  </div>
+  <!-- Divisor -->
+  <div style="width:1px;background:linear-gradient(to bottom,transparent,rgba(99,102,241,.3),rgba(56,193,114,.2),transparent);flex-shrink:0;"></div>
+  <!-- Panel derecho — login -->
+  <div style="width:460px;display:flex;flex-direction:column;justify-content:center;padding:60px 52px;background:rgba(255,255,255,.02);">
+    <div style="margin-bottom:36px;">
+      <h2 style="font-size:22px;font-weight:600;color:#f1f5f9;margin:0 0 6px 0;">Iniciar sesión</h2>
+      <p style="font-size:13px;color:#64748b;margin:0;">Ingresa tus credenciales para continuar</p>
+    </div>
+    <div id="login-error" style="display:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 14px;margin-bottom:18px;font-size:13px;color:#fca5a5;align-items:center;gap:8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span id="login-error-msg">Usuario o contraseña incorrectos</span>
+    </div>
+    <div style="margin-bottom:18px;">
+      <label style="display:block;font-size:12px;font-weight:500;color:#94a3b8;margin-bottom:7px;letter-spacing:.03em;">USUARIO</label>
+      <div style="position:relative;">
+        <div style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#475569;pointer-events:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <input id="login-user" type="text" placeholder="Tu usuario" autocomplete="username" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px 12px 42px;font-size:14px;color:#f1f5f9;outline:none;box-sizing:border-box;transition:border-color .2s,background .2s;font-family:inherit;" onfocus="this.style.borderColor='#6366f1';this.style.background='rgba(99,102,241,.08)'" onblur="this.style.borderColor='rgba(255,255,255,.1)';this.style.background='rgba(255,255,255,.05)'" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+      </div>
+    </div>
+    <div style="margin-bottom:28px;">
+      <label style="display:block;font-size:12px;font-weight:500;color:#94a3b8;margin-bottom:7px;letter-spacing:.03em;">CONTRASEÑA</label>
+      <div style="position:relative;">
+        <div style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#475569;pointer-events:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <input id="login-pass" type="password" placeholder="Tu contraseña" autocomplete="current-password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 42px 12px 42px;font-size:14px;color:#f1f5f9;outline:none;box-sizing:border-box;transition:border-color .2s,background .2s;font-family:inherit;" onfocus="this.style.borderColor='#6366f1';this.style.background='rgba(99,102,241,.08)'" onblur="this.style.borderColor='rgba(255,255,255,.1)';this.style.background='rgba(255,255,255,.05)'" onkeydown="if(event.key==='Enter')intentarLogin()">
+        <button onclick="const i=document.getElementById('login-pass');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#475569;padding:2px;display:flex;" title="Ver contraseña"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div>
+    </div>
+    <button id="login-btn" onclick="intentarLogin()" style="width:100%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;letter-spacing:.02em;transition:opacity .2s,transform .1s;font-family:inherit;" onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">Ingresar al sistema</button>
+    <p style="text-align:center;font-size:11px;color:#334155;margin-top:32px;">ZENIT v1.0 &nbsp;·&nbsp; Panamá, 2026</p>
+  </div>
+</div>
+<script>
+const _SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxbnZvY296bWR0Z2h1YW9qZmdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNTYzNDYsImV4cCI6MjA5NTkzMjM0Nn0.hLEoqJbtpdemEAK4J780QUyz5o11lTvlm8Q7cGqzI4A';
+const _SUPA_URL = 'https://gqnvocozmdtghuaojfgo.supabase.co';
+
+// Si hay sesión guardada, saltar login directamente
+(function() {
+  const stored = sessionStorage.getItem('zenit_usuario');
+  if (stored) {
+    try {
+      const u = JSON.parse(stored);
+      if (u && u.usuario) {
+        document.getElementById('zenit-welcome').style.display = 'none';
+        // La app se inicia con el setTimeout ya existente
+        return;
+      }
+    } catch(e) {}
+  }
+})();
+
+async function intentarLogin() {
+  const usuario  = (document.getElementById('login-user')?.value || '').trim();
+  const password = document.getElementById('login-pass')?.value || '';
+  const errDiv   = document.getElementById('login-error');
+  const errMsg   = document.getElementById('login-error-msg');
+  const btn      = document.getElementById('login-btn');
+  if (!usuario || !password) {
+    errMsg.textContent = 'Por favor ingresa usuario y contraseña.';
+    errDiv.style.display = 'flex'; return;
+  }
+  btn.textContent = 'Verificando...'; btn.style.opacity = '.7'; btn.disabled = true;
+  errDiv.style.display = 'none';
+  try {
+    const res  = await fetch(_SUPA_URL + '/rest/v1/usuarios_sistema?usuario=eq.' + encodeURIComponent(usuario) + '&estado=eq.Activo&select=*&limit=1', {
+      headers: { apikey: _SUPA_KEY, Authorization: 'Bearer ' + _SUPA_KEY }
+    });
+    const data = await res.json();
+    if (!data || !data.length) throw new Error('no_user');
+    if (data[0].password !== password) throw new Error('bad_pass');
+    sessionStorage.setItem('zenit_usuario', JSON.stringify(data[0]));
+    const welcome = document.getElementById('zenit-welcome');
+    welcome.style.transition = 'opacity .5s ease';
+    welcome.style.opacity = '0';
+    setTimeout(() => { welcome.style.display = 'none'; }, 500);
+  } catch(e) {
+    errMsg.textContent = e.message === 'bad_pass' ? 'Contraseña incorrecta. Intenta de nuevo.' : 'Usuario no encontrado o inactivo.';
+    errDiv.style.display = 'flex';
+    btn.textContent = 'Ingresar al sistema'; btn.style.opacity = '1'; btn.disabled = false;
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-pass').focus();
+  }
+}
+</script>
 <nav id="sb">
   <div class="sb-logo"><div class="sb-icon"><i class="ti ti-broadcast"></i></div><div><div class="sb-name">Zenit <span id="sb-status" title="Verificando conexión..." style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--amber);margin-left:4px;vertical-align:middle"></span></div><div class="sb-ver">Gestión streaming</div></div></div>
   <div class="sb-sec"><div class="sb-lbl">Principal</div>
@@ -1855,9 +1973,11 @@ function renderDashboard() {
   const transTbody = document.querySelector('#v-dashboard tbody:last-of-type') ||
     document.getElementById('dash-trans-loading')?.parentElement;
   const ultimos = COBROS.slice(0,5);
-  if (transTbody && ultimos.length) {
+  const dashTransTbody = document.querySelector('#v-dashboard table:last-of-type tbody') || document.getElementById('dash-trans-loading')?.closest('tbody');
+  const transTbody2 = dashTransTbody || transTbody;
+  if (transTbody2 && ultimos.length) {
     const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
-    transTbody.innerHTML = ultimos.map(c => {
+    transTbody2.innerHTML = ultimos.map(c => {
       const plats = c.plat.split('+').map(p=>`<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
       const tipoBadge = c.tipo==='Venta nueva' ? '<span class="b bg">Venta nueva</span>' : '<span class="b bi">Renovación</span>';
       return `<tr>
@@ -1915,7 +2035,8 @@ function filtC(q){const r=q.toLowerCase().trim();const rn=normalizeTel(q).toLowe
 function filtCEst(e){renderC(e?CLIENTES.filter(c=>c.est===e):CLIENTES);}
 
 function renderCob(data){
-  document.getElementById('tcob').innerHTML=data.map(c=>{
+  const _tcob = document.getElementById('tcob-hoy') || document.getElementById('tcob'); if(!_tcob) return;
+  _tcob.innerHTML=data.map(c=>{
     const plats=c.plats.map(p=>`<span class="pd"><span class="dot" style="background:${PC[p]}"></span>${p}</span>`).join('');
     const vb=c.dias===0?`<span class="b br">Hoy</span>`:c.dias===1?`<span class="b ba">Mañana</span>`:`<span class="b" style="background:rgba(245,200,35,.15);color:#f5c842">${c.dias} días</span>`;
     return `<tr><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${formatTel(c.tel)}</td><td>${plats}</td><td style="color:var(--green);font-weight:500">$${c.plats.length*9}.00</td><td>${vb}</td><td><div class="rdots"><div class="rd ${c.dias<=2?'s':'p'}"></div><span class="rl">3d</span><div class="rd ${c.dias===0?'s':'p'}" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">hoy</span></div></td><td class="tda"><button class="btn btn-sm btn-a" onclick="abrirWA('${c.n} ${c.a}','${c.plats.join('+')}','$${c.plats.length*9}.00','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i>WA</button><button class="btn btn-sm btn-s" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Pago</button><button class="btn btn-sm btn-d btn-ic" onclick="toast('Marcado como sugerido vencido','info')"><i class="ti ti-alert-circle"></i></button></td></tr>`;
