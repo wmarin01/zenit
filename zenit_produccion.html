@@ -1283,7 +1283,7 @@ select option{background:var(--bg3)}
         <div class="fr c3">
           <div class="fg"><label>Fecha inicio<span class="req">*</span></label><input type="date" id="v-fecha-ini" oninput="calcVctoVenta()"><div class="hint">Sugerida. Modificable.</div></div>
           <div class="fg"><label>Meses a pagar<span class="req">*</span></label><input type="number" id="v-meses" value="1" min="1" max="12" oninput="calcVctoVenta()"></div>
-          <div class="fg"><label>Fecha vencimiento</label><input type="text" id="v-fecha-vcto" readonly><div class="hint ok" id="v-vcto-hint">Se calculará al seleccionar fechas</div></div>
+          <div class="fg"><label>Fecha vencimiento</label><input type="date" id="v-fecha-vcto"><div class="hint ok" id="v-vcto-hint">Sugerida por regla. Modificable.</div></div>
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:8px">
@@ -1930,9 +1930,10 @@ async function confirmarVenta(){
   const usuarios  = getUsuariosVenta();
   const pins      = ventaData.pins || {};
   const precio    = document.getElementById('v-precio')?.value?.replace(/[^0-9.]/g,'') || '0';
-  const vcto      = document.getElementById('v-fecha-vcto')?.value || '—';
+  const vctoRaw   = document.getElementById('v-fecha-vcto')?.value || '—';
   const fIniVal   = document.getElementById('v-fecha-ini')?.value || '';
   const fmtDate   = v => { if(!v||!v.includes('-')) return v||'—'; const [yy,mm,dd]=v.split('-'); return dd+'/'+mm+'/'+yy; };
+  const vcto      = fmtDate(vctoRaw);   // YYYY-MM-DD → dd/mm/yyyy
   const fIniStr   = fmtDate(fIniVal);
   const monto     = parseFloat(precio) || 0;
   const tipo      = ventaData.tipo === 'individual' ? 'Individual' : 'Combo';
@@ -2699,12 +2700,14 @@ async function cargarPlanesPrecios() {
       return;
     }
 
-    // ── 1. Actualizar PLATS (precio base de 1 perfil individual) ──
+    // ── 1. Actualizar PLATS (precio base = plan de 1 perfil individual) ──
     data.forEach(p => {
       const plats = (p.plataformas || '').split('+').map(s => s.trim());
       if (p.tipo === 'Individual' && plats.length === 1) {
         const cod = plats[0];
-        if (PLATS[cod]) {
+        const numPerfiles = parseInt(p.perfiles) || 1;
+        // Solo actualizar precio_ind con el plan de 1 perfil
+        if (PLATS[cod] && numPerfiles === 1) {
           PLATS[cod].precio_ind = parseFloat(p.precio) || PLATS[cod].precio_ind;
         }
       }
@@ -3035,8 +3038,14 @@ function ventaPaso4() {
   if (tipo === 'combo' && comboSelIdx >= 0) {
     total = COMBOS[comboSelIdx].precio;
   } else {
-    // Usar el precio del plan seleccionado (guardado en updPerfilesVenta)
-    total = ventaData.planPrecio || PLATS[ventaData.plats[0]]?.precio_ind || 0;
+    // Usar el precio del plan seleccionado (guardado en updPerfilesVenta al elegir el plan)
+    total = ventaData.planPrecio || 0;
+    if (!total) {
+      // Fallback defensivo: precio de 1 perfil de la plataforma
+      const plat0 = ventaData.plats[0];
+      const plan1 = (PRECIOS_IND[plat0] || []).find(p => p.perfiles === 1);
+      total = plan1?.precio || PLATS[plat0]?.precio_ind || 0;
+    }
   }
   const pinput = document.getElementById('v-precio');
   if (pinput) { pinput.value = '$' + total.toFixed(2); document.getElementById('v-precio-hint').textContent = 'Precio según plan. Modificable.'; }
@@ -3081,23 +3090,22 @@ function ventaPaso5Resumen() {
   const usuarios = getUsuariosVenta();
   const usuario = Object.values(usuarios).join(' / ') || '—';
   const pin = ventaData.pins ? Object.values(ventaData.pins).join(' / ') : (document.getElementById('pinval')?.textContent || '—');
-  const vcto    = document.getElementById('v-fecha-vcto')?.value || '—';
+  const vctoRaw5 = document.getElementById('v-fecha-vcto')?.value || '—';
+  // Convertir YYYY-MM-DD → dd/mm/yyyy para mostrar
+  const fmtD5 = v => { if(!v||!v.includes('-')) return v||'—'; const [yy,mm,dd]=v.split('-'); return dd+'/'+mm+'/'+yy; };
+  const vcto = fmtD5(vctoRaw5);
   // Formatear fecha ini legible
   const fIniVal = document.getElementById('v-fecha-ini')?.value || ventaData.fechaIni || '';
-  let fIniStr = fIniVal;
-  if (fIniVal && fIniVal.includes('-')) {
-    const [yy,mm,dd] = fIniVal.split('-');
-    fIniStr = dd+'/'+mm+'/'+yy;
-  }
+  const fIniStr = fmtD5(fIniVal);
 
   let rows = `<div class="sr"><span class="sl">Cliente</span><span>${ventaData.clienteNombre}</span></div>`;
   rows += `<div class="sr"><span class="sl">Tipo</span><span>${ventaData.tipo === 'individual' ? 'Individual' : 'Combo'}</span></div>`;
-  // Total correcto: usar precio del combo si es combo
+  // Total: usar precio del plan seleccionado (guardado en ventaData.planPrecio)
   let total = 0;
   if (ventaData.tipo === 'combo' && comboSelIdx >= 0) {
     total = COMBOS[comboSelIdx].precio;
   } else {
-    ventaData.plats.forEach(p => { total += PLATS[p].precio_ind || 0; });
+    total = ventaData.planPrecio || 0;
   }
   ventaData.plats.forEach(p => {
     const perf = Object.values(ventaData.perfilesSel).find(x => x && x.plat === p);
@@ -3559,9 +3567,12 @@ function calcVctoVenta() {
   const ini = document.getElementById('v-fecha-ini')?.value;
   const meses = parseInt(document.getElementById('v-meses')?.value) || 1;
   if (!ini) return;
-  const vcto = calcFechaVcto(ini, meses);
+  // calcFechaVcto devuelve dd/mm/yyyy — convertir a YYYY-MM-DD para input type="date"
+  const vctoFmt = calcFechaVcto(ini, meses); // "04/07/2026"
+  const [dd, mm, yy] = vctoFmt.split('/');
+  const vctoISO = yy + '-' + mm + '-' + dd; // "2026-07-04"
   const el = document.getElementById('v-fecha-vcto');
-  if (el) el.value = vcto;
+  if (el) el.value = vctoISO;
   ventaData.fechaIni = ini;
   ventaData.meses = meses;
 }
