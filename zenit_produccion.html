@@ -2914,6 +2914,9 @@ function ventaPaso2() {
   if (!ventaData.clienteId) { toast('Selecciona un cliente primero','warn'); return; }
   ['vpaso1','vpaso2','vpaso3','vpaso4','vpaso5'].forEach((id,i) => document.getElementById(id).style.display = i===1?'block':'none');
   document.getElementById('v-cli-info2').textContent = ventaData.clienteNombre + ' · ' + ventaData.clienteTel;
+  // Poblar planes según el tipo actualmente seleccionado
+  const tipoSel = document.getElementById('v-tipo')?.value || 'individual';
+  poblarPlanesPorTipo(tipoSel);
   updVentaSteps(2);
 }
 function ventaPaso3() {
@@ -3826,10 +3829,9 @@ function openModal(id, title) {
     const fi = document.getElementById('v-fecha-ini');
     if (fi) fi.value = fechaHoy;
     ventaData.fechaIni = fechaHoy;
-    // Reset tipo a individual y poblar planes
+    // Reset tipo a individual (los planes se pueblan al llegar al paso 2)
     const vt = document.getElementById('v-tipo');
     if (vt) vt.value = 'individual';
-    poblarPlanesPorTipo('individual');
     // Reset combo
     comboSelIdx = -1;
     ventaData = {clienteId:'', clienteNombre:'', clienteTel:'', tipo:'individual', plats:[], perfilesSel:{}, pins:{}, meses:1, fechaIni:fechaHoy, dupAutorizado:false};
