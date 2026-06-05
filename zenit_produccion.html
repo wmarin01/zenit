@@ -351,6 +351,22 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 select option{background:var(--bg3)}
 .hint{font-size:11px;color:var(--text3)}
 .hint.ok{color:var(--green)}.hint.w{color:var(--amber)}.hint.e{color:var(--red)}
+#login-ov{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;animation:fi .25s ease}
+#login-ov.oculto{display:none}
+.login-box{width:360px;background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:32px 28px}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+.login-logo .sb-icon{width:36px;height:36px;font-size:18px}
+.login-logo .sb-name{font-size:17px;font-weight:600}
+.login-titulo{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5}
+.login-campo{margin-bottom:14px}
+.login-campo label{display:block;font-size:11px;font-weight:500;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em}
+.login-campo input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;transition:border-color .15s}
+.login-campo input:focus{border-color:var(--accent2)}
+.login-error{background:rgba(240,77,77,.12);border:1px solid rgba(240,77,77,.25);color:var(--red);font-size:12px;padding:8px 12px;border-radius:var(--rsm);margin-bottom:14px;display:none}
+.login-error.on{display:block}
+.login-btn{width:100%;padding:10px;background:var(--accent2);border:none;border-radius:var(--rsm);color:#fff;font-size:14px;font-weight:500;font-family:var(--font);cursor:pointer;transition:background .15s;margin-top:4px}
+.login-btn:hover{background:var(--accent)}
+.login-btn:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:none;align-items:center;justify-content:center;padding:16px;pointer-events:none}
 .ov.on{display:flex;pointer-events:all}
 .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:100%;max-height:90vh;overflow-y:auto;animation:fi .2s ease}
@@ -428,6 +444,28 @@ select option{background:var(--bg3)}
 </style>
 </head>
 <body>
+<div id="login-ov">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="sb-icon"><i class="ti ti-player-play-filled"></i></div>
+      <div>
+        <div class="sb-name">Zenit</div>
+        <div class="sb-ver">Gestión streaming</div>
+      </div>
+    </div>
+    <p class="login-titulo">Ingresa tus credenciales para acceder al sistema.</p>
+    <div class="login-campo">
+      <label>Usuario</label>
+      <input type="text" id="login-usuario" placeholder="ej. wmarin01" autocomplete="username">
+    </div>
+    <div class="login-campo">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="login-error">Usuario o contraseña incorrectos.</div>
+    <button class="login-btn" id="login-btn" onclick="intentarLogin()">Ingresar</button>
+  </div>
+</div>
 <nav id="sb">
   <div class="sb-logo"><div class="sb-icon"><i class="ti ti-broadcast"></i></div><div><div class="sb-name">Zenit <span id="sb-status" title="Verificando conexión..." style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--amber);margin-left:4px;vertical-align:middle"></span></div><div class="sb-ver">Gestión streaming</div></div></div>
   <div class="sb-sec"><div class="sb-lbl">Principal</div>
@@ -2629,6 +2667,79 @@ let PLATS = {
 // ── USUARIOS DEL SISTEMA ─────────────────────────────────────
 let USUARIO_ACTIVO = null;
 
+async function intentarLogin() {
+  const usuario = document.getElementById('login-usuario').value.trim();
+  const pass    = document.getElementById('login-pass').value.trim();
+  const errDiv  = document.getElementById('login-error');
+  const btn     = document.getElementById('login-btn');
+  if (!usuario || !pass) {
+    errDiv.textContent = 'Completa todos los campos.';
+    errDiv.classList.add('on'); return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Verificando...';
+  errDiv.classList.remove('on');
+  try {
+    const { data, error } = await supa
+      .from('usuarios_sistema')
+      .select('*')
+      .eq('usuario', usuario)
+      .eq('password_hash', pass)
+      .eq('estado', 'Activo')
+      .single();
+    if (error || !data) {
+      errDiv.textContent = 'Usuario o contraseña incorrectos.';
+      errDiv.classList.add('on');
+      btn.disabled = false;
+      btn.textContent = 'Ingresar';
+      return;
+    }
+    USUARIO_ACTIVO = data;
+    sessionStorage.setItem('zenit_usuario', JSON.stringify(data));
+    await supa.from('usuarios_sistema')
+      .update({ ultimo_acceso: new Date().toISOString() })
+      .eq('id', data.id);
+    document.getElementById('login-ov').classList.add('oculto');
+    console.log('[LOGIN] Acceso concedido:', data.nombre, '|', data.rol);
+  } catch(e) {
+    errDiv.textContent = 'Error de conexión. Intenta de nuevo.';
+    errDiv.classList.add('on');
+    btn.disabled = false;
+    btn.textContent = 'Ingresar';
+  }
+}
+
+function cerrarSesion() {
+  sessionStorage.removeItem('zenit_usuario');
+  USUARIO_ACTIVO = null;
+  document.getElementById('login-ov').classList.remove('oculto');
+  document.getElementById('login-usuario').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-error').classList.remove('on');
+}
+
+function verificarSesionGuardada() {
+  const stored = sessionStorage.getItem('zenit_usuario');
+  if (stored) {
+    try {
+      const u = JSON.parse(stored);
+      if (u && u.id && u.usuario) {
+        USUARIO_ACTIVO = u;
+        document.getElementById('login-ov').classList.add('oculto');
+        return true;
+      }
+    } catch(e) {}
+    sessionStorage.removeItem('zenit_usuario');
+  }
+  return false;
+}
+
+document.addEventListener('keydown', function(e) {
+  const ov = document.getElementById('login-ov');
+  if (e.key === 'Enter' && ov && !ov.classList.contains('oculto')) {
+    intentarLogin();
+  }
+});
 async function cargarUsuariosSistema() {
   try {
     const {data, error} = await supa.from('usuarios_sistema').select('*').eq('estado','Activo').order('nombre');
@@ -4955,6 +5066,7 @@ renderC(CLIENTES);
 renderCob(CLIENTES.filter(c=>c.dias===0));
 // Cargar datos desde Supabase al iniciar
 setTimeout(async () => {
+  verificarSesionGuardada();
   await verificarConexion();
   await cargarPlanesPrecios();
   await dbCargarClientes();
