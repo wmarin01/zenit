@@ -37,7 +37,7 @@ async function dbGuardarContactos(clienteId, contactos) {
 // Guardar cobro
 async function dbGuardarCobro(cobro) {
   const { error } = await supa.from('cobros').insert({
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: cobro.fechaIni || new Date().toISOString().split('T')[0],
     tipo: cobro.tipo,
     cliente_id: cobro.clienteId,
     nombre: cobro.nombre,
@@ -85,6 +85,7 @@ async function dbGuardarSuscripcion(sub) {
     correo: sub.correo,
     usuario: sub.usuario,
     pin: sub.pin,
+    perfil_id: sub.perfilId || null,
     fecha_inicio: sub.fIni,
     fecha_vcto: sub.fVcto,
     monto: sub.monto,
@@ -116,7 +117,8 @@ async function dbGuardarEgreso(egr) {
 // Guardar historial
 async function dbGuardarHistorial(accion, detalle, color) {
   await supa.from('historial').insert({
-    accion, detalle, color, operador: 'Operador'
+    accion, detalle, color,
+    operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema'
   });
 }
 
@@ -187,6 +189,49 @@ async function dbCargarCobros() {
     });
     console.log('Cobros cargados desde Supabase:', data.length);
   }
+}
+
+// Cargar ventas desde Supabase
+const VENTAS_DB = [];
+async function dbCargarVentas() {
+  const { data, error } = await supa.from('ventas')
+    .select('*').order('created_at', { ascending: false }).limit(100);
+  if (error) { console.error('Error cargando ventas:', error); return; }
+  if (data && data.length > 0) {
+    VENTAS_DB.length = 0;
+    data.forEach(v => VENTAS_DB.push(v));
+    renderVentasDB();
+    console.log('Ventas cargadas:', data.length);
+  }
+}
+
+function renderVentasDB() {
+  const tb = document.getElementById('tb-ventas');
+  if (!tb) return;
+  const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
+  if (!VENTAS_DB.length) {
+    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">No hay ventas registradas</td></tr>';
+    return;
+  }
+  tb.innerHTML = VENTAS_DB.map(v => {
+    const plats = (v.plataformas||v.plats||'').split('+').map(p =>
+      `<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
+    const fecha = v.fecha_inicio
+      ? v.fecha_inicio.split('-').reverse().join('/')
+      : (v.created_at ? v.created_at.substring(0,10).split('-').reverse().join('/') : '—');
+    const vcto  = v.fecha_vcto || v.fecha_fin || '—';
+    const vigencia = `${fecha}→${vcto}`;
+    return `<tr>
+      <td style="font-size:12px">${fecha}</td>
+      <td><strong>${v.nombre||'—'}</strong></td>
+      <td>${plats}</td>
+      <td style="font-family:var(--mono);font-size:11px">${v.perfiles||v.perfil_id||'—'}</td>
+      <td style="font-family:var(--mono)">${v.pins||v.pin||'—'}</td>
+      <td style="font-size:12px">${vigencia}</td>
+      <td><span class="b bi">WhatsApp</span></td>
+      <td style="color:var(--green);font-weight:500">$${parseFloat(v.monto||0).toFixed(2)}</td>
+    </tr>`;
+  }).join('');
 }
 
 // Cargar suscripciones al iniciar
@@ -469,45 +514,30 @@ select option{background:var(--bg3)}
 <!-- DASHBOARD -->
 <div class="view on" id="v-dashboard">
   <div class="mg">
-    <div class="mc" style="--mc-c:var(--accent)"><div class="ml">Clientes activos</div><div class="mv">487</div><div class="ms">+3 esta semana</div></div>
-    <div class="mc" style="--mc-c:var(--red)"><div class="ml">Vencen hoy</div><div class="mv" style="color:var(--red)">3</div><div class="ms">Sin pago</div></div>
-    <div class="mc" style="--mc-c:var(--amber)"><div class="ml">Vencen en 3 días</div><div class="mv" style="color:var(--amber)">11</div><div class="ms">Recordatorios</div></div>
-    <div class="mc" style="--mc-c:var(--green)"><div class="ml">Cobrado este mes</div><div class="mv" style="color:var(--green)">$1,240</div><div class="ms">De $1,890 esperado</div></div>
-    <div class="mc" style="--mc-c:var(--purple)"><div class="ml">Perfiles disponibles</div><div class="mv">28</div><div class="ms">En inventario</div></div>
-    <div class="mc" style="--mc-c:var(--teal)"><div class="ml">Ganancia neta</div><div class="mv" style="color:var(--teal)">$590</div><div class="ms">Margen 47%</div></div>
+    <div class="mc" style="--mc-c:var(--accent)"><div class="ml">Clientes activos</div><div class="mv" id="dash-cli-activos">—</div><div class="ms" id="dash-cli-semana">cargando...</div></div>
+    <div class="mc" style="--mc-c:var(--red)"><div class="ml">Vencen hoy</div><div class="mv" style="color:var(--red)" id="dash-vence-hoy">—</div><div class="ms">Sin pago</div></div>
+    <div class="mc" style="--mc-c:var(--amber)"><div class="ml">Vencen en 3 días</div><div class="mv" style="color:var(--amber)" id="dash-vence-3d">—</div><div class="ms">Recordatorios</div></div>
+    <div class="mc" style="--mc-c:var(--green)"><div class="ml" id="dash-cobrado-label">Cobrado este mes</div><div class="mv" style="color:var(--green)" id="dash-cobrado">—</div><div class="ms" id="dash-cobrado-sub">cargando...</div></div>
+    <div class="mc" style="--mc-c:var(--purple)"><div class="ml">Perfiles disponibles</div><div class="mv" id="dash-perfiles">—</div><div class="ms">En inventario</div></div>
+    <div class="mc" style="--mc-c:var(--teal)"><div class="ml">Ganancia neta</div><div class="mv" style="color:var(--teal)" id="dash-ganancia">—</div><div class="ms" id="dash-margen">cargando...</div></div>
   </div>
   <div class="g2">
     <div class="card">
       <div class="ct"><i class="ti ti-clock-exclamation" style="color:var(--red)"></i>Vencimientos críticos</div>
-      <div class="tw"><table><thead><tr><th>Cliente</th><th>Plataforma</th><th>Monto</th><th>Vence</th><th></th></tr></thead><tbody>
-        
-        
-        
-      </tbody></table></div>
+      <div class="tw"><table><thead><tr><th>Cliente</th><th>Plataforma</th><th>Monto</th><th>Vence</th><th></th></tr></thead><tbody id="dash-venc-criticos"><tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr></tbody></table></div>
     </div>
     <div class="card">
       <div class="ct"><i class="ti ti-alert-triangle" style="color:var(--amber)"></i>Alertas proveedores</div>
-      <div class="tw"><table><thead><tr><th>Cuenta</th><th>Proveedor</th><th>Clientes</th><th>Vence</th></tr></thead><tbody>
-        <tr><td><strong>NF003</strong></td><td>Prov. A</td><td>5</td><td><span class="b br">Hoy</span></td></tr>
-        <tr><td><strong>DS007</strong></td><td>Prov. B</td><td>6</td><td><span class="b ba">3 días</span></td></tr>
-        <tr><td><strong>HB002</strong></td><td>Prov. A</td><td>4</td><td><span class="b bi">7 días</span></td></tr>
-      </tbody></table></div>
+      <div class="tw"><table><thead><tr><th>Cuenta</th><th>Proveedor</th><th>Clientes</th><th>Vence</th></tr></thead><tbody id="dash-alertas-prov"><tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">Cargando...</td></tr></tbody></table></div>
       <div style="margin-top:12px">
         <div class="ct" style="margin-bottom:8px"><i class="ti ti-device-tv" style="color:var(--accent)"></i>Inventario por plataforma</div>
-        <div style="display:flex;flex-direction:column;gap:5px">
-          <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="dot nf" style="width:9px;height:9px"></span><span style="flex:1;color:var(--text2)">Netflix</span><span>8</span><span class="b bg">OK</span></div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="dot ds" style="width:9px;height:9px"></span><span style="flex:1;color:var(--text2)">Disney+</span><span>12</span><span class="b bg">OK</span></div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="dot hb" style="width:9px;height:9px"></span><span style="flex:1;color:var(--text2)">HBO Max</span><span>3</span><span class="b ba">Bajo</span></div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="dot pv" style="width:9px;height:9px"></span><span style="flex:1;color:var(--text2)">Prime Video</span><span>5</span><span class="b bg">OK</span></div>
-        </div>
+        <div id="dash-inventario" style="display:flex;flex-direction:column;gap:5px">Cargando...</div>
       </div>
     </div>
   </div>
   <div class="card"><div class="ct"><i class="ti ti-receipt" style="color:var(--accent)"></i>Últimas transacciones</div>
     <div class="tw"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Plataforma</th><th>Comprobante</th><th>Tipo</th><th>Monto</th></tr></thead><tbody>
-      <tr><td>26/05/2026</td><td><strong>Roberto Sánchez</strong></td><td><span class="pd"><span class="dot nf"></span>NF</span><span class="pd"><span class="dot ds"></span>DS</span></td><td style="font-family:var(--mono)">#00841</td><td><span class="b bg">Renovación</span></td><td style="color:var(--green);font-weight:500">$18.00</td></tr>
-      
-      <tr><td>25/05/2026</td><td><strong>Ana Torres</strong></td><td><span class="pd"><span class="dot nf"></span>→<span class="dot ds"></span></span></td><td style="font-family:var(--mono)">#00839</td><td><span class="b bpu">Cambio plat.</span></td><td>—</td></tr>
+<tr id="dash-trans-loading"><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr>
     </tbody></table></div>
   </div>
 </div>
@@ -582,10 +612,10 @@ select option{background:var(--bg3)}
     <div class="tab" onclick="tabCob(this,'tc-3d')">En 3 días<span class="tcnt">12</span></div>
     <div class="tab" onclick="tabCob(this,'tc-todos')">Todos<span class="tcnt">23</span></div>
   </div>
-  <div id="tc-hoy"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob"></tbody></table></div></div></div>
-  <div id="tc-1d" style="display:none"><div class="card"><p style="color:var(--text2);font-size:13px;padding:4px 0">8 clientes vencen mañana — recordatorio 1 día pendiente.</p></div></div>
-  <div id="tc-3d" style="display:none"><div class="card"><p style="color:var(--text2);font-size:13px;padding:4px 0">12 clientes vencen en 3 días — recordatorio pendiente.</p></div></div>
-  <div id="tc-todos" style="display:none"><div class="card"><p style="color:var(--text2);font-size:13px;padding:4px 0">23 clientes pendientes de cobro en los próximos 30 días.</p></div></div>
+  <div id="tc-hoy"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob-hoy"></tbody></table></div></div></div>
+  <div id="tc-1d" style="display:none"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob-1d"></tbody></table></div></div></div>
+  <div id="tc-3d" style="display:none"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob-3d"></tbody></table></div></div></div>
+  <div id="tc-todos" style="display:none"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob-todos"></tbody></table></div></div></div>
 </div>
 <!-- INVENTARIO -->
 <div class="view" id="v-inventario">
@@ -897,13 +927,7 @@ select option{background:var(--bg3)}
     <div class="sbox" style="flex:1;max-width:360px"><i class="ti ti-search"></i><input type="text" placeholder="Buscar en historial..."></div>
     <select><option>Todas las acciones</option><option>Ventas</option><option>Pagos</option><option>Cambio cuenta</option><option>Cambio plataforma</option><option>Cambio contraseña</option><option>Comp. duplicado</option></select>
   </div>
-  <div class="card"><div class="tw"><table><thead><tr><th>Fecha / Hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>
-    
-    <tr><td style="font-size:12px">26/05/2026 09:15</td><td><span class="b bp">Operador 1</span></td><td>Pago registrado</td><td>Roberto Sánchez — #00841 — $18.00</td></tr>
-    
-    
-    
-  </tbody></table></div></div>
+  <div class="card"><div class="tw"><table><thead><tr><th>Fecha / Hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody id="tb-historial"><tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">Cargando historial...</td></tr></tbody></table></div></div>
 </div>
 <!-- USUARIOS -->
 <div class="view" id="v-usuarios">
@@ -1725,6 +1749,129 @@ actualizarFechaHeader();
 
 const TITLES={dashboard:'Dashboard',clientes:'Clientes',ventas:'Ventas',cobranza:'Cobranza',inventario:'Inventario',proveedores:'Proveedores',egresos:'Egresos',reportes:'Reportes',tablas:'Tablas',parametros:'Parámetros',historial:'Historial',usuarios:'Usuarios y permisos'};
 
+// ── DASHBOARD DINÁMICO ──────────────────────────────────────────
+function renderDashboard() {
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const mesActual = hoy.getMonth() + 1;
+  const anioActual = hoy.getFullYear();
+  const mesNombre = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][mesActual-1];
+  const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+
+  // ── Clientes activos ──────────────────────────────────────────
+  const cliActivos = CLIENTES.filter(c => c.est === 'activo').length;
+  const hace7 = new Date(hoy); hace7.setDate(hace7.getDate()-7);
+  const nuevosEstaSemana = CLIENTES.filter(c => {
+    if (!c.est === 'activo') return false;
+    // Aproximar con el ID: IDs altos = más recientes
+    return false; // sin fecha de creación en memoria, omitir
+  }).length;
+  set('dash-cli-activos', cliActivos);
+  set('dash-cli-semana', 'Total en sistema');
+
+  // ── Vencimientos ─────────────────────────────────────────────
+  const subsActivas = SUBS_FULL.filter(s => s.est === 'activo' && s.fVcto && s.fVcto !== '—');
+  const withDays = subsActivas.map(s => {
+    const [dd,mm,yy] = (s.fVcto||'').split('/');
+    const d = new Date(+yy,+mm-1,+dd); d.setHours(0,0,0,0);
+    return Math.ceil((d - hoy) / 86400000);
+  });
+  set('dash-vence-hoy',  withDays.filter(d => d === 0).length);
+  set('dash-vence-3d',   withDays.filter(d => d <= 3 && d >= 0).length);
+
+  // ── Cobrado este mes ──────────────────────────────────────────
+  const cobradoMes = COBROS.filter(c => {
+    const p = (c.fecha||'').split('/');
+    return p.length >= 2 && parseInt(p[1]) === mesActual && parseInt(p[2]||anioActual) === anioActual;
+  }).reduce((s,c) => s + c.monto, 0);
+  // Esperado = suscripciones activas con vcto este mes
+  const esperadoMes = subsActivas.filter(s => {
+    const p = (s.fVcto||'').split('/');
+    return p.length >= 2 && parseInt(p[1]) === mesActual;
+  }).reduce((s,sub) => s + (sub.monto||0), 0);
+  set('dash-cobrado-label', 'Cobrado '+mesNombre);
+  set('dash-cobrado', '$'+cobradoMes.toFixed(2));
+  set('dash-cobrado-sub', 'De $'+esperadoMes.toFixed(2)+' esperado');
+
+  // ── Perfiles disponibles ──────────────────────────────────────
+  const totalPerfiles = ['NF','DS','HB','PV'].reduce((s,p) => s + (PERFILES_DISP[p]||[]).length, 0);
+  set('dash-perfiles', totalPerfiles);
+
+  // ── Ganancia neta ─────────────────────────────────────────────
+  // Ingresos - egresos (egresos se cargan async, usar cobradoMes como aproximación)
+  set('dash-ganancia', '$'+cobradoMes.toFixed(2));
+  set('dash-margen', 'Ingresos '+mesNombre);
+
+  // ── Vencimientos críticos (hoy y mañana) ─────────────────────
+  const vcTbody = document.getElementById('dash-venc-criticos');
+  if (vcTbody) {
+    const criticos = SUBS_FULL.filter(s => s.est === 'activo' && s.fVcto && s.fVcto !== '—').map(s => {
+      const [dd,mm,yy] = (s.fVcto||'').split('/');
+      const d = new Date(+yy,+mm-1,+dd); d.setHours(0,0,0,0);
+      return {...s, diasVcto: Math.ceil((d-hoy)/86400000)};
+    }).filter(s => s.diasVcto <= 1 && s.diasVcto >= 0)
+      .sort((a,b) => a.diasVcto - b.diasVcto).slice(0,8);
+    const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
+    if (!criticos.length) {
+      vcTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Sin vencimientos críticos</td></tr>';
+    } else {
+      vcTbody.innerHTML = criticos.map(s => {
+        const vb = s.diasVcto===0 ? '<span class="b br">Hoy</span>' : '<span class="b ba">Mañana</span>';
+        const platDot = `<span class="pd"><span class="dot" style="background:${PC2[s.plat]||'var(--accent)'}"></span>${s.plat}</span>`;
+        return `<tr>
+          <td><strong>${s.nombre}</strong></td>
+          <td>${platDot}</td>
+          <td style="color:var(--green);font-weight:500">$${(s.monto||0).toFixed(2)}</td>
+          <td>${s.fVcto}</td>
+          <td>${vb}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  // ── Alertas proveedores (cuentas próximas a vencer) ───────────
+  // Se actualizan cuando cargarInventario() trae datos
+  // Por ahora mostrar placeholder hasta que inventario cargue
+  const apTbody = document.getElementById('dash-alertas-prov');
+  if (apTbody && apTbody.innerHTML.includes('Cargando'))
+    apTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">Ve a Inventario para cargar datos</td></tr>';
+
+  // ── Inventario por plataforma ─────────────────────────────────
+  const invDiv = document.getElementById('dash-inventario');
+  if (invDiv) {
+    const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
+    const plats = [{c:'NF',n:'Netflix'},{c:'DS',n:'Disney+'},{c:'HB',n:'HBO Max'},{c:'PV',n:'Prime Video'}];
+    invDiv.innerHTML = plats.map(p => {
+      const cnt = (PERFILES_DISP[p.c]||[]).length;
+      const badge = cnt === 0 ? '<span class="b br">Agotado</span>' : cnt <= 3 ? '<span class="b ba">Bajo</span>' : '<span class="b bg">OK</span>';
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:12px">
+        <span class="dot" style="background:${PC2[p.c]};width:9px;height:9px;border-radius:50%;display:inline-block"></span>
+        <span style="flex:1;color:var(--text2)">${p.n}</span>
+        <span>${cnt}</span>${badge}
+      </div>`;
+    }).join('');
+  }
+
+  // ── Últimas transacciones ─────────────────────────────────────
+  const transTbody = document.querySelector('#v-dashboard tbody:last-of-type') ||
+    document.getElementById('dash-trans-loading')?.parentElement;
+  const ultimos = COBROS.slice(0,5);
+  if (transTbody && ultimos.length) {
+    const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
+    transTbody.innerHTML = ultimos.map(c => {
+      const plats = c.plat.split('+').map(p=>`<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
+      const tipoBadge = c.tipo==='Venta nueva' ? '<span class="b bg">Venta nueva</span>' : '<span class="b bi">Renovación</span>';
+      return `<tr>
+        <td>${c.fecha}</td>
+        <td><strong>${c.nombre}</strong></td>
+        <td>${plats}</td>
+        <td style="font-family:var(--mono)">${c.doc||'—'}</td>
+        <td>${tipoBadge}</td>
+        <td style="color:var(--green);font-weight:500">$${c.monto.toFixed(2)}</td>
+      </tr>`;
+    }).join('');
+  }
+}
+
 function goTo(v,el){
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(x=>x.classList.remove('on'));
@@ -1734,20 +1881,21 @@ function goTo(v,el){
   const ha=document.getElementById('hacts');
   if      (v==='dashboard')     ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Registrar pago</button>`;
   else if (v==='clientes')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button>`;
-  else if (v==='ventas')        ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button>`;
+  else if (v==='ventas')        { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button>`; renderVentasDB(); }
   else if (v==='cobros')        ha.innerHTML=`<button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
   else if (v==='suscripciones') ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
   else if (v==='cobranza')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Registrar pago</button>`;
   else if (v==='inventario')    { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-cuenta')"><i class="ti ti-plus"></i>Nueva cuenta</button><button class="hbtn" onclick="openModal('m-cambio')"><i class="ti ti-arrows-exchange"></i>Cambio de cuenta</button>`; cargarInventario(); }
-  else if (v==='proveedores')   ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-proveedor')"><i class="ti ti-plus"></i>Nuevo proveedor</button>`;
-  else if (v==='egresos')       ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-egreso')"><i class="ti ti-plus"></i>Nuevo egreso</button>`;
+  else if (v==='proveedores')   { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-proveedor')"><i class="ti ti-plus"></i>Nuevo proveedor</button>`; dbCargarProveedores(); }
+  else if (v==='egresos')       { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-egreso')"><i class="ti ti-plus"></i>Nuevo egreso</button>`; dbCargarEgresos(); }
   else if (v==='reportes')      ha.innerHTML='';
   else if (v==='tablas')        ha.innerHTML='';
   else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); }
-  else if (v==='accesos')       ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`;
-  else if (v==='historial')     ha.innerHTML='';
+  else if (v==='accesos')       { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`; dbCargarAccesos(); }
+  else if (v==='historial')     { ha.innerHTML=''; dbCargarHistorial(); }
   else if (v==='usuarios')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-usuario')"><i class="ti ti-plus"></i>Nuevo usuario</button>`;
   else                          ha.innerHTML='';
+  if(v==='dashboard') renderDashboard();
   if(v==='clientes') renderC(CLIENTES);
   if(v==='cobranza') { const tabActivo = document.querySelector('#cobtabs .tab.on'); if(tabActivo) tabActivo.click(); else { const firstTab=document.querySelector('#cobtabs .tab'); if(firstTab)firstTab.click(); } }
   if(v==='suscripciones') renderSubs(SUBS_FULL);
@@ -1807,7 +1955,8 @@ function tabCob(el,id){
     if (tabId && cnt) cnt.textContent = counts[tabId] || 0;
   });
   // Renderizar tabla en el contenedor activo
-  const tbody = t?.querySelector('tbody') || document.getElementById('tcob');
+  const tbodyMap = {'tc-hoy':'tcob-hoy','tc-1d':'tcob-1d','tc-3d':'tcob-3d','tc-todos':'tcob-todos'};
+  const tbody = document.getElementById(tbodyMap[id] || 'tcob-hoy');
   if (!tbody) return;
   if (!filtrados.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No hay suscripciones en este período</td></tr>'; return; }
   const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
@@ -2005,25 +2154,18 @@ async function confirmarVenta(){
   };
 
   // 1. TABLA VENTAS — una fila con todas las plataformas del combo
-  const tbVentas = document.getElementById('tb-ventas');
-  if (tbVentas) {
-    const platsDots = ventaData.plats.map(p =>
-      `<span class="pd"><span class="dot" style="background:${PLATS[p]?.color||'var(--accent)'}"></span>${PLATS[p]?.nombre||p}</span>`
-    ).join(' ');
-    const perfsStr = ventaData.plats.map(p => ventaData.perfilesSel[p]?.codigo||'—').join(' / ');
-    const pinsStr  = ventaData.plats.map(p => pins[p]||'—').join(' / ');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="font-size:12px">${fIniStr}</td>
-      <td><strong>${ventaData.clienteNombre}</strong></td>
-      <td>${platsDots}</td>
-      <td style="font-family:var(--mono);font-size:12px">${perfsStr}</td>
-      <td style="font-family:var(--mono);font-size:12px">${pinsStr}</td>
-      <td style="font-size:12px">${fIniStr}→${vcto}</td>
-      <td><span class="b bi">WhatsApp</span></td>
-      <td style="color:var(--green);font-weight:500">$${monto.toFixed(2)}</td>`;
-    tbVentas.insertBefore(tr, tbVentas.firstChild);
-  }
+  // Agregar a VENTAS_DB en memoria para render inmediato
+  VENTAS_DB.unshift({
+    nombre: ventaData.clienteNombre,
+    plataformas: ventaData.plats.join('+'),
+    perfiles: resumen,
+    pins: Object.values(pins).join('/'),
+    fecha_inicio: fIniVal,
+    fecha_vcto: vcto,
+    monto: monto
+  });
+  renderVentasDB();
+
 
   // 2. SUBS_FULL — una entrada por plataforma
   ventaData.plats.forEach(p => {
@@ -2080,6 +2222,25 @@ async function confirmarVenta(){
   });
 
   // 4. Actualizar tabla suscripciones si está visible
+  // Actualizar SUBS_FULL en memoria para que renderC y renderSubs reflejen la nueva venta
+  for (const p of ventaData.plats) {
+    const perf = ventaData.perfilesSel[p];
+    SUBS_FULL.unshift({
+      clienteId: ventaData.clienteId,
+      nombre: ventaData.clienteNombre,
+      tel: ventaData.clienteTel,
+      plat: p, perfil: perf?.codigo || '—',
+      correo: perf?.correo || '—',
+      usuario: usuarios[p] || '—',
+      pin: pins[p] || '—',
+      fIni: fIniStr, fVcto: vcto,
+      monto, est: 'activo',
+      dias: (() => { try { const [dd,mm,yy]=vcto.split('/'); return Math.ceil((new Date(+yy,+mm-1,+dd)-new Date())/86400000); } catch(e){return 0;} })()
+    });
+    // Actualizar plats del cliente en CLIENTES
+    const cli = CLIENTES.find(c => c.id === ventaData.clienteId);
+    if (cli && !cli.plats.includes(p)) cli.plats.push(p);
+  }
   if (document.getElementById('v-suscripciones')?.classList.contains('on')) {
     renderSubs(SUBS_FULL);
   }
@@ -2098,7 +2259,7 @@ async function confirmarVenta(){
   const doc2   = document.querySelector('#m-venta input[oninput*="valComp"]')?.value || '—';
 
   COBROS.unshift({
-    fecha, tipo:'Venta nueva',
+    fecha: fIniStr, tipo:'Venta nueva',
     clienteId: ventaData.clienteId,
     nombre: ventaData.clienteNombre,
     tel: ventaData.clienteTel,
@@ -2106,7 +2267,8 @@ async function confirmarVenta(){
     correo: correo2,
     usuario: usuario2,
     monto, banco: banco2, forma: forma2, doc: doc2,
-    operador:'Operador', est:'procesado'
+    operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
+    est:'procesado'
   });
   // Registrar comprobante para evitar duplicados futuros
   if (doc2 && doc2 !== '—') UC.push(doc2);
@@ -2127,6 +2289,7 @@ async function confirmarVenta(){
         clienteId: ventaData.clienteId, plat: p, tipo,
         combo: comboId, correo: perf?.correo || '—',
         usuario: usuarios[p] || '—', pin: pins[p] || '—',
+        perfilId: perf?.codigo || null,
         fIni: fIniStr, fVcto: vcto, monto, tipoCliente: 'Nuevo'
       });
     }
@@ -2134,7 +2297,9 @@ async function confirmarVenta(){
       tipo: 'Venta nueva', clienteId: ventaData.clienteId,
       nombre: ventaData.clienteNombre, tel: ventaData.clienteTel,
       plat: ventaData.plats.join('+'), correo: correo2, usuario: usuario2,
-      monto, banco: banco2, forma: forma2, doc: doc2, operador: 'Operador',
+      monto, banco: banco2, forma: forma2, doc: doc2,
+      fechaIni: fIniVal,
+      operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
       dupAutorizado: ventaData.dupAutorizado
     });
     if (doc2 && doc2 !== '—') await dbRegistrarComprobante(doc2);
@@ -2732,9 +2897,15 @@ async function cargarUsuariosSistema() {
 }
 
 function cerrarSesion() {
-  sessionStorage.removeItem('zenit_usuario');
   USUARIO_ACTIVO = null;
-  toast('Sesión cerrada', 'ok');
+  sessionStorage.removeItem('zenit_usuario');
+  // Limpiar datos en memoria
+  CLIENTES.length = 0;
+  COBROS.length = 0;
+  SUBS_FULL.length = 0;
+  VENTAS_DB.length = 0;
+  // Recargar página para mostrar login
+  window.location.reload();
 }
 
 // Carga precios reales desde Supabase y actualiza PLATS + PRECIOS_IND + COMBOS + dropdowns de ventas
@@ -4245,6 +4416,29 @@ function guardarProveedor() {
   if (!platsHtml) platsHtml = '—';
   if (!metsHtml) metsHtml = '—';
 
+async function dbCargarProveedores() {
+  const tbody = document.getElementById('tb-proveedores');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
+  const { data, error } = await supa.from('proveedores').select('*').order('nombre');
+  if (error) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:20px">Error cargando proveedores</td></tr>'; return; }
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">No hay proveedores registrados</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(p => `<tr>
+    <td><strong>${p.nombre||'—'}</strong></td>
+    <td style="font-size:12px">${p.contacto||'—'}</td>
+    <td style="font-size:12px">${formatTel(p.telefono||'')}</td>
+    <td>${(p.plataformas||'').split(',').map(x=>x.trim()).filter(Boolean).map(x=>`<span class="b bi" style="margin-right:2px">${x}</span>`).join('')||'—'}</td>
+    <td style="font-size:12px">${p.total_cuentas||'—'}</td>
+    <td style="font-size:12px">${p.metodo_pago||'—'}</td>
+    <td style="font-size:12px">${p.proximo_vcto||'—'}</td>
+    <td><span class="b ${(p.estado||'').toLowerCase()==='activo'?'bg':'ba'}">${p.estado||'—'}</span></td>
+    <td class="tda"><button class="btn btn-sm btn-ic" onclick="toast('Editar próximamente','info')"><i class="ti ti-edit"></i></button></td>
+  </tr>`).join('');
+}
+
   const tbody = document.getElementById('tb-proveedores');
   if (tbody) {
     const tr = document.createElement('tr');
@@ -4309,6 +4503,60 @@ function guardarEgreso() {
   const fechaVal = fechaInput?.value || '';
   let fechaStr = '—';
   if (fechaVal) { const [yy,mm,dd] = fechaVal.split('-'); fechaStr = `${dd}/${mm}/${yy}`; }
+
+async function dbCargarEgresos() {
+  const tbody = document.getElementById('tb-egresos');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
+  const now = new Date();
+  const mesActual = now.getMonth() + 1;
+  const anioActual = now.getFullYear();
+  const { data, error } = await supa.from('egresos').select('*').order('fecha', { ascending: false }).limit(200);
+  if (error) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:20px">Error cargando egresos</td></tr>'; return; }
+  // Métricas del mes
+  const esteMes = (data||[]).filter(e => {
+    if (!e.fecha) return false;
+    const [y,m] = e.fecha.split('-');
+    return parseInt(m) === mesActual && parseInt(y) === anioActual;
+  });
+  const totalEgr = esteMes.reduce((s,e) => s + parseFloat(e.total||0), 0);
+  const totalCom = esteMes.reduce((s,e) => s + parseFloat(e.comision||0), 0);
+  // Ingresos del mes desde COBROS
+  const totalIng = COBROS.filter(c => {
+    const parts = (c.fecha||'').split('/');
+    return parts.length >= 2 && parseInt(parts[1]) === mesActual;
+  }).reduce((s,c) => s + c.monto, 0);
+  const ganancia = totalIng - totalEgr;
+  const margen = totalIng > 0 ? Math.round((ganancia/totalIng)*100) : 0;
+  // Actualizar cards de métricas
+  const mesNombre = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][mesActual-1];
+  const setCard = (selector, val, sub) => {
+    const el = document.querySelector(selector);
+    if (el) { const mv = el.querySelector('.mv'); const ms = el.querySelector('.ms'); if(mv) mv.textContent = val; if(ms&&sub) ms.textContent = sub; }
+  };
+  const cards = document.querySelectorAll('#v-egresos .mc');
+  if (cards[0]) cards[0].querySelector('.mv').textContent = '$'+totalEgr.toFixed(2);
+  if (cards[0]) cards[0].querySelector('.ml').textContent = 'Egresos '+mesNombre;
+  if (cards[1]) cards[1].querySelector('.mv').textContent = '$'+totalIng.toFixed(2);
+  if (cards[1]) cards[1].querySelector('.ml').textContent = 'Ingresos '+mesNombre;
+  if (cards[2]) { cards[2].querySelector('.mv').textContent = '$'+ganancia.toFixed(2); const ms=cards[2].querySelector('.ms'); if(ms) ms.textContent = 'Margen '+margen+'%'; }
+  if (cards[3]) cards[3].querySelector('.mv').textContent = '$'+totalCom.toFixed(2);
+  // Tabla
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">No hay egresos registrados</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(e => `<tr>
+    <td style="font-size:12px">${e.fecha ? e.fecha.split('-').reverse().join('/') : '—'}</td>
+    <td style="font-size:12px">${e.categoria||'—'}</td>
+    <td>${e.descripcion||'—'}</td>
+    <td style="font-size:12px">${e.proveedor||'—'}</td>
+    <td style="font-size:12px">${e.forma_pago||'—'}</td>
+    <td style="color:var(--green);font-weight:500">$${parseFloat(e.neto||0).toFixed(2)}</td>
+    <td style="color:var(--amber)">$${parseFloat(e.comision||0).toFixed(2)}</td>
+    <td style="font-weight:500">$${parseFloat(e.total||0).toFixed(2)}</td>
+  </tr>`).join('');
+}
 
   const tbody = document.getElementById('tb-egresos');
   if (tbody) {
@@ -4405,6 +4653,33 @@ function limpiarClienteCambio() {
 
 // ── HISTORIAL DINÁMICO ───────────────────────────────────────
 function agregarHistorial(accion, detalle, color) {
+async function dbCargarHistorial() {
+  const tbody = document.getElementById('tb-historial') || document.querySelector('#v-historial tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
+  const { data, error } = await supa.from('historial').select('*').order('created_at', { ascending: false }).limit(200);
+  if (error) { tbody.innerHTML = '<tr><td colspan="4" style="color:var(--red);padding:20px;text-align:center">Error cargando historial</td></tr>'; return; }
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">Sin registros en el historial</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(h => {
+    const fecha = h.created_at
+      ? new Date(h.created_at).toLocaleDateString('es-PA',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' +
+        new Date(h.created_at).toLocaleTimeString('es-PA',{hour:'2-digit',minute:'2-digit'})
+      : '—';
+    const rolBadge = (h.operador||'').toLowerCase().includes('master')
+      ? '<span class="b bg">Master</span>'
+      : '<span class="b bp">'+( h.operador||'Sistema')+'</span>';
+    return `<tr>
+      <td style="font-size:12px">${fecha}</td>
+      <td>${rolBadge}</td>
+      <td>${h.accion||'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${h.detalle||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
   const tbody = document.querySelector('#v-historial tbody');
   if (!tbody) return;
   const now = new Date();
@@ -4775,6 +5050,27 @@ function copiarLink(link) {
 
 function filtAccesos(q) {
   const r = q.toLowerCase();
+async function dbCargarAccesos() {
+  const tbody = document.getElementById('tb-accesos');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
+  const { data, error } = await supa.from('accesos').select('*').order('proveedor');
+  if (error || !data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">' + (error ? 'Error cargando accesos' : 'No hay accesos registrados') + '</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(a => `<tr>
+    <td><strong>${a.proveedor||'—'}</strong></td>
+    <td>${(a.plataforma||'').split(',').map(x=>`<span class="b bi" style="margin-right:2px">${x.trim()}</span>`).join('')||'—'}</td>
+    <td style="font-size:12px">${a.link||a.bot||'—'}</td>
+    <td style="font-size:12px;font-family:var(--mono)">${a.correo||a.usuario||'—'}</td>
+    <td><span class="clave-acc" style="filter:blur(4px);cursor:pointer" onclick="this.style.filter='none'">${a.clave||'—'}</span></td>
+    <td style="font-size:12px">${a.notas||'—'}</td>
+    <td style="font-size:11px;color:var(--text3)">${a.updated_at?new Date(a.updated_at).toLocaleDateString('es-PA'):'—'}</td>
+    <td class="tda"><button class="btn btn-sm btn-ic" onclick="toast('Editar próximamente','info')"><i class="ti ti-edit"></i></button></td>
+  </tr>`).join('');
+}
+
   const rows = document.querySelectorAll('#tb-accesos tr');
   rows.forEach(tr => {
     tr.style.display = tr.textContent.toLowerCase().includes(r) ? '' : 'none';
@@ -5287,10 +5583,12 @@ setTimeout(async () => {
   await cargarPlanesPrecios();
   await dbCargarClientes();
   await dbCargarCobros();
+  await dbCargarVentas();
   await dbCargarSuscripciones();
   await dbCargarNextCodigos();
   await dbCargarPerfilesDisp();
   await cargarUsuariosSistema();
+  renderDashboard();
   activarBotonesReutilizar();
   renderSubs(SUBS_FULL);
   updMetricasCobros();
