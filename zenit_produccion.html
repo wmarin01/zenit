@@ -542,8 +542,7 @@ select option{background:var(--bg3)}
   </div>
 </div>
 <script>
-const _SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxbnZvY296bWR0Z2h1YW9qZmdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNTYzNDYsImV4cCI6MjA5NTkzMjM0Nn0.hLEoqJbtpdemEAK4J780QUyz5o11lTvlm8Q7cGqzI4A';
-const _SUPA_URL = 'https://gqnvocozmdtghuaojfgo.supabase.co';
+// supa client ya disponible globalmente — no se necesita fetch directo
 
 // Si hay sesión guardada, saltar login directamente
 (function() {
@@ -573,19 +572,29 @@ async function intentarLogin() {
   btn.textContent = 'Verificando...'; btn.style.opacity = '.7'; btn.disabled = true;
   errDiv.style.display = 'none';
   try {
-    const res  = await fetch(_SUPA_URL + '/rest/v1/usuarios_sistema?usuario=eq.' + encodeURIComponent(usuario) + '&estado=eq.Activo&select=*&limit=1', {
-      headers: { apikey: _SUPA_KEY, Authorization: 'Bearer ' + _SUPA_KEY }
-    });
-    const data = await res.json();
+    // Usar el cliente supa ya inicializado — evita DataCloneError de fetch con Headers
+    const { data, error } = await supa
+      .from('usuarios_sistema')
+      .select('*')
+      .eq('usuario', usuario)
+      .eq('estado', 'Activo')
+      .limit(1);
+    if (error) throw new Error('conn_error');
     if (!data || !data.length) throw new Error('no_user');
     if (data[0].password !== password) throw new Error('bad_pass');
+    // Login exitoso
     sessionStorage.setItem('zenit_usuario', JSON.stringify(data[0]));
     const welcome = document.getElementById('zenit-welcome');
     welcome.style.transition = 'opacity .5s ease';
     welcome.style.opacity = '0';
     setTimeout(() => { welcome.style.display = 'none'; }, 500);
   } catch(e) {
-    errMsg.textContent = e.message === 'bad_pass' ? 'Contraseña incorrecta. Intenta de nuevo.' : 'Usuario no encontrado o inactivo.';
+    const msgs = {
+      bad_pass:   'Contraseña incorrecta. Intenta de nuevo.',
+      no_user:    'Usuario no encontrado o inactivo.',
+      conn_error: 'Error de conexión. Verifica tu internet.'
+    };
+    errMsg.textContent = msgs[e.message] || 'Error al iniciar sesión.';
     errDiv.style.display = 'flex';
     btn.textContent = 'Ingresar al sistema'; btn.style.opacity = '1'; btn.disabled = false;
     document.getElementById('login-pass').value = '';
@@ -5695,11 +5704,10 @@ function syncRolSelects() {
   if (Array.from(sel.options).some(o => o.value === current)) sel.value = current;
 }
 
-// INIT
+// INIT — solo cargar si hay sesión activa
 renderC(CLIENTES);
-renderCob(CLIENTES.filter(c=>c.dias===0));
-// Cargar datos desde Supabase al iniciar
-setTimeout(async () => {
+// Función centralizada de inicio de app — llamada desde login o si hay sesión guardada
+async function iniciarApp() {
   await verificarConexion();
   await cargarPlanesPrecios();
   await dbCargarClientes();
@@ -5713,13 +5721,16 @@ setTimeout(async () => {
   activarBotonesReutilizar();
   renderSubs(SUBS_FULL);
   updMetricasCobros();
-}, 300);
-// Pre-renderizar vistas en diferido para que el DOM esté listo
-setTimeout(function() {
-  renderSubs(SUBS_FULL);
   renderCobros(COBROS);
-  updMetricasCobros();
-}, 100);
+}
+// Si hay sesión guardada, iniciar automáticamente
+setTimeout(() => {
+  const stored = sessionStorage.getItem('zenit_usuario');
+  if (stored) {
+    try { JSON.parse(stored); iniciarApp(); } catch(e) { sessionStorage.removeItem('zenit_usuario'); }
+  }
+  // Si no hay sesión, la app espera al login (pantalla bienvenida ya visible)
+}, 300);
 
 // ═══════════════════════════════════════════════════════════
 // MÓDULO REPORTES
