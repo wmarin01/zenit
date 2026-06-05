@@ -453,7 +453,7 @@ select option{background:var(--bg3)}
     <div class="ni" onclick="goTo('historial',this)"><i class="ti ti-history"></i>Historial</div>
     <div class="ni" onclick="goTo('usuarios',this)"><i class="ti ti-user-shield"></i>Usuarios</div>
   </div>
-  <div class="sb-user"><div class="ua">MA</div><div><div style="font-size:12px;font-weight:500">Master Admin</div><div style="font-size:10px;color:var(--accent)">Administrador</div></div><i class="ti ti-logout" style="margin-left:auto;color:var(--text3);font-size:15px;cursor:pointer"></i></div>
+  <div class="sb-user"><div class="ua" id="sb-iniciales">--</div><div><div style="font-size:12px;font-weight:500" id="sb-nombre">Cargando...</div><div style="font-size:10px;color:var(--accent)" id="sb-rol">...</div></div><i class="ti ti-logout" style="margin-left:auto;color:var(--text3);font-size:15px;cursor:pointer" onclick="cerrarSesion()" title="Cerrar sesión"></i></div>
 </nav>
 <div id="main">
   <header id="hdr">
@@ -911,9 +911,7 @@ select option{background:var(--bg3)}
   </div>
   <div id="pu-lista">
     <div class="card"><div class="tw"><table><thead><tr><th>Usuario</th><th>Email</th><th>Rol</th><th>Último acceso</th><th>Sesiones</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tbody-usuarios">
-      <tr><td><strong>Master Admin</strong></td><td>master@zenit.app</td><td><span class="b bpu">Master</span></td><td>Ahora</td><td><span class="b bg">1 activa</span></td><td><span class="b bg">Activo</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="openModal('m-usuario','Master Admin')"><i class="ti ti-edit"></i></button></td></tr>
-      <tr><td><strong>Operador 1</strong></td><td>op1@zenit.app</td><td><span class="b bi">Operador</span></td><td>Hoy 09:15</td><td><span class="b bg">1 activa</span></td><td><span class="b bg">Activo</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="openModal('m-usuario','Operador 1')"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-ic btn-d" onclick="confirmarBloqueo('Operador 1')"><i class="ti ti-lock"></i></button></td></tr>
-      <tr><td><strong>Operador 2</strong></td><td>op2@zenit.app</td><td><span class="b bi">Operador</span></td><td>Hoy 11:05</td><td><span class="b bp">Sin sesión</span></td><td><span class="b bg">Activo</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="openModal('m-usuario','Operador 2')"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-ic btn-d" onclick="confirmarBloqueo('Operador 2')"><i class="ti ti-lock"></i></button></td></tr>
+      <tr id="tr-loading-usuarios"><td colspan="7" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando usuarios...</td></tr>
     </tbody></table></div></div>
   </div>
   <div id="pu-plantillas" style="display:none">
@@ -1252,10 +1250,10 @@ select option{background:var(--bg3)}
         <div id="v-plat-ind">
           <div class="fg"><label>Plataforma<span class="req">*</span></label>
             <select id="v-plat-sel" onchange="updPerfilesVenta()">
-              <option value="NF">Netflix (NF) — $10.00</option>
-              <option value="DS">Disney+ (DS) — $8.00</option>
-              <option value="HB">HBO Max (HB) — $9.00</option>
-              <option value="PV">Prime Video (PV) — $7.00</option>
+              <option value="NF">Netflix (NF) — $4.99</option>
+              <option value="DS">Disney+ (DS) — $4.25</option>
+              <option value="HB">HBO Max (HB) — $3.25</option>
+              <option value="PV">Prime Video (PV) — $2.75</option>
             </select>
           </div>
         </div>
@@ -2352,8 +2350,8 @@ async function reutilizarCuenta(btn) {
   try {
     const { data } = await supa
       .from('suscripciones')
-      .select('cliente_id, perfil, estado')
-      .ilike('perfil', codigo + '-%')
+      .select('cliente_id, perfil_id, estado')
+      .ilike('perfil_id', codigo + '-%')
       .eq('estado', 'activo');
     if (data && data.length > 0) perfilesActivos = data;
   } catch(e) {
@@ -2363,7 +2361,7 @@ async function reutilizarCuenta(btn) {
 
   // Si hay perfiles activos, mostrar advertencia
   if (perfilesActivos.length > 0) {
-    const lista = perfilesActivos.map(p => '• ' + p.perfil + ' → ' + (p.cliente_id || 'cliente')).join('\n');
+    const lista = perfilesActivos.map(p => '• ' + p.perfil_id + ' → ' + (p.cliente_id || 'cliente')).join('\n');
     const ok = confirm(
       '⚠️ ADVERTENCIA: La cuenta ' + codigo + ' tiene ' + perfilesActivos.length + ' perfil(es) activo(s):\n\n' +
       lista + '\n\n' +
@@ -2589,7 +2587,7 @@ async function ejecutarImportacionMasiva() {
     if (!clienteId) { err++; continue; }
     try {
       const { error } = await supa.from('suscripciones').upsert(
-        { cliente_id: clienteId, perfil_id: s.perfil,
+        { cliente_id: clienteId, perfil_id: s.perfil_id || s.perfil,
           plataforma: s.plataformas, fecha_vcto: fechaISO(s.fecha_vcto)||null,
           monto: parseFloat(s.monto)||null, estado: s.estado },
         { onConflict: 'cliente_id,perfil_id' }
@@ -2621,12 +2619,121 @@ function toast(msg,tipo){
 
 
 // ── DATOS DE PLATAFORMAS ──────────────────────────────────────
-const PLATS = {
-  NF: {nombre:'Netflix', color:'var(--nf)', precio_ind:10, precio_combo:8, pin_dig:4, max_perfiles:5},
-  DS: {nombre:'Disney+', color:'var(--ds)', precio_ind:8, precio_combo:7, pin_dig:4, max_perfiles:7},
-  HB: {nombre:'HBO Max', color:'var(--hb)', precio_ind:9, precio_combo:8, pin_dig:4, max_perfiles:5},
-  PV: {nombre:'Prime Video', color:'var(--pv)', precio_ind:7, precio_combo:6, pin_dig:5, max_perfiles:6},
+let PLATS = {
+  NF: {nombre:'Netflix', color:'var(--nf)', precio_ind:4.99, precio_combo:4.99, pin_dig:4, max_perfiles:5},
+  DS: {nombre:'Disney+', color:'var(--ds)', precio_ind:4.25, precio_combo:4.25, pin_dig:4, max_perfiles:7},
+  HB: {nombre:'HBO Max', color:'var(--hb)', precio_ind:3.25, precio_combo:3.25, pin_dig:4, max_perfiles:5},
+  PV: {nombre:'Prime Video', color:'var(--pv)', precio_ind:2.75, precio_combo:2.75, pin_dig:5, max_perfiles:6},
 };
+
+// ── USUARIOS DEL SISTEMA ─────────────────────────────────────
+let USUARIO_ACTIVO = null;
+
+async function cargarUsuariosSistema() {
+  try {
+    const {data, error} = await supa.from('usuarios_sistema').select('*').eq('estado','Activo').order('nombre');
+    if (error || !data) return;
+    
+    // Guardar usuario activo (por ahora toma el primero con rol Master, luego será login)
+    const stored = sessionStorage.getItem('zenit_usuario');
+    if (stored) {
+      try { USUARIO_ACTIVO = JSON.parse(stored); } catch(e) {}
+    }
+    if (!USUARIO_ACTIVO) {
+      USUARIO_ACTIVO = data.find(u => u.rol === 'Master') || data[0];
+      sessionStorage.setItem('zenit_usuario', JSON.stringify(USUARIO_ACTIVO));
+    }
+
+    // Actualizar sidebar
+    const nombre = USUARIO_ACTIVO.nombre || USUARIO_ACTIVO.usuario || '—';
+    const rol = USUARIO_ACTIVO.rol || 'Operador';
+    const iniciales = nombre.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
+    const sbNombre = document.getElementById('sb-nombre');
+    const sbRol = document.getElementById('sb-rol');
+    const sbIni = document.getElementById('sb-iniciales');
+    if (sbNombre) sbNombre.textContent = nombre;
+    if (sbRol) sbRol.textContent = rol;
+    if (sbIni) sbIni.textContent = iniciales;
+
+    // Actualizar tabla usuarios
+    const rolMap = {Master:'bpu', Operador:'bi', 'Solo lectura':'bp'};
+    const tbody = document.getElementById('tbody-usuarios');
+    if (tbody) {
+      tbody.innerHTML = data.map(u => {
+        const esMaster = u.rol === 'Master';
+        const badge = rolMap[u.rol] || 'bi';
+        return `<tr>
+          <td><strong>${u.nombre||u.usuario}</strong><div style="font-size:11px;color:var(--text3)">${u.usuario}</div></td>
+          <td>${u.email||'—'}</td>
+          <td><span class="b ${badge}">${u.rol}</span></td>
+          <td style="font-size:11px;color:var(--text3)">—</td>
+          <td><span class="b bp">Sin sesión</span></td>
+          <td><span class="b bg">Activo</span></td>
+          <td class="tda">
+            <button class="btn btn-sm btn-ic" onclick="openModal('m-usuario','${u.nombre||u.usuario}')"><i class="ti ti-edit"></i></button>
+            ${!esMaster ? `<button class="btn btn-sm btn-ic btn-d" onclick="confirmarBloqueo('${u.nombre||u.usuario}')"><i class="ti ti-lock"></i></button>` : ''}
+          </td></tr>`;
+      }).join('');
+    }
+
+    // Actualizar dropdown de mensajería con usuarios reales
+    const selMsj = document.querySelectorAll('select[id*="msj-usuario"], select[id*="wa-usuario"]');
+    // También buscar el select de para quién es el mensaje en el modal de mensajería
+    document.querySelectorAll('select option[value="wmarin01"]').forEach(opt => {
+      const sel = opt.closest('select');
+      if (sel) {
+        sel.innerHTML = data.map(u => `<option value="${u.usuario}">${u.nombre||u.usuario}</option>`).join('');
+      }
+    });
+
+    console.log('[USUARIOS] Cargados:', data.length, '| Activo:', USUARIO_ACTIVO?.usuario);
+  } catch(e) {
+    console.warn('[USUARIOS] Error:', e.message);
+  }
+}
+
+function cerrarSesion() {
+  sessionStorage.removeItem('zenit_usuario');
+  USUARIO_ACTIVO = null;
+  toast('Sesión cerrada', 'ok');
+}
+
+// Carga precios reales desde Supabase y actualiza PLATS + dropdowns de ventas
+async function cargarPlanesPrecios() {
+  try {
+    const {data} = await supa.from('planes_precios').select('*').eq('estado','Vigente').order('plataformas');
+    if (!data || !data.length) return;
+    // Actualizar precios en PLATS con los planes individuales de 1 perfil
+    data.forEach(p => {
+      const plats = (p.plataformas||'').split('+');
+      if (p.tipo === 'Individual' && plats.length === 1) {
+        const cod = plats[0].trim();
+        if (PLATS[cod]) {
+          PLATS[cod].precio_ind = parseFloat(p.precio) || PLATS[cod].precio_ind;
+        }
+      }
+    });
+    // Actualizar dropdown de plataforma en modal Nueva Venta
+    const selPlat = document.getElementById('v-plat-sel');
+    if (selPlat) {
+      // Guardar valor actual
+      const val = selPlat.value;
+      // Limpiar y reconstruir
+      selPlat.innerHTML = '<option value="">— Selecciona —</option>';
+      ['NF','DS','HB','PV'].forEach(cod => {
+        const pl = PLATS[cod];
+        const opt = document.createElement('option');
+        opt.value = cod;
+        opt.textContent = `${pl.nombre} (${cod}) — $${pl.precio_ind.toFixed(2)}`;
+        selPlat.appendChild(opt);
+      });
+      if (val) selPlat.value = val;
+    }
+    console.log('[PLATS] Precios actualizados desde Supabase:', {NF: PLATS.NF.precio_ind, DS: PLATS.DS.precio_ind, HB: PLATS.HB.precio_ind, PV: PLATS.PV.precio_ind});
+  } catch(e) {
+    console.warn('[PLATS] No se pudieron cargar precios:', e.message);
+  }
+}
 
 // Perfiles disponibles por plataforma (simulados)
 const PERFILES_DISP = {
@@ -4849,10 +4956,12 @@ renderCob(CLIENTES.filter(c=>c.dias===0));
 // Cargar datos desde Supabase al iniciar
 setTimeout(async () => {
   await verificarConexion();
+  await cargarPlanesPrecios();
   await dbCargarClientes();
   await dbCargarCobros();
   await dbCargarSuscripciones();
   await dbCargarNextCodigos();
+  await cargarUsuariosSistema();
   activarBotonesReutilizar();
   renderSubs(SUBS_FULL);
   updMetricasCobros();
@@ -5153,8 +5262,6 @@ function initChat() {
         <select id="chat-para" style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text1);font-size:12px">
           <option value="">Todos</option>
           <option value="wmarin01">wmarin01</option>
-          <option value="Ariadna01">Ariadna01</option>
-          <option value="Maria01">Maria01</option>
         </select>
       </div>
       <div id="chat-msgs" style="flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;height:300px"></div>
@@ -5291,7 +5398,7 @@ async function cargarInventario() {
     let subs = [];
     let sp = 0;
     while(true) {
-      const {data: sd} = await supa.from('suscripciones').select('perfil,estado').range(sp*1000, sp*1000+999);
+      const {data: sd} = await supa.from('suscripciones').select('perfil_id,estado').range(sp*1000, sp*1000+999);
       if (!sd || !sd.length) break;
       subs = subs.concat(sd);
       if (sd.length < 1000) break;
@@ -5299,12 +5406,20 @@ async function cargarInventario() {
     }
     INV_SUBS_MAP = {};
     subs.forEach(s => {
-      if (!s.perfil) return;
-      // Extraer cuenta_id: "DS00022" → "DS0002" (quitar último dígito)
-      const cuentaId = s.perfil.slice(0, -1);
+      // perfil_id "NF00571" → cuenta "NF0057" (quitar último dígito)
+      const raw = (s.perfil_id || '').trim();
+      if (!raw) return;
+      const cuentaId = raw.slice(0, -1);
       if (!INV_SUBS_MAP[cuentaId]) INV_SUBS_MAP[cuentaId] = 0;
       if ((s.estado||'').toLowerCase() === 'activo') INV_SUBS_MAP[cuentaId]++;
     });
+    // Debug: verificar NF0057
+    // Log diagnóstico completo
+    const primerasClaves = Object.keys(INV_SUBS_MAP).slice(0, 5);
+    console.log('[INV] Total claves en mapa:', Object.keys(INV_SUBS_MAP).length);
+    console.log('[INV] Primeras 5 claves:', primerasClaves);
+    console.log('[INV] Ejemplo NF0057:', INV_SUBS_MAP['NF0057']);
+    console.log('[INV] Muestra subs raw (primeras 3):', subs.slice(0,3));
 
     renderInventario(all);
   } catch(e) {
