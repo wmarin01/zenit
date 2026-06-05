@@ -1287,13 +1287,9 @@ select option{background:var(--bg3)}
         <!-- Individual: una plataforma -->
         <div id="v-plat-ind">
           <div class="fg"><label>Plataforma<span class="req">*</span></label>
-            <select id="v-plat-sel" onchange="updPerfilesVenta()">
-              <option value="NF">Netflix (NF) — $4.99</option>
-              <option value="DS">Disney+ (DS) — $4.25</option>
-              <option value="HB">HBO Max (HB) — $3.25</option>
-              <option value="PV">Prime Video (PV) — $2.75</option>
-            </select>
-          </div>
+            <select id="v-plataforma" onchange="updPerfilesVenta()">
+             </select>
+          </div> 
         </div>
         <!-- Combo: selección de combos predefinidos en Parámetros -->
         <div id="v-plat-combo" style="display:none">
@@ -2655,14 +2651,58 @@ function toast(msg,tipo){
   setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},3000);
 }
 
-
 // ── DATOS DE PLATAFORMAS ──────────────────────────────────────
-let PLATS = {
-  NF: {nombre:'Netflix', color:'var(--nf)', precio_ind:4.99, precio_combo:4.99, pin_dig:4, max_perfiles:5},
-  DS: {nombre:'Disney+', color:'var(--ds)', precio_ind:4.25, precio_combo:4.25, pin_dig:4, max_perfiles:7},
-  HB: {nombre:'HBO Max', color:'var(--hb)', precio_ind:3.25, precio_combo:3.25, pin_dig:4, max_perfiles:5},
-  PV: {nombre:'Prime Video', color:'var(--pv)', precio_ind:2.75, precio_combo:2.75, pin_dig:5, max_perfiles:6},
+const PLATS_INFO = {
+  NF: {nombre:'Netflix',     color:'var(--nf)', pin_dig:4, max_perfiles:5},
+  DS: {nombre:'Disney+',     color:'var(--ds)', pin_dig:4, max_perfiles:7},
+  HB: {nombre:'HBO Max',     color:'var(--hb)', pin_dig:4, max_perfiles:5},
+  PV: {nombre:'Prime Video', color:'var(--pv)', pin_dig:5, max_perfiles:6},
 };
+let PLATS = { NF:{precio_ind:0}, DS:{precio_ind:0}, HB:{precio_ind:0}, PV:{precio_ind:0} };
+let PLANES = []; // Todos los planes desde Supabase
+
+async function cargarPlanesPrecios() {
+  const { data, error } = await supa
+    .from('planes_precios')
+    .select('*')
+    .eq('estado', 'Vigente')
+    .order('plataformas');
+  if (error) { console.warn('[PLANES] Error:', error.message); return; }
+  PLANES = data || [];
+  // Actualizar precios base en PLATS para compatibilidad
+  PLANES.forEach(p => {
+    if (p.tipo === 'Individual') {
+      const cod = p.plataformas; // ej: 'NF', 'DS'
+      if (PLATS[cod]) {
+        // Tomar el precio más bajo individual como precio_ind
+        const precio = parseFloat(p.precio);
+        if (!PLATS[cod].precio_ind || precio < PLATS[cod].precio_ind) {
+          PLATS[cod].precio_ind = precio;
+        }
+      }
+    }
+  });
+  console.log('[PLANES] Cargados:', PLANES.length, 'planes vigentes');
+  // Actualizar dropdown de plataforma en modal de venta
+  actualizarDropdownPlanes();
+}
+
+function actualizarDropdownPlanes() {
+  const sel = document.getElementById('v-plataforma');
+  if (!sel || !PLANES.length) return;
+  const tipoVenta = document.getElementById('v-tipo')?.value || 'Individual';
+  const planesFiltered = PLANES.filter(p =>
+    tipoVenta === 'Combo' ? p.tipo === 'Combo' : p.tipo === 'Individual'
+  );
+  sel.innerHTML = '<option value="">— Selecciona —</option>' +
+    planesFiltered.map(p => {
+      const label = p.tipo === 'Combo'
+        ? `${p.plataformas} — Combo ${p.perfiles} — $${parseFloat(p.precio).toFixed(2)}`
+        : `${p.plataformas} (${p.perfiles}) — $${parseFloat(p.precio).toFixed(2)}`;
+      return `<option value="${p.id}" data-precio="${p.precio}" data-plataformas="${p.plataformas}" data-perfiles="${p.perfiles}" data-tipo="${p.tipo}">${label}</option>`;
+    }).join('');
+}
+
 
 // ── USUARIOS DEL SISTEMA ─────────────────────────────────────
 let USUARIO_ACTIVO = null;
@@ -3200,14 +3240,15 @@ function updTipoVenta(v) {
 }
 
 function updPerfilesVenta() {
-  const tipo = document.getElementById('v-tipo').value;
-  if (tipo === 'individual') {
-    const plat = document.getElementById('v-plat-sel')?.value;
-    const precio = PLATS[plat]?.precio_ind || 0;
-    const prev = document.getElementById('v-precio-preview');
-    if (prev && plat) prev.textContent = 'Precio: $' + precio.toFixed(2);
-  }
-  // Para combo, el precio se muestra al seleccionar el combo (selComboVenta)
+  const sel = document.getElementById('v-plataforma');
+  const prev = document.getElementById('v-precio-preview');
+  if (!sel || !prev) return;
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.dataset.precio) { prev.textContent = ''; return; }
+  const precio = parseFloat(opt.dataset.precio);
+  const plats = opt.dataset.plataformas;
+  const perfiles = opt.dataset.perfiles;
+  prev.textContent = `${plats} · ${perfiles} — Precio: $${precio.toFixed(2)}`;
 }
 
 function renderUsuariosVenta() {
@@ -5068,6 +5109,7 @@ renderCob(CLIENTES.filter(c=>c.dias===0));
 setTimeout(async () => {
   verificarSesionGuardada();
   await verificarConexion();
+  await cargarPlanesPrecios();
   await cargarPlanesPrecios();
   await dbCargarClientes();
   await dbCargarCobros();
