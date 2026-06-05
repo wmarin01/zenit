@@ -139,13 +139,15 @@ async function dbCargarClientes() {
   if (data && data.length > 0) {
     // Convertir formato Supabase → formato interno
     data.forEach(c => {
-      const existe = CLIENTES.find(x => x.id === c.id);
+      // Evitar duplicados: verificar por id Y por teléfono normalizado
+      const telNorm = (c.telefono||'').replace(/[\s\-\(\)]/g,'');
+      const existe = CLIENTES.find(x => x.id === c.id || (x.tel&&x.tel.replace(/[\s\-\(\)]/g,'')===telNorm&&telNorm.length>5));
       if (!existe) {
         CLIENTES.push({
           id: c.id,
           n: c.nombre,
           a: c.apellido,
-          tel: c.telefono,
+          tel: normalizeTel(c.telefono),
           plats: [],
           dias: 0,
           est: c.estado,
@@ -169,7 +171,7 @@ async function dbCargarCobros() {
         tipo: c.tipo,
         clienteId: c.cliente_id,
         nombre: c.nombre,
-        tel: c.telefono,
+        tel: normalizeTel(c.telefono),
         plat: c.plataforma,
         correo: c.correo || '—',
         usuario: c.usuario || '—',
@@ -203,7 +205,7 @@ async function dbCargarSuscripciones() {
         correo: s.correo || '—',
         clave: '—',
         nombre: s.clientes ? s.clientes.nombre + ' ' + s.clientes.apellido : '—',
-        tel: s.clientes ? s.clientes.telefono : '—',
+        tel: s.clientes ? normalizeTel(s.clientes.telefono) : '—',
         usuario: s.usuario || '—',
         pin: s.pin || '—',
         fIni: s.fecha_inicio ? s.fecha_inicio.split('-').reverse().join('/') : '—',
@@ -1689,7 +1691,7 @@ const WA={
       const perf = ctx?.perfilesSel?.[plat] || {};
       const pin  = ctx?.pins?.[plat] || '—';
       const usr  = ctx?.usuarios?.[plat] || '—';
-      return `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu <span class="wav">${p}</span> ya está activa:\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👤 Perfil: <span class="wav">${perf.codigo||'—'}</span>\n👁️ Usuario: <span class="wav">${usr}</span>\n🔢 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span> 🎪`;
+      return `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu <span class="wav">${p}</span> ya está activa:\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👁️ Usuario: <span class="wav">${usr}</span>\n🔢 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span> 🍿`;
     }
     // Combo - una sección por plataforma
     const PNOM = {NF:'Netflix',DS:'Disney+',HB:'HBO Max',PV:'Prime Video'};
@@ -1747,7 +1749,7 @@ function goTo(v,el){
   else if (v==='usuarios')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-usuario')"><i class="ti ti-plus"></i>Nuevo usuario</button>`;
   else                          ha.innerHTML='';
   if(v==='clientes') renderC(CLIENTES);
-  if(v==='cobranza') renderCob(CLIENTES.filter(c=>c.dias===0));
+  if(v==='cobranza') { const tabActivo = document.querySelector('#cobtabs .tab.on'); if(tabActivo) tabActivo.click(); else { const firstTab=document.querySelector('#cobtabs .tab'); if(firstTab)firstTab.click(); } }
   if(v==='suscripciones') renderSubs(SUBS_FULL);
   if(v==='cobros') updMetricasCobros();
 }
@@ -1758,17 +1760,17 @@ function renderC(data){
     const chips=c.contactos.map(ct=>`<span class="chip">${CI[ct.t]||'<i class="ti ti-dots"></i>'} ${ct.v}</span>`).join('');
     const vb=c.dias===0?`<span class="b br">Hoy</span>`:c.dias===1?`<span class="b ba">Mañana</span>`:c.dias<=3?`<span class="b" style="background:rgba(245,200,35,.15);color:#f5c842">${c.dias} días</span>`:`<span class="b bp">${c.dias} días</span>`;
     const eb=c.est==='activo'?'<span class="b bg">Activo</span>':c.est==='sin_renovar'?'<span class="b ba">Sin renovar</span>':'<span class="b bp">Inactivo</span>';
-    return `<tr><td style="font-family:var(--mono);font-size:11px">${c.id}</td><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${c.tel}</td><td><div class="chips" style="margin:0">${chips}</div></td><td>${plats}</td><td>${vb}</td><td>${eb}</td><td class="tda"><button class="btn btn-sm btn-ic" onclick="toast('Perfil próximamente','info')"><i class="ti ti-eye"></i></button><button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago')"><i class="ti ti-cash"></i></button><button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${c.n} ${c.a}','${c.plats.join('+')}','$${c.plats.length*9}.00','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i></button><button class="btn btn-sm btn-ic" onclick="openModal('m-cambio')"><i class="ti ti-arrows-exchange"></i></button></td></tr>`;
+    return `<tr><td style="font-family:var(--mono);font-size:11px">${c.id}</td><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${formatTel(c.tel)}</td><td><div class="chips" style="margin:0">${chips}</div></td><td>${plats}</td><td>${vb}</td><td>${eb}</td><td class="tda"><button class="btn btn-sm btn-ic" onclick="toast('Perfil próximamente','info')"><i class="ti ti-eye"></i></button><button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago')"><i class="ti ti-cash"></i></button><button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${c.n} ${c.a}','${c.plats.join('+')}','$${c.plats.length*9}.00','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i></button><button class="btn btn-sm btn-ic" onclick="openModal('m-cambio')"><i class="ti ti-arrows-exchange"></i></button></td></tr>`;
   }).join('');
 }
-function filtC(q){const r=q.toLowerCase();renderC(CLIENTES.filter(c=>c.n.toLowerCase().includes(r)||c.a.toLowerCase().includes(r)||c.tel.includes(r)||c.id.toLowerCase().includes(r)||c.contactos.some(ct=>ct.v.toLowerCase().includes(r))));}
+function filtC(q){const r=q.toLowerCase().trim();const rn=normalizeTel(q).toLowerCase();renderC(CLIENTES.filter(c=>c.n.toLowerCase().includes(r)||c.a.toLowerCase().includes(r)||c.tel.includes(rn)||c.tel.includes(r)||c.id.toLowerCase().includes(r)||c.contactos.some(ct=>ct.v.toLowerCase().includes(r))));}
 function filtCEst(e){renderC(e?CLIENTES.filter(c=>c.est===e):CLIENTES);}
 
 function renderCob(data){
   document.getElementById('tcob').innerHTML=data.map(c=>{
     const plats=c.plats.map(p=>`<span class="pd"><span class="dot" style="background:${PC[p]}"></span>${p}</span>`).join('');
     const vb=c.dias===0?`<span class="b br">Hoy</span>`:c.dias===1?`<span class="b ba">Mañana</span>`:`<span class="b" style="background:rgba(245,200,35,.15);color:#f5c842">${c.dias} días</span>`;
-    return `<tr><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${c.tel}</td><td>${plats}</td><td style="color:var(--green);font-weight:500">$${c.plats.length*9}.00</td><td>${vb}</td><td><div class="rdots"><div class="rd ${c.dias<=2?'s':'p'}"></div><span class="rl">3d</span><div class="rd ${c.dias===0?'s':'p'}" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">hoy</span></div></td><td class="tda"><button class="btn btn-sm btn-a" onclick="abrirWA('${c.n} ${c.a}','${c.plats.join('+')}','$${c.plats.length*9}.00','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i>WA</button><button class="btn btn-sm btn-s" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Pago</button><button class="btn btn-sm btn-d btn-ic" onclick="toast('Marcado como sugerido vencido','info')"><i class="ti ti-alert-circle"></i></button></td></tr>`;
+    return `<tr><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${formatTel(c.tel)}</td><td>${plats}</td><td style="color:var(--green);font-weight:500">$${c.plats.length*9}.00</td><td>${vb}</td><td><div class="rdots"><div class="rd ${c.dias<=2?'s':'p'}"></div><span class="rl">3d</span><div class="rd ${c.dias===0?'s':'p'}" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">hoy</span></div></td><td class="tda"><button class="btn btn-sm btn-a" onclick="abrirWA('${c.n} ${c.a}','${c.plats.join('+')}','$${c.plats.length*9}.00','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i>WA</button><button class="btn btn-sm btn-s" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Pago</button><button class="btn btn-sm btn-d btn-ic" onclick="toast('Marcado como sugerido vencido','info')"><i class="ti ti-alert-circle"></i></button></td></tr>`;
   }).join('');
 }
 
@@ -1777,7 +1779,53 @@ function tabCob(el,id){
   el.classList.add('on');
   ['tc-hoy','tc-1d','tc-3d','tc-todos'].forEach(x=>{const d=document.getElementById(x);if(d)d.style.display='none';});
   const t=document.getElementById(id);if(t)t.style.display='block';
-  if(id==='tc-hoy')renderCob(CLIENTES.filter(c=>c.dias===0));
+  // Renderizar cobranza desde suscripciones activas de Supabase
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const subsActivas = SUBS_FULL.filter(s => s.est === 'activo' && s.fVcto && s.fVcto !== '—');
+  // Convertir fVcto dd/mm/yyyy → Date
+  const withDays = subsActivas.map(s => {
+    const [dd,mm,yy] = (s.fVcto||'').split('/');
+    const vctoDate = new Date(+yy, +mm-1, +dd);
+    const diff = Math.ceil((vctoDate - hoy) / 86400000);
+    return {...s, diasVcto: diff};
+  });
+  let filtrados;
+  if      (id==='tc-hoy')   filtrados = withDays.filter(s => s.diasVcto === 0);
+  else if (id==='tc-1d')    filtrados = withDays.filter(s => s.diasVcto === 1);
+  else if (id==='tc-3d')    filtrados = withDays.filter(s => s.diasVcto <= 3 && s.diasVcto >= 0);
+  else                      filtrados = withDays.filter(s => s.diasVcto <= 30 && s.diasVcto >= 0);
+  // Actualizar contadores en tabs
+  const counts = {
+    'tc-hoy':  withDays.filter(s=>s.diasVcto===0).length,
+    'tc-1d':   withDays.filter(s=>s.diasVcto===1).length,
+    'tc-3d':   withDays.filter(s=>s.diasVcto<=3&&s.diasVcto>=0).length,
+    'tc-todos':withDays.filter(s=>s.diasVcto<=30&&s.diasVcto>=0).length,
+  };
+  document.getElementById('cobtabs').querySelectorAll('.tab').forEach(tab => {
+    const tabId = tab.getAttribute('onclick')?.match(/'(tc-[^']+)'/)?.[1];
+    const cnt = tab.querySelector('.tcnt');
+    if (tabId && cnt) cnt.textContent = counts[tabId] || 0;
+  });
+  // Renderizar tabla en el contenedor activo
+  const tbody = t?.querySelector('tbody') || document.getElementById('tcob');
+  if (!tbody) return;
+  if (!filtrados.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No hay suscripciones en este período</td></tr>'; return; }
+  const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
+  tbody.innerHTML = filtrados.map(s => {
+    const platDot = `<span class="pd"><span class="dot" style="background:${PC2[s.plat]||'var(--accent)'}"></span>${s.plat}</span>`;
+    const vb = s.diasVcto===0 ? '<span class="b br">Hoy</span>' : s.diasVcto===1 ? '<span class="b ba">Mañana</span>' : `<span class="b" style="background:rgba(245,200,35,.15);color:#f5c842">${s.diasVcto} días</span>`;
+    return `<tr>
+      <td><strong>${s.nombre}</strong></td>
+      <td style="font-size:12px">${formatTel(s.tel)}</td>
+      <td>${platDot}</td>
+      <td style="color:var(--green);font-weight:500">$${(s.monto||0).toFixed(2)}</td>
+      <td>${s.fVcto}</td>
+      <td><div class="rdots"><div class="rd p"></div><span class="rl">3d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd ${s.diasVcto===0?'s':'p'}" style="margin-left:3px"></div><span class="rl">hoy</span></div></td>
+      <td class="tda">
+        <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','${s.diasVcto===0?'vencimiento':s.diasVcto===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i>WA</button>
+        <button class="btn btn-sm btn-s" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Pago</button>
+      </td></tr>`;
+  }).join('');
 }
 
 function tabParam(el,id){
@@ -1966,7 +2014,7 @@ async function confirmarVenta(){
     const pinsStr  = ventaData.plats.map(p => pins[p]||'—').join(' / ');
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td style="font-size:12px">${fecha}</td>
+      <td style="font-size:12px">${fIniStr}</td>
       <td><strong>${ventaData.clienteNombre}</strong></td>
       <td>${platsDots}</td>
       <td style="font-family:var(--mono);font-size:12px">${perfsStr}</td>
@@ -2548,7 +2596,7 @@ async function ejecutarImportacionMasiva() {
   let cliOk = 0;
   for (const c of D.clientes) {
     try {
-      const tel = (c.telefono && c.telefono !== '507' && c.telefono.trim() !== '') ? c.telefono : null;
+      const tel = (c.telefono && c.telefono !== '507' && c.telefono.trim() !== '') ? normalizeTel(c.telefono) : null;
       // Insertar cliente
       const { error: insErr } = await supa.from('clientes').upsert(
         { nombre: c.nombre, apellido: c.apellido, telefono: tel,
@@ -2936,7 +2984,8 @@ function activarBotonesReutilizar() {
 function buscarClientes(q) {
   const r = q.toLowerCase().trim();
   if (r.length < 2) return [];
-  return CLIENTES.filter(c => c.n.toLowerCase().includes(r) || c.a.toLowerCase().includes(r) || c.tel.includes(r) || c.id.toLowerCase().includes(r));
+  const rn = normalizeTel(q);
+  return CLIENTES.filter(c => c.n.toLowerCase().includes(r) || c.a.toLowerCase().includes(r) || c.tel.includes(rn) || c.tel.includes(r) || c.id.toLowerCase().includes(r));
 }
 
 function renderResultadosCli(data, contId, onSelect) {
@@ -2950,7 +2999,7 @@ function renderResultadosCli(data, contId, onSelect) {
       onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='var(--bg3)'"
       onclick="${onSelect}('${c.id}','${c.n} ${c.a}','${c.tel}')">
       <div style="width:28px;height:28px;border-radius:50%;background:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0">${c.n[0]}${c.a[0]}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--text)">${c.n} ${c.a}</div><div style="font-size:11px;color:var(--text3)">${c.tel} &nbsp;·&nbsp; ${c.id} &nbsp;·&nbsp; ${plats}</div></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--text)">${c.n} ${c.a}</div><div style="font-size:11px;color:var(--text3)">${formatTel(c.tel)} &nbsp;·&nbsp; ${c.id} &nbsp;·&nbsp; ${plats}</div></div>
       <span class="b ${c.est==='activo'?'bg':'ba'}">${c.est==='activo'?'Activo':'Sin renovar'}</span>
     </div>`;
   }).join('');
@@ -2968,7 +3017,7 @@ function ventaPaso1() {
 function ventaPaso2() {
   if (!ventaData.clienteId) { toast('Selecciona un cliente primero','warn'); return; }
   ['vpaso1','vpaso2','vpaso3','vpaso4','vpaso5'].forEach((id,i) => document.getElementById(id).style.display = i===1?'block':'none');
-  document.getElementById('v-cli-info2').textContent = ventaData.clienteNombre + ' · ' + ventaData.clienteTel;
+  document.getElementById('v-cli-info2').textContent = ventaData.clienteNombre + ' · ' + formatTel(ventaData.clienteTel);
   // Poblar planes según el tipo actualmente seleccionado
   const tipoSel = document.getElementById('v-tipo')?.value || 'individual';
   poblarPlanesPorTipo(tipoSel);
@@ -3000,7 +3049,7 @@ function ventaPaso3() {
   ventaData.tipo = tipo;
   ventaData.plats = platsSelec;
   ['vpaso1','vpaso2','vpaso3','vpaso4','vpaso5'].forEach((id,i) => document.getElementById(id).style.display = i===2?'block':'none');
-  document.getElementById('v-cli-info3').textContent = ventaData.clienteNombre + ' · ' + ventaData.clienteTel;
+  document.getElementById('v-cli-info3').textContent = ventaData.clienteNombre + ' · ' + formatTel(ventaData.clienteTel);
   // Refrescar perfiles disponibles antes de mostrar (por si el inventario cambió)
   dbCargarPerfilesDisp().then(() => renderPerfilesVenta());
   renderUsuariosVenta();
@@ -3557,7 +3606,7 @@ function selPerfilVenta(el, codigo, num, plat) {
   el.classList.add('on');
   // Guardar también el correo para usarlo en cobros
   const perfData = (PERFILES_DISP[plat]||[]).find(x => x.codigo === codigo);
-  ventaData.perfilesSel[plat] = {codigo, num, plat, correo: perfData?.correo || '—'};
+  ventaData.perfilesSel[plat] = {codigo, num, plat, correo: perfData?.correo || '—', clave: perfData?.clave || '—'};
   if (!ventaData.pins) ventaData.pins = {};
   ventaData.pins[plat] = generarPIN(ventaData.clienteId, plat, num);
   renderPinsVenta();
@@ -4438,7 +4487,7 @@ function renderSubs(data) {
       <td style="font-size:12px">${s.correo}</td>
       <td style="font-size:12px"><span class="clave-sub-${s.perfil.replace('-','_')}">••••••</span><button class="btn btn-sm btn-ic" style="padding:2px 4px;margin-left:3px" onclick="toggleClaveSub(this,'${s.clave}')" title="Ver clave"><i class="ti ti-eye"></i></button></td>
       <td><strong>${s.nombre}</strong></td>
-      <td style="font-size:12px">${s.tel}</td>
+      <td style="font-size:12px">${formatTel(s.tel)}</td>
       <td style="font-size:12px">${s.usuario}</td>
       <td style="font-family:var(--mono);letter-spacing:3px">${s.pin}</td>
       <td style="font-size:12px">${s.fIni}</td>
@@ -4467,21 +4516,28 @@ function toggleClaveSub(btn, clave) {
   btn.title = visible ? 'Ver clave' : 'Ocultar clave';
 }
 
-function filtSubs(q) {
-  const r = q.toLowerCase().trim();
-  SUBS_FILTRADAS = r ? SUBS_FULL.filter(s =>
-    s.nombre.toLowerCase().includes(r) || s.tel.includes(r) ||
-    s.clienteId.toLowerCase().includes(r) || s.perfil.toLowerCase().includes(r) ||
-    s.usuario.toLowerCase().includes(r)
-  ) : [...SUBS_FULL];
-  renderSubs(SUBS_FILTRADAS);
+function filtSubs(q) { _aplicarFiltrosSubs(); }
+// Filtros de suscripciones — se combinan todos activos
+function _aplicarFiltrosSubs() {
+  const busca = (document.querySelector('#v-suscripciones input[oninput*="filtSubs"]')?.value || '').toLowerCase().trim();
+  const plat  = document.querySelector('#v-suscripciones select:nth-of-type(1)')?.value || '';
+  const est   = document.querySelector('#v-suscripciones select:nth-of-type(2)')?.value || '';
+  const dias  = document.querySelector('#v-suscripciones select:nth-of-type(3)')?.value || '';
+  let data = SUBS_FULL;
+  if (plat)  data = data.filter(s => s.plat === plat);
+  if (est)   data = data.filter(s => s.est === est);
+  if (dias)  data = data.filter(s => dias==='hoy' ? s.dias===0 : dias==='3d' ? s.dias<=3 : s.dias<=7);
+  if (busca) data = data.filter(s =>
+    (s.nombre||'').toLowerCase().includes(busca) ||
+    normalizeTel(s.tel||'').includes(normalizeTel(busca)) || (s.tel||'').toLowerCase().includes(busca) ||
+    (s.perfil||'').toLowerCase().includes(busca) ||
+    (s.clienteId||'').toLowerCase().includes(busca)
+  );
+  renderSubs(data);
 }
-function filtSubsPlat(v) { renderSubs(v ? SUBS_FULL.filter(s=>s.plat===v) : SUBS_FULL); }
-function filtSubsEst(v)  { renderSubs(v ? SUBS_FULL.filter(s=>s.est===v)  : SUBS_FULL); }
-function filtSubsDias(v) {
-  if (!v) { renderSubs(SUBS_FULL); return; }
-  renderSubs(SUBS_FULL.filter(s => v==='hoy'?s.dias===0 : v==='3d'?s.dias<=3 : s.dias<=7));
-}
+function filtSubsPlat(v) { _aplicarFiltrosSubs(); }
+function filtSubsEst(v)  { _aplicarFiltrosSubs(); }
+function filtSubsDias(v) { _aplicarFiltrosSubs(); }
 
 
 // ── NORMALIZACIÓN DE TEXTO ───────────────────────────────────
@@ -4506,6 +4562,37 @@ const PHONE_CONFIG = {
   US: { code:'+1',   mask:'###-###-####', hint:'USA/Canadá — 10 dígitos',maxLen:12},
   OT: { code:'',     mask:null, hint:'Escribe el número con código de país', maxLen:20 },
 };
+
+// ── Normalizar teléfono al guardar: solo + y dígitos ─────────────────────
+function normalizeTel(tel) {
+  if (!tel) return '';
+  // Conservar el + inicial, eliminar todo lo demás que no sea dígito
+  const clean = tel.replace(/[^\d+]/g, '');
+  // Si no empieza con + pero tiene código de país conocido, igual está limpio
+  return clean;
+}
+
+// ── Formatear teléfono para mostrar en UI (máscara visual) ───────────────
+function formatTel(tel) {
+  if (!tel) return '—';
+  const raw = tel.replace(/[^\d+]/g, '');
+  // Detectar código de país y aplicar máscara
+  const entry = Object.values(PHONE_CONFIG).find(cfg =>
+    cfg.code && raw.startsWith(cfg.code)
+  );
+  if (!entry || !entry.mask) return raw; // Sin máscara: mostrar limpio
+  const local = raw.slice(entry.code.length); // dígitos sin código país
+  // Aplicar máscara
+  let masked = '';
+  let di = 0;
+  for (let i = 0; i < entry.mask.length && di < local.length; i++) {
+    if (entry.mask[i] === '#') { masked += local[di++]; }
+    else { if (di > 0) masked += entry.mask[i]; }
+  }
+  // Si quedan dígitos sin máscara, agregarlos al final
+  if (di < local.length) masked += local.slice(di);
+  return entry.code + ' ' + masked;
+}
 
 function updPhoneMask(inputId, selectId) {
   const sel = document.getElementById(selectId);
@@ -4545,7 +4632,8 @@ function getPhoneValue(inputId, selectId) {
   const cfg = PHONE_CONFIG[sel.value] || PHONE_CONFIG.OT;
   const num = inp.value.trim();
   if (!num) return '';
-  return cfg.code ? cfg.code + ' ' + num : num;
+  const raw = cfg.code ? cfg.code + num.replace(/\D/g,'') : num;
+  return normalizeTel(raw); // siempre guardamos normalizado
 }
 
 // ── NUEVO CLIENTE DESDE VENTA ─────────────────────────────────
@@ -4856,7 +4944,7 @@ function renderCobros(data) {
       <td>${tipoBadge}</td>
       <td style="font-family:var(--mono);font-size:11px">${c.clienteId}</td>
       <td><strong>${c.nombre}</strong></td>
-      <td style="font-size:12px">${c.tel}</td>
+      <td style="font-size:12px">${formatTel(c.tel)}</td>
       <td>${platDots}</td>
       <td style="font-size:12px">${c.correo||'—'}</td>
       <td style="font-size:12px">${c.usuario||'—'}</td>
