@@ -1246,19 +1246,12 @@ select option{background:var(--bg3)}
             <select id="v-canal"><option>WhatsApp</option><option>Meta</option></select>
           </div>
         </div>
-        <!-- Individual: una plataforma -->
-        <div id="v-plat-ind">
-          <div class="fg"><label>Plataforma<span class="req">*</span></label>
-            <select id="v-plat-sel" onchange="updPerfilesVenta()">
-              <option value="">Cargando planes...</option>
-            </select>
-          </div>
-        </div>
-        <!-- Combo: selección de combos predefinidos en Parámetros -->
-        <div id="v-plat-combo" style="display:none">
-          <label style="margin-bottom:8px;display:block">Seleccionar combo<span class="req">*</span></label>
-          <div id="v-combos-lista" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-          <div class="ab i" style="margin-bottom:0"><i class="ti ti-info-circle"></i>Solo se muestran los combos vigentes definidos en Parámetros → Planes y precios.</div>
+        <!-- Plan: se filtra por tipo (Individual / Combo) dinámicamente -->
+        <div class="fg" id="v-plan-wrap" style="display:none">
+          <label>Plan<span class="req">*</span></label>
+          <select id="v-plan-sel" onchange="updPerfilesVenta()">
+            <option value="">— Selecciona plan —</option>
+          </select>
         </div>
         <div id="v-precio-preview" style="font-size:13px;color:var(--green);font-weight:500;margin-top:6px"></div>
       </div>
@@ -2769,21 +2762,56 @@ async function cargarPlanesPrecios() {
   }
 }
 
-// Reconstruye el <select id="v-plat-sel"> con los precios actuales de PLATS
+// Reconstruye los planes en el modal después de cargar desde Supabase
+// (v-plan-sel se puebla dinámicamente en updTipoVenta / poblarPlanesPorTipo)
 function _reconstruirDropdownPlats() {
-  const selPlat = document.getElementById('v-plat-sel');
-  if (!selPlat) return;
-  const val = selPlat.value;
-  selPlat.innerHTML = '<option value="">— Selecciona plataforma —</option>';
-  ['NF','DS','HB','PV'].forEach(cod => {
-    const pl = PLATS[cod];
-    if (!pl) return;
+  // Resetear el selector de plan por si el modal está abierto
+  const selPlan  = document.getElementById('v-plan-sel');
+  const planWrap = document.getElementById('v-plan-wrap');
+  if (selPlan)  selPlan.innerHTML = '<option value="">— Selecciona plan —</option>';
+  if (planWrap) planWrap.style.display = 'none';
+}
+
+// Al seleccionar plataforma, puebla el dropdown de planes específicos
+function updPlanesDePlat(plat) {
+  const planWrap = document.getElementById('v-plan-wrap');
+  const selPlan  = document.getElementById('v-plan-sel');
+  const prev     = document.getElementById('v-precio-preview');
+  if (!selPlan) return;
+
+  if (!plat) {
+    if (planWrap) planWrap.style.display = 'none';
+    selPlan.innerHTML = '<option value="">— Selecciona plan —</option>';
+    if (prev) prev.textContent = '';
+    return;
+  }
+
+  const planes = PRECIOS_IND[plat] || [];
+  selPlan.innerHTML = '<option value="">— Selecciona plan —</option>';
+
+  if (planes.length === 0) {
+    // Fallback: un único plan con precio_ind de PLATS
+    const precio = PLATS[plat]?.precio_ind || 0;
     const opt = document.createElement('option');
-    opt.value = cod;
-    opt.textContent = `${pl.nombre} (${cod}) — $${pl.precio_ind.toFixed(2)}`;
-    selPlat.appendChild(opt);
-  });
-  if (val && Array.from(selPlat.options).some(o => o.value === val)) selPlat.value = val;
+    opt.value = precio.toFixed(2);
+    opt.dataset.perfiles = '1';
+    opt.textContent = `1 perfil — $${precio.toFixed(2)}`;
+    selPlan.appendChild(opt);
+  } else {
+    planes.forEach(plan => {
+      const opt = document.createElement('option');
+      opt.value = plan.precio.toFixed(2);
+      opt.dataset.perfiles = String(plan.perfiles);
+      const pluralP = plan.perfiles === 1 ? 'perfil' : 'perfiles';
+      opt.textContent = `${plan.perfiles} ${pluralP} — $${plan.precio.toFixed(2)}`;
+      selPlan.appendChild(opt);
+    });
+    // Auto-seleccionar si solo hay 1 plan
+    if (planes.length === 1) selPlan.selectedIndex = 1;
+  }
+
+  if (planWrap) planWrap.style.display = 'block';
+  updPerfilesVenta();
 }
 
 // Perfiles disponibles por plataforma (simulados)
@@ -2890,13 +2918,14 @@ function ventaPaso2() {
 }
 function ventaPaso3() {
   const tipo = document.getElementById('v-tipo').value;
-  let platsSelec = [];
-  if (tipo === 'individual') {
-    platsSelec = [document.getElementById('v-plat-sel').value];
-  } else {
-    if (comboSelIdx < 0) { toast('Selecciona un combo de la lista','warn'); return; }
-    platsSelec = COMBOS[comboSelIdx].plats;
+  // Validar que hay un plan seleccionado (aplica tanto a individual como combo)
+  const selPlan = document.getElementById('v-plan-sel');
+  if (!selPlan?.value) {
+    toast('Selecciona un plan de la lista', 'warn');
+    return;
   }
+  // ventaData.plats ya fue seteado en updPerfilesVenta al seleccionar el plan
+  const platsSelec = ventaData.plats || [];
   if (!platsSelec.length) { toast('Selecciona al menos una plataforma','warn'); return; }
 
   // Resetear selecciones previas del paso 3 al cambiar plataforma
@@ -2950,7 +2979,8 @@ function ventaPaso4() {
   if (tipo === 'combo' && comboSelIdx >= 0) {
     total = COMBOS[comboSelIdx].precio;
   } else {
-    ventaData.plats.forEach(p => { total += PLATS[p].precio_ind || 0; });
+    // Usar el precio del plan seleccionado (guardado en updPerfilesVenta)
+    total = ventaData.planPrecio || PLATS[ventaData.plats[0]]?.precio_ind || 0;
   }
   const pinput = document.getElementById('v-precio');
   if (pinput) { pinput.value = '$' + total.toFixed(2); document.getElementById('v-precio-hint').textContent = 'Precio según plan. Modificable.'; }
@@ -3127,27 +3157,120 @@ function limpiarClienteVenta() {
 }
 
 function updTipoVenta(v) {
-  document.getElementById('v-plat-ind').style.display = v === 'individual' ? 'block' : 'none';
-  document.getElementById('v-plat-combo').style.display = v === 'combo' ? 'block' : 'none';
-  if (v === 'combo') {
-    renderCombosVenta();
-    comboSelIdx = -1;
-    const prev = document.getElementById('v-precio-preview');
-    if (prev) prev.textContent = '';
+  // Resetear selección de plan y preview
+  const selPlan = document.getElementById('v-plan-sel');
+  const planWrap = document.getElementById('v-plan-wrap');
+  const prev = document.getElementById('v-precio-preview');
+  if (selPlan) selPlan.innerHTML = '<option value="">— Selecciona plan —</option>';
+  if (planWrap) planWrap.style.display = 'none';
+  if (prev) prev.textContent = '';
+  comboSelIdx = -1;
+  ventaData.planPrecio = 0;
+  ventaData.planPerfiles = 1;
+  ventaData.plats = [];
+
+  // Poblar el select con los planes del tipo elegido
+  poblarPlanesPorTipo(v);
+}
+
+// Llena v-plan-sel con planes filtrados por tipo desde planes_precios en memoria
+function poblarPlanesPorTipo(tipo) {
+  const selPlan = document.getElementById('v-plan-sel');
+  const planWrap = document.getElementById('v-plan-wrap');
+  if (!selPlan) return;
+
+  selPlan.innerHTML = '<option value="">— Selecciona plan —</option>';
+
+  if (tipo === 'individual') {
+    // Planes individuales: todos los planes de PRECIOS_IND agrupados por plataforma
+    let hayPlanes = false;
+    ['NF','DS','HB','PV'].forEach(cod => {
+      const planes = PRECIOS_IND[cod] || [];
+      if (!planes.length) return;
+      const grp = document.createElement('optgroup');
+      grp.label = PLATS[cod]?.nombre || cod;
+      planes.forEach(plan => {
+        const opt = document.createElement('option');
+        opt.value = cod + '|' + plan.precio.toFixed(2);
+        opt.dataset.plat = cod;
+        opt.dataset.precio = plan.precio.toFixed(2);
+        opt.dataset.perfiles = String(plan.perfiles);
+        const pluralP = plan.perfiles === 1 ? 'perfil' : 'perfiles';
+        opt.textContent = `${plan.perfiles} ${pluralP} — $${plan.precio.toFixed(2)}`;
+        grp.appendChild(opt);
+        hayPlanes = true;
+      });
+      selPlan.appendChild(grp);
+    });
+    if (!hayPlanes) {
+      const opt = document.createElement('option');
+      opt.disabled = true;
+      opt.textContent = 'No hay planes individuales vigentes';
+      selPlan.appendChild(opt);
+    }
   } else {
-    updPerfilesVenta();
+    // Planes combo
+    if (!COMBOS.length) {
+      const opt = document.createElement('option');
+      opt.disabled = true;
+      opt.textContent = 'No hay combos vigentes en Parámetros';
+      selPlan.appendChild(opt);
+    } else {
+      COMBOS.forEach((c, i) => {
+        const opt = document.createElement('option');
+        opt.value = 'COMBO|' + i;
+        opt.dataset.comboIdx = String(i);
+        opt.dataset.precio = c.precio.toFixed(2);
+        const nombres = c.plats.map(p => PLATS[p]?.nombre || p).join(' + ');
+        opt.textContent = `${nombres} — $${c.precio.toFixed(2)} (${c.desglose})`;
+        selPlan.appendChild(opt);
+      });
+    }
   }
+
+  if (planWrap) planWrap.style.display = 'block';
 }
 
 function updPerfilesVenta() {
   const tipo = document.getElementById('v-tipo').value;
-  if (tipo === 'individual') {
-    const plat = document.getElementById('v-plat-sel')?.value;
-    const precio = PLATS[plat]?.precio_ind || 0;
-    const prev = document.getElementById('v-precio-preview');
-    if (prev && plat) prev.textContent = 'Precio: $' + precio.toFixed(2);
+  const selPlan = document.getElementById('v-plan-sel');
+  const precioOpt = selPlan?.options[selPlan?.selectedIndex];
+  const prev = document.getElementById('v-precio-preview');
+
+  if (!precioOpt || !precioOpt.value) {
+    if (prev) prev.textContent = '';
+    ventaData.planPrecio = 0;
+    ventaData.planPerfiles = 1;
+    ventaData.plats = [];
+    return;
   }
-  // Para combo, el precio se muestra al seleccionar el combo (selComboVenta)
+
+  if (tipo === 'individual') {
+    const plat    = precioOpt.dataset.plat;
+    const precio  = parseFloat(precioOpt.dataset.precio) || 0;
+    const perfiles = parseInt(precioOpt.dataset.perfiles || '1');
+    ventaData.planPrecio  = precio;
+    ventaData.planPerfiles = perfiles;
+    ventaData.plats = [plat];
+    if (prev && plat) {
+      const pluralP = perfiles === 1 ? 'perfil' : 'perfiles';
+      prev.textContent = `${PLATS[plat]?.nombre || plat} · ${perfiles} ${pluralP} — $${precio.toFixed(2)}`;
+    }
+  } else {
+    // Combo
+    const idx   = parseInt(precioOpt.dataset.comboIdx);
+    const combo = COMBOS[idx];
+    if (!combo) return;
+    comboSelIdx = idx;
+    ventaData.planPrecio  = combo.precio;
+    ventaData.planPerfiles = combo.plats.length;
+    ventaData.plats = combo.plats;
+    ventaData.comboId = combo.id;
+    if (prev) {
+      const nombres = combo.plats.map(p => PLATS[p]?.nombre || p).join(' + ');
+      prev.textContent = `${nombres} — $${combo.precio.toFixed(2)} (${combo.desglose})`;
+    }
+  }
 }
 
 function renderUsuariosVenta() {
@@ -3703,10 +3826,10 @@ function openModal(id, title) {
     const fi = document.getElementById('v-fecha-ini');
     if (fi) fi.value = fechaHoy;
     ventaData.fechaIni = fechaHoy;
-    // Reset tipo a individual
+    // Reset tipo a individual y poblar planes
     const vt = document.getElementById('v-tipo');
     if (vt) vt.value = 'individual';
-    updTipoVenta('individual');
+    poblarPlanesPorTipo('individual');
     // Reset combo
     comboSelIdx = -1;
     ventaData = {clienteId:'', clienteNombre:'', clienteTel:'', tipo:'individual', plats:[], perfilesSel:{}, pins:{}, meses:1, fechaIni:fechaHoy, dupAutorizado:false};
@@ -3753,6 +3876,13 @@ function openModal(id, title) {
     // Preview precio
     const pp = document.getElementById('v-precio-preview');
     if (pp) pp.textContent = '';
+    // Reset selector de plan
+    const planSel = document.getElementById('v-plan-sel');
+    if (planSel) planSel.innerHTML = '<option value="">— Selecciona plan —</option>';
+    const planWrap = document.getElementById('v-plan-wrap');
+    if (planWrap) planWrap.style.display = 'none';
+    ventaData.planPrecio = 0;
+    ventaData.planPerfiles = 1;
     ventaPaso1();
     calcVctoVenta();
   }
@@ -4091,7 +4221,7 @@ function sincronizarCatEgreso(nombre) {
 
 function sincronizarPlataformas(codigo, nombre) {
   // Actualizar todos los selectores de plataforma en el sistema
-  const sels = ['v-plat-sel','precio-plat','cuenta-plat','sel-motivo'];
+  const sels = ['precio-plat','cuenta-plat','sel-motivo'];
   const dotColors = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
   document.querySelectorAll('select').forEach(sel => {
     // Solo agregar a selectores que tienen opciones de plataforma
@@ -4103,14 +4233,7 @@ function sincronizarPlataformas(codigo, nombre) {
       sel.appendChild(opt);
     }
   });
-  // Agregar a checkboxes de combo en venta
-  const comboDiv = document.getElementById('v-plat-combo');
-  if (comboDiv) {
-    const label = document.createElement('label');
-    label.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;cursor:pointer';
-    label.innerHTML = '<input type="checkbox" value="' + codigo + '" onchange="updPerfilesVenta()" style="width:auto"><span style="width:9px;height:9px;border-radius:50%;background:var(--accent);display:inline-block"></span>' + nombre + ' $0.00';
-    comboDiv.appendChild(label);
-  }
+  // Los combos se cargan dinámicamente desde planes_precios en poblarPlanesPorTipo()
 }
 
 
