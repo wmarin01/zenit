@@ -351,22 +351,6 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 select option{background:var(--bg3)}
 .hint{font-size:11px;color:var(--text3)}
 .hint.ok{color:var(--green)}.hint.w{color:var(--amber)}.hint.e{color:var(--red)}
-#login-ov{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;animation:fi .25s ease}
-#login-ov.oculto{display:none}
-.login-box{width:360px;background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:32px 28px}
-.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:28px}
-.login-logo .sb-icon{width:36px;height:36px;font-size:18px}
-.login-logo .sb-name{font-size:17px;font-weight:600}
-.login-titulo{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5}
-.login-campo{margin-bottom:14px}
-.login-campo label{display:block;font-size:11px;font-weight:500;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em}
-.login-campo input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;transition:border-color .15s}
-.login-campo input:focus{border-color:var(--accent2)}
-.login-error{background:rgba(240,77,77,.12);border:1px solid rgba(240,77,77,.25);color:var(--red);font-size:12px;padding:8px 12px;border-radius:var(--rsm);margin-bottom:14px;display:none}
-.login-error.on{display:block}
-.login-btn{width:100%;padding:10px;background:var(--accent2);border:none;border-radius:var(--rsm);color:#fff;font-size:14px;font-weight:500;font-family:var(--font);cursor:pointer;transition:background .15s;margin-top:4px}
-.login-btn:hover{background:var(--accent)}
-.login-btn:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:none;align-items:center;justify-content:center;padding:16px;pointer-events:none}
 .ov.on{display:flex;pointer-events:all}
 .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:100%;max-height:90vh;overflow-y:auto;animation:fi .2s ease}
@@ -444,28 +428,6 @@ select option{background:var(--bg3)}
 </style>
 </head>
 <body>
-<div id="login-ov">
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="sb-icon"><i class="ti ti-player-play-filled"></i></div>
-      <div>
-        <div class="sb-name">Zenit</div>
-        <div class="sb-ver">Gestión streaming</div>
-      </div>
-    </div>
-    <p class="login-titulo">Ingresa tus credenciales para acceder al sistema.</p>
-    <div class="login-campo">
-      <label>Usuario</label>
-      <input type="text" id="login-usuario" placeholder="ej. wmarin01" autocomplete="username">
-    </div>
-    <div class="login-campo">
-      <label>Contraseña</label>
-      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <div class="login-error" id="login-error">Usuario o contraseña incorrectos.</div>
-    <button class="login-btn" id="login-btn" onclick="intentarLogin()">Ingresar</button>
-  </div>
-</div>
 <nav id="sb">
   <div class="sb-logo"><div class="sb-icon"><i class="ti ti-broadcast"></i></div><div><div class="sb-name">Zenit <span id="sb-status" title="Verificando conexión..." style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--amber);margin-left:4px;vertical-align:middle"></span></div><div class="sb-ver">Gestión streaming</div></div></div>
   <div class="sb-sec"><div class="sb-lbl">Principal</div>
@@ -1287,9 +1249,10 @@ select option{background:var(--bg3)}
         <!-- Individual: una plataforma -->
         <div id="v-plat-ind">
           <div class="fg"><label>Plataforma<span class="req">*</span></label>
-            <select id="v-plataforma" onchange="updPerfilesVenta()">
-             </select>
-          </div> 
+            <select id="v-plat-sel" onchange="updPerfilesVenta()">
+              <option value="">Cargando planes...</option>
+            </select>
+          </div>
         </div>
         <!-- Combo: selección de combos predefinidos en Parámetros -->
         <div id="v-plat-combo" style="display:none">
@@ -2651,135 +2614,18 @@ function toast(msg,tipo){
   setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},3000);
 }
 
+
 // ── DATOS DE PLATAFORMAS ──────────────────────────────────────
-const PLATS_INFO = {
-  NF: {nombre:'Netflix',     color:'var(--nf)', pin_dig:4, max_perfiles:5},
-  DS: {nombre:'Disney+',     color:'var(--ds)', pin_dig:4, max_perfiles:7},
-  HB: {nombre:'HBO Max',     color:'var(--hb)', pin_dig:4, max_perfiles:5},
-  PV: {nombre:'Prime Video', color:'var(--pv)', pin_dig:5, max_perfiles:6},
+let PLATS = {
+  NF: {nombre:'Netflix', color:'var(--nf)', precio_ind:4.99, precio_combo:4.99, pin_dig:4, max_perfiles:5},
+  DS: {nombre:'Disney+', color:'var(--ds)', precio_ind:4.25, precio_combo:4.25, pin_dig:4, max_perfiles:7},
+  HB: {nombre:'HBO Max', color:'var(--hb)', precio_ind:3.25, precio_combo:3.25, pin_dig:4, max_perfiles:5},
+  PV: {nombre:'Prime Video', color:'var(--pv)', precio_ind:2.75, precio_combo:2.75, pin_dig:5, max_perfiles:6},
 };
-let PLATS = { NF:{precio_ind:0}, DS:{precio_ind:0}, HB:{precio_ind:0}, PV:{precio_ind:0} };
-let PLANES = []; // Todos los planes desde Supabase
-
-async function cargarPlanesPrecios() {
-  const { data, error } = await supa
-    .from('planes_precios')
-    .select('*')
-    .eq('estado', 'Vigente')
-    .order('plataformas');
-  if (error) { console.warn('[PLANES] Error:', error.message); return; }
-  PLANES = data || [];
-  // Actualizar precios base en PLATS para compatibilidad
-  PLANES.forEach(p => {
-    if (p.tipo === 'Individual') {
-      const cod = p.plataformas; // ej: 'NF', 'DS'
-      if (PLATS[cod]) {
-        // Tomar el precio más bajo individual como precio_ind
-        const precio = parseFloat(p.precio);
-        if (!PLATS[cod].precio_ind || precio < PLATS[cod].precio_ind) {
-          PLATS[cod].precio_ind = precio;
-        }
-      }
-    }
-  });
-  console.log('[PLANES] Cargados:', PLANES.length, 'planes vigentes');
-  // Actualizar dropdown de plataforma en modal de venta
-  actualizarDropdownPlanes();
-}
-
-function actualizarDropdownPlanes() {
-  const sel = document.getElementById('v-plataforma');
-  if (!sel || !PLANES.length) return;
-  const tipoVenta = document.getElementById('v-tipo')?.value || 'Individual';
-  const planesFiltered = PLANES.filter(p =>
-    tipoVenta === 'Combo' ? p.tipo === 'Combo' : p.tipo === 'Individual'
-  );
-  sel.innerHTML = '<option value="">— Selecciona —</option>' +
-    planesFiltered.map(p => {
-      const label = p.tipo === 'Combo'
-        ? `${p.plataformas} — Combo ${p.perfiles} — $${parseFloat(p.precio).toFixed(2)}`
-        : `${p.plataformas} (${p.perfiles}) — $${parseFloat(p.precio).toFixed(2)}`;
-      return `<option value="${p.id}" data-precio="${p.precio}" data-plataformas="${p.plataformas}" data-perfiles="${p.perfiles}" data-tipo="${p.tipo}">${label}</option>`;
-    }).join('');
-}
-
 
 // ── USUARIOS DEL SISTEMA ─────────────────────────────────────
 let USUARIO_ACTIVO = null;
 
-async function intentarLogin() {
-  const usuario = document.getElementById('login-usuario').value.trim();
-  const pass    = document.getElementById('login-pass').value.trim();
-  const errDiv  = document.getElementById('login-error');
-  const btn     = document.getElementById('login-btn');
-  if (!usuario || !pass) {
-    errDiv.textContent = 'Completa todos los campos.';
-    errDiv.classList.add('on'); return;
-  }
-  btn.disabled = true;
-  btn.textContent = 'Verificando...';
-  errDiv.classList.remove('on');
-  try {
-    const { data, error } = await supa
-      .from('usuarios_sistema')
-      .select('*')
-      .eq('usuario', usuario)
-      .eq('password_hash', pass)
-      .eq('estado', 'Activo')
-      .single();
-    if (error || !data) {
-      errDiv.textContent = 'Usuario o contraseña incorrectos.';
-      errDiv.classList.add('on');
-      btn.disabled = false;
-      btn.textContent = 'Ingresar';
-      return;
-    }
-    USUARIO_ACTIVO = data;
-    sessionStorage.setItem('zenit_usuario', JSON.stringify(data));
-    await supa.from('usuarios_sistema')
-      .update({ ultimo_acceso: new Date().toISOString() })
-      .eq('id', data.id);
-    document.getElementById('login-ov').classList.add('oculto');
-    console.log('[LOGIN] Acceso concedido:', data.nombre, '|', data.rol);
-  } catch(e) {
-    errDiv.textContent = 'Error de conexión. Intenta de nuevo.';
-    errDiv.classList.add('on');
-    btn.disabled = false;
-    btn.textContent = 'Ingresar';
-  }
-}
-
-function cerrarSesion() {
-  sessionStorage.removeItem('zenit_usuario');
-  USUARIO_ACTIVO = null;
-  document.getElementById('login-ov').classList.remove('oculto');
-  document.getElementById('login-usuario').value = '';
-  document.getElementById('login-pass').value = '';
-  document.getElementById('login-error').classList.remove('on');
-}
-
-function verificarSesionGuardada() {
-  const stored = sessionStorage.getItem('zenit_usuario');
-  if (stored) {
-    try {
-      const u = JSON.parse(stored);
-      if (u && u.id && u.usuario) {
-        USUARIO_ACTIVO = u;
-        document.getElementById('login-ov').classList.add('oculto');
-        return true;
-      }
-    } catch(e) {}
-    sessionStorage.removeItem('zenit_usuario');
-  }
-  return false;
-}
-
-document.addEventListener('keydown', function(e) {
-  const ov = document.getElementById('login-ov');
-  if (e.key === 'Enter' && ov && !ov.classList.contains('oculto')) {
-    intentarLogin();
-  }
-});
 async function cargarUsuariosSistema() {
   try {
     const {data, error} = await supa.from('usuarios_sistema').select('*').eq('estado','Activo').order('nombre');
@@ -2849,41 +2695,95 @@ function cerrarSesion() {
   toast('Sesión cerrada', 'ok');
 }
 
-// Carga precios reales desde Supabase y actualiza PLATS + dropdowns de ventas
+// Carga precios reales desde Supabase y actualiza PLATS + PRECIOS_IND + COMBOS + dropdowns de ventas
 async function cargarPlanesPrecios() {
   try {
-    const {data} = await supa.from('planes_precios').select('*').eq('estado','Vigente').order('plataformas');
-    if (!data || !data.length) return;
-    // Actualizar precios en PLATS con los planes individuales de 1 perfil
+    const {data, error} = await supa.from('planes_precios').select('*').eq('estado','Vigente').order('plataformas');
+    if (error) throw error;
+    if (!data || !data.length) {
+      console.warn('[PLATS] Sin planes vigentes en Supabase — se usan valores por defecto');
+      _reconstruirDropdownPlats();
+      return;
+    }
+
+    // ── 1. Actualizar PLATS (precio base de 1 perfil individual) ──
     data.forEach(p => {
-      const plats = (p.plataformas||'').split('+');
+      const plats = (p.plataformas || '').split('+').map(s => s.trim());
       if (p.tipo === 'Individual' && plats.length === 1) {
-        const cod = plats[0].trim();
+        const cod = plats[0];
         if (PLATS[cod]) {
           PLATS[cod].precio_ind = parseFloat(p.precio) || PLATS[cod].precio_ind;
         }
       }
     });
-    // Actualizar dropdown de plataforma en modal Nueva Venta
-    const selPlat = document.getElementById('v-plat-sel');
-    if (selPlat) {
-      // Guardar valor actual
-      const val = selPlat.value;
-      // Limpiar y reconstruir
-      selPlat.innerHTML = '<option value="">— Selecciona —</option>';
-      ['NF','DS','HB','PV'].forEach(cod => {
-        const pl = PLATS[cod];
-        const opt = document.createElement('option');
-        opt.value = cod;
-        opt.textContent = `${pl.nombre} (${cod}) — $${pl.precio_ind.toFixed(2)}`;
-        selPlat.appendChild(opt);
+
+    // ── 2. Reconstruir PRECIOS_IND desde Supabase ──
+    // Limpiar y repoblar
+    Object.keys(PRECIOS_IND).forEach(k => { PRECIOS_IND[k] = []; });
+    data.forEach(p => {
+      if (p.tipo !== 'Individual') return;
+      const plats = (p.plataformas || '').split('+').map(s => s.trim());
+      if (plats.length !== 1) return;
+      const cod = plats[0];
+      if (!PRECIOS_IND[cod]) PRECIOS_IND[cod] = [];
+      // perfiles puede ser "1 perfil", "2 perfiles" o un número
+      const numPerfiles = parseInt((p.perfiles || '1')) || 1;
+      PRECIOS_IND[cod].push({ perfiles: numPerfiles, precio: parseFloat(p.precio) || 0 });
+    });
+    // Ordenar por cantidad de perfiles
+    Object.keys(PRECIOS_IND).forEach(k => {
+      PRECIOS_IND[k].sort((a, b) => a.perfiles - b.perfiles);
+      // Si quedó vacío (plataforma sin plan en Supabase), usar fallback desde PLATS
+      if (!PRECIOS_IND[k].length && PLATS[k]) {
+        PRECIOS_IND[k] = [{ perfiles: 1, precio: PLATS[k].precio_ind }];
+      }
+    });
+
+    // ── 3. Reconstruir COMBOS desde Supabase ──
+    COMBOS.length = 0; // vaciar sin romper la referencia
+    data.forEach(p => {
+      if (p.tipo !== 'Combo') return;
+      const plats = (p.plataformas || '').split('+').map(s => s.trim());
+      if (plats.length < 2) return;
+      COMBOS.push({
+        id: p.plataformas,
+        plats: plats,
+        precio: parseFloat(p.precio) || 0,
+        desglose: p.desglose || plats.join(' + '),
+        perfiles: p.perfiles || plats.map(() => '1').join('+')
       });
-      if (val) selPlat.value = val;
-    }
-    console.log('[PLATS] Precios actualizados desde Supabase:', {NF: PLATS.NF.precio_ind, DS: PLATS.DS.precio_ind, HB: PLATS.HB.precio_ind, PV: PLATS.PV.precio_ind});
+    });
+
+    // ── 4. Reconstruir dropdown v-plat-sel ──
+    _reconstruirDropdownPlats();
+
+    console.log('[PLATS] Cargado desde Supabase ✓', {
+      planes_ind: Object.fromEntries(Object.entries(PRECIOS_IND).map(([k,v])=>[k,v.length+' planes'])),
+      combos: COMBOS.length,
+      precios: {NF: PLATS.NF.precio_ind, DS: PLATS.DS.precio_ind, HB: PLATS.HB.precio_ind, PV: PLATS.PV.precio_ind}
+    });
   } catch(e) {
-    console.warn('[PLATS] No se pudieron cargar precios:', e.message);
+    console.warn('[PLATS] Error cargando planes:', e.message);
+    // Fallback: reconstruir dropdown con valores por defecto de PLATS
+    _reconstruirDropdownPlats();
   }
+}
+
+// Reconstruye el <select id="v-plat-sel"> con los precios actuales de PLATS
+function _reconstruirDropdownPlats() {
+  const selPlat = document.getElementById('v-plat-sel');
+  if (!selPlat) return;
+  const val = selPlat.value;
+  selPlat.innerHTML = '<option value="">— Selecciona plataforma —</option>';
+  ['NF','DS','HB','PV'].forEach(cod => {
+    const pl = PLATS[cod];
+    if (!pl) return;
+    const opt = document.createElement('option');
+    opt.value = cod;
+    opt.textContent = `${pl.nombre} (${cod}) — $${pl.precio_ind.toFixed(2)}`;
+    selPlat.appendChild(opt);
+  });
+  if (val && Array.from(selPlat.options).some(o => o.value === val)) selPlat.value = val;
 }
 
 // Perfiles disponibles por plataforma (simulados)
@@ -3240,15 +3140,14 @@ function updTipoVenta(v) {
 }
 
 function updPerfilesVenta() {
-  const sel = document.getElementById('v-plataforma');
-  const prev = document.getElementById('v-precio-preview');
-  if (!sel || !prev) return;
-  const opt = sel.options[sel.selectedIndex];
-  if (!opt || !opt.dataset.precio) { prev.textContent = ''; return; }
-  const precio = parseFloat(opt.dataset.precio);
-  const plats = opt.dataset.plataformas;
-  const perfiles = opt.dataset.perfiles;
-  prev.textContent = `${plats} · ${perfiles} — Precio: $${precio.toFixed(2)}`;
+  const tipo = document.getElementById('v-tipo').value;
+  if (tipo === 'individual') {
+    const plat = document.getElementById('v-plat-sel')?.value;
+    const precio = PLATS[plat]?.precio_ind || 0;
+    const prev = document.getElementById('v-precio-preview');
+    if (prev && plat) prev.textContent = 'Precio: $' + precio.toFixed(2);
+  }
+  // Para combo, el precio se muestra al seleccionar el combo (selComboVenta)
 }
 
 function renderUsuariosVenta() {
@@ -3784,7 +3683,6 @@ function openModal(id, title) {
   
   if (title) { const el = ov.querySelector('.mtit'); if(el && id !== 'm-param-form') el.textContent = title; }
   ov.classList.add('on');
-  if (id === 'm-venta') actualizarDropdownPlanes();
   
   // Sincronizar roles al abrir modal usuario
   if (id === 'm-usuario') { syncRolSelects(); }
@@ -5108,7 +5006,6 @@ renderC(CLIENTES);
 renderCob(CLIENTES.filter(c=>c.dias===0));
 // Cargar datos desde Supabase al iniciar
 setTimeout(async () => {
-  verificarSesionGuardada();
   await verificarConexion();
   await cargarPlanesPrecios();
   await dbCargarClientes();
