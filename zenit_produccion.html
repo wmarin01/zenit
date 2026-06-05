@@ -2819,6 +2819,58 @@ const PERFILES_DISP = {
   NF: [], DS: [], HB: [], PV: []
 };
 
+// Carga perfiles disponibles desde Supabase (inventario + suscripciones activas)
+// y puebla PERFILES_DISP para el modal de Nueva Venta
+async function dbCargarPerfilesDisp() {
+  try {
+    // 1. Traer todas las cuentas activas del inventario
+    const {data: cuentas, error} = await supa
+      .from('inventario')
+      .select('id, plataforma, correo, clave, max_perfiles, estado')
+      .eq('estado', 'Activa');
+    if (error) throw error;
+    if (!cuentas || !cuentas.length) return;
+
+    // 2. Traer perfiles ya ocupados (suscripciones activas)
+    const {data: subs} = await supa
+      .from('suscripciones')
+      .select('perfil_id')
+      .eq('estado', 'activo');
+    const ocupados = new Set((subs || []).map(s => (s.perfil_id || '').trim()).filter(Boolean));
+
+    // 3. Reconstruir PERFILES_DISP
+    Object.keys(PERFILES_DISP).forEach(k => { PERFILES_DISP[k] = []; });
+
+    cuentas.forEach(inv => {
+      const plat = inv.plataforma;
+      if (!PERFILES_DISP[plat]) return;
+      const maxP = parseInt(inv.max_perfiles) || 0;
+      for (let n = 1; n <= maxP; n++) {
+        const codigo = inv.id + n; // ej: NF0057 + 1 = NF00571
+        if (!ocupados.has(codigo)) {
+          PERFILES_DISP[plat].push({
+            codigo,
+            num: n,
+            cuenta: inv.id,
+            correo: inv.correo || '—',
+            clave:  inv.clave  || '—',
+            origen: inv.id + ' · perfil ' + n
+          });
+        }
+      }
+    });
+
+    console.log('[PERFILES_DISP] Cargados:', {
+      NF: PERFILES_DISP.NF.length,
+      DS: PERFILES_DISP.DS.length,
+      HB: PERFILES_DISP.HB.length,
+      PV: PERFILES_DISP.PV.length
+    });
+  } catch(e) {
+    console.warn('[PERFILES_DISP] Error:', e.message);
+  }
+}
+
 // Próximos códigos disponibles (4 dígitos, se actualiza desde Supabase)
 const NEXT_CODIGO = {NF:'NF0001', DS:'DS0001', HB:'HB0001', PV:'PV0001'};
 
@@ -2946,7 +2998,8 @@ function ventaPaso3() {
   ventaData.plats = platsSelec;
   ['vpaso1','vpaso2','vpaso3','vpaso4','vpaso5'].forEach((id,i) => document.getElementById(id).style.display = i===2?'block':'none');
   document.getElementById('v-cli-info3').textContent = ventaData.clienteNombre + ' · ' + ventaData.clienteTel;
-  renderPerfilesVenta();
+  // Refrescar perfiles disponibles antes de mostrar (por si el inventario cambió)
+  dbCargarPerfilesDisp().then(() => renderPerfilesVenta());
   renderUsuariosVenta();
   if (!ventaData.pins) ventaData.pins = {};
   renderPinsVenta();
@@ -5137,6 +5190,7 @@ setTimeout(async () => {
   await dbCargarCobros();
   await dbCargarSuscripciones();
   await dbCargarNextCodigos();
+  await dbCargarPerfilesDisp();
   await cargarUsuariosSistema();
   activarBotonesReutilizar();
   renderSubs(SUBS_FULL);
