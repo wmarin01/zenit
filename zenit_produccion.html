@@ -3784,6 +3784,7 @@ function openModal(id, title) {
   
   if (title) { const el = ov.querySelector('.mtit'); if(el && id !== 'm-param-form') el.textContent = title; }
   ov.classList.add('on');
+  if (id === 'm-venta') actualizarDropdownPlanes();
   
   // Sincronizar roles al abrir modal usuario
   if (id === 'm-usuario') { syncRolSelects(); }
@@ -5109,7 +5110,6 @@ renderCob(CLIENTES.filter(c=>c.dias===0));
 setTimeout(async () => {
   verificarSesionGuardada();
   await verificarConexion();
-  await cargarPlanesPrecios();
   await cargarPlanesPrecios();
   await dbCargarClientes();
   await dbCargarCobros();
