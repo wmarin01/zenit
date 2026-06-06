@@ -141,9 +141,7 @@ async function dbCargarClientes() {
   if (data && data.length > 0) {
     // Convertir formato Supabase → formato interno
     data.forEach(c => {
-      // Evitar duplicados: verificar por id Y por teléfono normalizado
-      const telNorm = (c.telefono||'').replace(/[\s\-\(\)]/g,'');
-      const existe = CLIENTES.find(x => x.id === c.id || (x.tel&&x.tel.replace(/[\s\-\(\)]/g,'')===telNorm&&telNorm.length>5));
+      const existe = CLIENTES.find(x => x.id === c.id);
       if (!existe) {
         CLIENTES.push({
           id: c.id,
@@ -175,7 +173,11 @@ async function dbCargarCobros() {
   if (data && data.length > 0) {
     data.forEach(c => {
       COBROS.push({
-        fecha: c.fecha ? c.fecha.split('-').reverse().join('/') : '—',
+        fecha: (() => {
+          if (!c.fecha) return '—';
+          if (c.fecha.includes('/')) return c.fecha; // ya es dd/mm/yyyy
+          return c.fecha.split('-').reverse().join('/'); // YYYY-MM-DD
+        })(),
         tipo: c.tipo,
         clienteId: c.cliente_id,
         nombre: c.nombre,
@@ -223,12 +225,22 @@ function renderVentasDB() {
     const plats = (v.plataformas||v.plats||'').split('+').map(p =>
       `<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
     const fechaRaw = v.vigencia_ini || v.fecha_inicio || '';
-    const fecha = fechaRaw
-      ? fechaRaw.split('-').reverse().join('/')
-      : (v.created_at ? v.created_at.substring(0,10).split('-').reverse().join('/') : '—');
-    const vctoRaw = v.vigencia_fin || v.fecha_vcto || v.fecha_fin || v.fecha_vcto || '—';
-    // Normalizar a dd/mm/yyyy si viene en YYYY-MM-DD
-    const vcto = vctoRaw !== '—' && vctoRaw.includes('-') ? vctoRaw.split('-').reverse().join('/') : vctoRaw;
+    const fecha = (() => {
+      if (!fechaRaw) return v.created_at ? v.created_at.substring(0,10).split('-').reverse().join('/') : '—';
+      if (fechaRaw.includes('/')) return fechaRaw; // ya es dd/mm/yyyy
+      const parts = fechaRaw.split('-');
+      if (parts[0].length === 4) return parts.reverse().join('/'); // YYYY-MM-DD
+      return fechaRaw;
+    })();
+    const vctoRaw = v.vigencia_fin || v.fecha_vcto || v.fecha_fin || '—';
+    // Normalizar: si viene YYYY-MM-DD convertir a dd/mm/yyyy; si ya es dd/mm/yyyy dejarlo
+    const vcto = (() => {
+      if (!vctoRaw || vctoRaw === '—') return '—';
+      if (vctoRaw.includes('/')) return vctoRaw; // ya está en dd/mm/yyyy
+      const parts = vctoRaw.split('-');
+      if (parts[0].length === 4) return parts.reverse().join('/'); // YYYY-MM-DD → dd/mm/yyyy
+      return vctoRaw;
+    })();
     const vigencia = `${fecha}→${vcto}`;
     return `<tr>
       <td style="font-size:12px">${fecha}</td>
