@@ -1564,7 +1564,7 @@ async function intentarLogin() {
       <div class="fsec"><div class="fst">Precio y pago</div>
         <div class="fr c3">
           <div class="fg"><label>Precio<span class="req">*</span></label><input type="text" id="v-precio" placeholder="$0.00"><div class="hint ok" id="v-precio-hint">Según plan seleccionado. Modificable.</div></div>
-          <div class="fg"><label>Banco<span class="req">*</span></label><select><option>Banco General</option><option>Banistmo</option><option>BAC</option><option>Caja de Ahorros</option></select></div>
+          <div class="fg"><label>Banco<span class="req">*</span></label><select id="pago-banco"><option>Banco General</option><option>Banistmo</option><option>BAC</option><option>Caja de Ahorros</option></select></div>
           <div class="fg"><label>Forma de pago<span class="req">*</span></label><select onchange="chkCrypto(this,'cx-venta')"><option value="">Yappy</option><option value="">Transferencia / ACH</option><option value="bin">Binance Pay</option><option value="">Efectivo</option></select></div>
         </div>
         <div class="cx" id="cx-venta"><div class="fr c3"><div class="fg"><label>Moneda</label><select><option>USDT</option><option>BTC</option></select></div><div class="fg"><label>Monto neto</label><input type="text" id="v-neto"></div><div class="fg"><label>Comisión red</label><input type="text" placeholder="0.00"><div class="hint w">Se suma al total</div></div></div></div>
@@ -1630,12 +1630,16 @@ async function intentarLogin() {
       <div class="fsec"><div class="fst">Datos del pago</div>
         <div class="fr c3">
           <div class="fg"><label>Monto total<span class="req">*</span></label><input type="text" id="pago-monto" placeholder="$0.00"><div class="hint ok" id="pago-monto-hint">Se calcula según suscripciones seleccionadas</div></div>
-          <div class="fg"><label>Banco<span class="req">*</span></label><select><option>Banco General</option><option>Banistmo</option><option>BAC</option><option>Caja de Ahorros</option></select></div>
-          <div class="fg"><label>Forma de pago<span class="req">*</span></label><select onchange="chkCrypto(this,'cx-pago')"><option value="">Yappy</option><option value="">Transferencia / ACH</option><option value="bin">Binance Pay</option><option value="">Efectivo</option></select></div>
+          <div class="fg"><label>Banco<span class="req">*</span></label><select id="pago-banco"><option>Banco General</option><option>Banistmo</option><option>BAC</option><option>Caja de Ahorros</option></select></div>
+          <div class="fg"><label>Forma de pago<span class="req">*</span></label><select id="pago-forma" onchange="chkCrypto(this,'cx-pago')"><option value="">Yappy</option><option value="">Transferencia / ACH</option><option value="bin">Binance Pay</option><option value="">Efectivo</option></select></div>
+        </div>
+        <div class="fr c2">
+          <div class="fg"><label>Fecha de pago<span class="req">*</span></label><input type="date" id="pago-fecha"><div class="hint">Fecha en que se recibió el pago</div></div>
+          <div class="fg"><label>Fecha vencimiento nueva</label><input type="date" id="pago-fecha-vcto"><div class="hint ok">Sugerida automáticamente · editable</div></div>
         </div>
         <div class="cx" id="cx-pago"><div class="fr c3"><div class="fg"><label>Moneda</label><select><option>USDT</option><option>BTC</option></select></div><div class="fg"><label>Monto neto</label><input type="text" id="pago-neto"></div><div class="fg"><label>Comisión red</label><input type="text" placeholder="0.00"><div class="hint w">Se suma al total</div></div></div></div>
         <div class="fr c2">
-          <div class="fg"><label>Nro. comprobante<span class="req">*</span></label><input type="text" placeholder="Referencia / hash" oninput="valComp(this,'hcp')"><div class="hint" id="hcp">Validación en tiempo real</div></div>
+          <div class="fg"><label>Nro. comprobante<span class="req">*</span></label><input type="text" id="pago-comp" placeholder="Referencia / hash" oninput="valComp(this,'hcp')"><div class="hint" id="hcp">Validación en tiempo real</div></div>
           <div class="fg"><label>Imagen comprobante</label><input type="file" accept="image/*"><div class="hint">Opcional</div></div>
         </div>
         <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);cursor:pointer;font-weight:400"><input type="checkbox" style="width:auto;margin:0">Es pago parcial (requiere autorización Master)</label>
@@ -2568,7 +2572,107 @@ async function confirmarVenta(){
   const waPlatNom = ventaData.tipo==='combo' ? 'Combo '+comboId : (PLATS[ventaData.plats[0]]?.nombre||'—');
   setTimeout(() => abrirWA(ventaData.clienteNombre, waPlatNom, '$'+monto.toFixed(2), 'entrega', waContext), 500);
 }
-function confirmarPago(){closeModal('m-pago');toast('Pago registrado · Fechas actualizadas','ok');}
+async function confirmarPago() {
+  const clienteId  = pagoData.clienteId;
+  const nombre     = pagoData.clienteNombre;
+  if (!clienteId) { toast('Selecciona un cliente', 'error'); return; }
+
+  // Suscripciones seleccionadas
+  const checkboxes = document.querySelectorAll('#pago-subs-lista input[type=checkbox]:checked');
+  if (!checkboxes.length) { toast('Selecciona al menos una suscripción', 'error'); return; }
+
+  const monto  = parseFloat(document.getElementById('pago-monto')?.value?.replace('$','')) || 0;
+  const banco  = document.getElementById('pago-banco')?.value || 'Banco General';
+  const forma  = document.getElementById('pago-forma')?.value || 'Yappy';
+  const comp   = document.getElementById('pago-comp')?.value?.trim() || '';
+  const tel    = CLIENTES.find(c => c.id === clienteId)?.tel || '';
+
+  if (!monto)  { toast('Ingresa el monto', 'error'); return; }
+
+  const btn = document.getElementById('btn-registrar-pago');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
+
+  try {
+    // Plataformas de las suscripciones seleccionadas
+    const plats = Array.from(checkboxes).map(cb => cb.dataset.plat).join('+');
+
+    // Guardar cobro en Supabase
+    const fechaPago = document.getElementById('pago-fecha')?.value || new Date().toISOString().split('T')[0];
+    const fechaVctoNueva = document.getElementById('pago-fecha-vcto')?.value || null;
+    const ok = await dbGuardarCobro({
+      tipo: 'Renovación',
+      clienteId,
+      nombre,
+      tel: normalizeTel(tel),
+      plat: plats,
+      correo: '',
+      usuario: '',
+      monto,
+      banco,
+      forma: forma || 'Yappy',
+      doc: comp,
+      fechaIni: fechaPago,
+      operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
+      dupAutorizado: false
+    });
+
+    if (!ok) throw new Error('Error al guardar cobro');
+
+    // Actualizar fecha_vcto de cada suscripción seleccionada
+    for (const cb of checkboxes) {
+      const subId    = cb.dataset.subid;
+      const meses    = parseInt(document.querySelector(`input[name="meses_${cb.dataset.plat}"]`)?.value || 1);
+      const subActual = SUBS_FULL.find(s => s.id == subId);
+      if (!subActual) continue;
+
+      // Usar fecha vcto del campo si está definida, sino calcular
+      let nuevaFVcto = fechaVctoNueva;
+      if (!nuevaFVcto) {
+        const [dd,mm,yy] = (subActual.fVcto||'').split('/');
+        const base = new Date(+yy, +mm-1, +dd);
+        base.setMonth(base.getMonth() + meses);
+        nuevaFVcto = base.toISOString().split('T')[0];
+      }
+
+      await supa.from('suscripciones')
+        .update({ fecha_vcto: nuevaFVcto, estado: 'activo', tipo_cliente: 'Renovación' })
+        .eq('id', subId);
+
+      // Actualizar en memoria
+      const idx = SUBS_FULL.findIndex(s => s.id == subId);
+      if (idx !== -1) {
+        SUBS_FULL[idx].fVcto = nuevaFVcto.split('-').reverse().join('/');
+        SUBS_FULL[idx].est = 'activo';
+        SUBS_FULL[idx].tipoCliente = 'Renovación';
+        SUBS_FULL[idx].dias = meses * 30;
+      }
+    }
+
+    // Agregar a COBROS en memoria
+    COBROS.unshift({
+      fecha: new Date().toLocaleDateString('es-PA',{day:'2-digit',month:'2-digit',year:'numeric'}),
+      tipo: 'Renovación', clienteId, nombre,
+      tel: normalizeTel(tel), plat: plats,
+      monto, banco, forma: forma||'Yappy', doc: comp,
+      operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
+      est: 'procesado'
+    });
+
+    await dbGuardarHistorial('Pago registrado', nombre + ' — $' + monto.toFixed(2), 'var(--green)');
+
+    closeModal('m-pago');
+    sincronizarPlatsClientes();
+    renderDashboard();
+    toast('Pago registrado correctamente ✓', 'ok');
+
+  } catch(e) {
+    console.error('Error registrando pago:', e);
+    toast('Error al registrar: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-check"></i>Registrar pago';
+  }
+}
 function confirmarCambio(){
   if (!cambioData.clienteId) { toast('Selecciona un cliente primero','warn'); return; }
   const tipo = document.getElementById('tipo-cambio')?.value || 'misma';
@@ -4136,7 +4240,7 @@ function renderSubsPago(clienteId) {
     const p = PLATS[s.plat];
     const vbadge = s.dias === 0 ? '<span class="b br">Hoy</span>' : s.dias === 1 ? '<span class="b ba">Mañana</span>' : `<span class="b bi">${s.dias} días</span>`;
     return `<div class="pi" id="psub-${i}" style="padding:10px 12px;margin-bottom:5px" onclick="toggleSubPago(${i},${s.precio})">
-      <input type="checkbox" id="chk-sub-${i}" checked style="width:auto;margin:0;flex-shrink:0">
+      <input type="checkbox" id="chk-sub-${i}" data-subid="${s.subId||''}" data-plat="${s.plat}" checked style="width:auto;margin:0;flex-shrink:0">
       <div style="flex:1;margin-left:8px">
         <div style="font-size:13px;font-weight:500"><span class="dot" style="background:${p.color};width:8px;height:8px;margin-right:5px"></span>${p.nombre} · ${s.perfil}</div>
         <div style="font-size:11px;color:var(--text3)">Vence ${s.vcto} · $${s.precio.toFixed(2)}</div>
@@ -4149,20 +4253,48 @@ function renderSubsPago(clienteId) {
     <div class="fg" id="meses-row-${i}">
       <label>${PLATS[s.plat].nombre} ${s.perfil}</label>
       <div style="display:flex;align-items:center;gap:8px">
-        <input type="number" id="meses-sub-${i}" value="1" min="1" max="12" style="max-width:65px" oninput="calcVctoPago(${i},'${s.vcto}')">
+        <input type="number" id="meses-sub-${i}" name="meses_${s.plat}" value="1" min="1" max="12" style="max-width:65px" oninput="calcVctoPago(${i},'${s.vcto}')">
         <span style="font-size:12px;color:var(--text3)">→ vence <strong id="vcto-sub-${i}" style="color:var(--text)">${calcNuevoVcto(s.vcto,1)}</strong></span>
       </div>
     </div>`).join('');
 
   calcTotalPago(subs);
   updResumenPago(subs);
+  // Inicializar fecha de pago con hoy
+  const hoy = new Date().toISOString().split('T')[0];
+  const fp = document.getElementById('pago-fecha');
+  if (fp && !fp.value) fp.value = hoy;
+  // Fecha vcto sugerida = vcto más próxima de las subs + 1 mes
+  if (subs.length) {
+    const vctoSugerida = calcNuevoVcto(subs[0].vcto, 1);
+    const fv = document.getElementById('pago-fecha-vcto');
+    // convertir dd/mm/yyyy a YYYY-MM-DD
+    if (fv && vctoSugerida) {
+      const [dd,mm,yy] = vctoSugerida.split('/');
+      if (dd && mm && yy) fv.value = `${yy}-${mm.zfill ? mm.zfill(2) : mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+    }
+  }
 }
 
 function calcNuevoVcto(vctoActual, meses) {
-  // Convertir dd/mm/yyyy a fecha
+  // Sumar meses manteniendo el mismo día (para cobros/renovaciones)
+  // 30/06/2026 + 1 mes = 30/07/2026
+  // 31/05/2026 + 1 mes = 30/06/2026 (ajuste al último día del mes)
+  if (!vctoActual || vctoActual === '—') return '';
   const [dd,mm,yy] = vctoActual.split('/');
-  const base = `${yy}-${mm}-${dd}`;
-  return calcFechaVcto(base, meses);
+  const diaOriginal = parseInt(dd);
+  const base = new Date(+yy, +mm-1, +dd);
+  base.setMonth(base.getMonth() + meses);
+  // Si el mes cambió más de lo esperado (ej: 31 mayo + 1 = 1 julio en vez de 30 junio)
+  // retroceder al último día del mes correcto
+  const mesEsperado = ((+mm - 1 + meses) % 12);
+  if (base.getMonth() !== mesEsperado) {
+    base.setDate(0); // último día del mes anterior
+  }
+  const rdd = String(base.getDate()).padStart(2,'0');
+  const rmm = String(base.getMonth()+1).padStart(2,'0');
+  const ryy = base.getFullYear();
+  return `${rdd}/${rmm}/${ryy}`;
 }
 
 function calcVctoPago(idx, vctoActual) {
