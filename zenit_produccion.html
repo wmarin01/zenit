@@ -594,6 +594,8 @@ async function intentarLogin() {
     welcome.style.transition = 'opacity .5s ease';
     welcome.style.opacity = '0';
     setTimeout(() => { welcome.style.display = 'none'; }, 500);
+    // Iniciar la app con los datos reales
+    iniciarApp();
   } catch(e) {
     const msgs = {
       bad_pass:   'Contraseña incorrecta. Intenta de nuevo.',
