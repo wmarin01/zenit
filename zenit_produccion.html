@@ -478,9 +478,10 @@ select option{background:var(--bg3)}
 <!-- ═══════════════════════════════════════════════════════
      PANTALLA DE BIENVENIDA Y LOGIN — ZENIT
 ═══════════════════════════════════════════════════════ -->
-<div id="zenit-welcome" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0a0a0f 0%,#0f0f1a 40%,#080d18 100%);display:flex;align-items:stretch;overflow:hidden;font-family:'Inter','Segoe UI',system-ui,sans-serif;">
+<div id="zenit-welcome" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0a0a0f 0%,#0f0f1a 40%,#080d18 100%);display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:'Inter','Segoe UI',system-ui,sans-serif;">
+  <div style="display:flex;align-items:stretch;width:100%;max-width:1200px;min-height:100vh;position:relative;">
   <!-- Panel izquierdo — branding -->
-  <div style="flex:1.1;display:flex;flex-direction:column;justify-content:center;padding:60px 70px;position:relative;overflow:hidden;">
+  <div style="flex:1.1;display:flex;flex-direction:column;justify-content:center;padding:60px 70px;position:relative;overflow:hidden;max-width:700px;">
     <div style="position:absolute;top:-80px;left:-80px;width:400px;height:400px;background:radial-gradient(circle,rgba(99,102,241,.12) 0%,transparent 70%);pointer-events:none"></div>
     <div style="position:absolute;bottom:-60px;right:-40px;width:300px;height:300px;background:radial-gradient(circle,rgba(56,193,114,.08) 0%,transparent 70%);pointer-events:none"></div>
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:52px;">
@@ -541,6 +542,7 @@ select option{background:var(--bg3)}
     <p style="text-align:center;font-size:11px;color:#334155;margin-top:32px;">ZENIT v1.0 &nbsp;·&nbsp; Panamá, 2026</p>
   </div>
 </div>
+  </div><!-- end panels wrapper -->
 <script>
 // supa client ya disponible globalmente — no se necesita fetch directo
 
@@ -581,7 +583,8 @@ async function intentarLogin() {
       .limit(1);
     if (error) throw new Error('conn_error');
     if (!data || !data.length) throw new Error('no_user');
-    if (data[0].password !== password) throw new Error('bad_pass');
+    const storedPass = data[0].password || data[0].clave || data[0].contrasena || '';
+    if (storedPass !== password) throw new Error('bad_pass');
     // Login exitoso
     sessionStorage.setItem('zenit_usuario', JSON.stringify(data[0]));
     const welcome = document.getElementById('zenit-welcome');
