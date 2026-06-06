@@ -1041,7 +1041,7 @@ async function intentarLogin() {
   <div style="display:flex;gap:9px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
     <div class="sbox" style="flex:1;max-width:320px"><i class="ti ti-search"></i><input type="text" placeholder="Cliente, perfil, teléfono..." oninput="filtSubs(this.value)"></div>
     <select onchange="filtSubsPlat(this.value)"><option value="">Todas las plataformas</option><option value="NF">Netflix</option><option value="DS">Disney+</option><option value="HB">HBO Max</option><option value="PV">Prime Video</option></select>
-    <select onchange="filtSubsEst(this.value)"><option value="">Todos los estados</option><option value="activo">Activos</option><option value="vencido">Vencidos</option><option value="sin_renovar">Sin renovar</option></select>
+    <select onchange="filtSubsEst(this.value)"><option value="">Todos los estados</option><option value="activo">Activos</option><option value="vencido">Vencidos</option><option value="sin_renovar">Sin renovar</option><option value="inactivo">Inactivos</option></select>
     <select onchange="filtSubsDias(this.value)"><option value="">Todos los vencimientos</option><option value="hoy">Vencen hoy</option><option value="3d">En 3 días</option><option value="7d">En 7 días</option></select>
   </div>
   <div class="card" style="overflow-x:auto;padding:0">
@@ -5145,13 +5145,13 @@ function renderSubs(data) {
   }
   tbody.innerHTML = data.map(s => {
     const pc = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'}[s.plat] || 'var(--accent)';
-    const diasBadge = s.est==='sin_renovar' ? '<span class="b bp">Vencido</span>' :
+    const diasBadge = s.est==='inactivo' ? '<span class="b bp">Inactivo</span>' : s.est==='sin_renovar' ? '<span class="b bp">Vencido</span>' :
       s.dias===0 ? '<span class="b br">Hoy</span>' :
       s.dias<=1  ? '<span class="b ba">'+s.dias+' día</span>' :
       s.dias<=3  ? '<span class="b ba">'+s.dias+' días</span>' :
       s.dias<=7  ? '<span class="b bi">'+s.dias+' días</span>' :
                    '<span class="b bp">'+s.dias+' días</span>';
-    const estBadge = s.est==='activo'?'<span class="b bg">Activo</span>':s.est==='sin_renovar'?'<span class="b ba">Sin renovar</span>':'<span class="b br">Vencido</span>';
+    const estBadge = s.est==='activo'?'<span class="b bg">Activo</span>':s.est==='sin_renovar'?'<span class="b ba">Sin renovar</span>':s.est==='inactivo'?'<span class="b bp">Inactivo</span>':'<span class="b br">Vencido</span>';
     const tipoBadge = s.tipo==='Combo' ? '<span class="b bpu">Combo</span>' : '<span class="b bi">Individual</span>';
     const tcBadge = s.tipoCliente==='Nuevo' ? '<span class="b bg">Nuevo</span>' : '<span class="b bp">Renovación</span>';
     const comboStr = s.combo && s.combo !== '—' && s.combo !== 'undefined' ? `<span style="font-size:11px;color:var(--purple)">${s.combo}</span>` : '—';
