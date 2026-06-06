@@ -285,18 +285,19 @@ async function dbCargarSuscripciones() {
 }
 
 function sincronizarPlatsClientes() {
-  // Resetear plats y dias de todos los clientes
-  CLIENTES.forEach(c => { c.plats = []; c.dias = 999; });
-  // Poblar desde SUBS_FULL
-  SUBS_FULL.forEach(s => {
-    const cli = CLIENTES.find(c => c.id === s.clienteId);
-    if (!cli) return;
-    if (!cli.plats.includes(s.plat)) cli.plats.push(s.plat);
-    if (s.dias < cli.dias) cli.dias = s.dias; // guardar el vencimiento más próximo
-  });
-  // Normalizar dias=999 a 0 para clientes sin suscripciones activas
-  CLIENTES.forEach(c => { if (c.dias === 999) c.dias = 0; });
-  renderC(CLIENTES);
+  try {
+    if (!CLIENTES || !SUBS_FULL) return;
+    CLIENTES.forEach(c => { c.plats = []; c.dias = 999; });
+    SUBS_FULL.forEach(s => {
+      const cli = CLIENTES.find(c => c.id === s.clienteId);
+      if (!cli) return;
+      if (s.plat && !cli.plats.includes(s.plat)) cli.plats.push(s.plat);
+      if (typeof s.dias === 'number' && s.dias < cli.dias) cli.dias = s.dias;
+    });
+    CLIENTES.forEach(c => { if (c.dias === 999) c.dias = 0; });
+    renderC(CLIENTES);
+    console.log('[SYNC] plats/dias sincronizados');
+  } catch(e) { console.error('[SYNC] Error:', e); }
 }
 
 // Indicador de conexión
@@ -5747,20 +5748,25 @@ function syncRolSelects() {
 renderC(CLIENTES);
 // Función centralizada de inicio de app — llamada desde login o si hay sesión guardada
 async function iniciarApp() {
-  await verificarConexion();
-  await cargarPlanesPrecios();
-  await dbCargarClientes();
-  await dbCargarCobros();
-  await dbCargarVentas();
-  await dbCargarSuscripciones();
-  await dbCargarNextCodigos();
-  await dbCargarPerfilesDisp();
-  await cargarUsuariosSistema();
-  renderDashboard();
-  activarBotonesReutilizar();
-  renderSubs(SUBS_FULL);
-  updMetricasCobros();
-  renderCobros(COBROS);
+  try {
+    await verificarConexion();
+    await cargarPlanesPrecios();
+    await dbCargarClientes();
+    await dbCargarCobros();
+    await dbCargarVentas();
+    await dbCargarSuscripciones();
+    await dbCargarNextCodigos();
+    await dbCargarPerfilesDisp();
+    await cargarUsuariosSistema();
+    renderDashboard();
+    if (typeof activarBotonesReutilizar === 'function') activarBotonesReutilizar();
+    renderSubs(SUBS_FULL);
+    if (typeof updMetricasCobros === 'function') updMetricasCobros();
+    if (typeof renderCobros === 'function') renderCobros(COBROS);
+    console.log('[APP] Carga completa ✓');
+  } catch(e) {
+    console.error('[APP] Error en iniciarApp:', e);
+  }
 }
 // Si hay sesión guardada, iniciar automáticamente
 setTimeout(() => {
