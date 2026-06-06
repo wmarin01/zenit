@@ -2291,21 +2291,7 @@ async function confirmarVenta(){
     return p ? p.correo : '—';
   };
 
-  // 1. TABLA VENTAS — una fila con todas las plataformas del combo
-  // Agregar a VENTAS_DB en memoria para render inmediato
-  VENTAS_DB.unshift({
-    nombre: ventaData.clienteNombre,
-    plataformas: ventaData.plats.join('+'),
-    perfiles: resumen,
-    pins: Object.values(pins).join('/'),
-    fecha_inicio: fIniVal,
-    fecha_vcto: vcto,
-    monto: monto
-  });
-  renderVentasDB();
-
-
-  // 2. SUBS_FULL — una entrada por plataforma
+  // 1. SUBS_FULL — una entrada por plataforma
   ventaData.plats.forEach(p => {
     const perf    = ventaData.perfilesSel[p];
     const perfCod = perf ? perf.codigo : '—';
@@ -2385,6 +2371,17 @@ async function confirmarVenta(){
 
   // 5. Historial
   const resumen = ventaData.plats.map(p => ventaData.perfilesSel[p]?.codigo||'—').join('+');
+  // TABLA VENTAS — agregar a memoria para render inmediato
+  VENTAS_DB.unshift({
+    nombre: ventaData.clienteNombre,
+    plataformas: ventaData.plats.join('+'),
+    perfiles: resumen,
+    pins: Object.values(pins).join('/'),
+    fecha_inicio: fIniVal,
+    fecha_vcto: vcto,
+    monto: monto
+  });
+  renderVentasDB();
   if (ventaData.dupAutorizado) {
     const docDup = document.querySelector('#m-venta input[oninput*="valComp"]')?.value || '—';
     agregarHistorial('⚠ Comprobante duplicado autorizado', ventaData.clienteNombre+' — Doc: '+docDup+' — autorizado por operador', 'var(--amber)');
