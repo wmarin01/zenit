@@ -1677,7 +1677,7 @@ async function intentarLogin() {
                 <button class="btn btn-sm btn-ic" onclick="toggleClaveCambio(this,'cambio-clave-ant')" title="Ver clave"><i class="ti ti-eye"></i></button>
               </div>
             </div></div>
-          <div class="fr c2"><div class="fg"><label>PIN actual</label><input type="text" value="2209" readonly></div><div class="fg"><label>Vencimiento</label><input type="text" value="30/06/2026" readonly><div class="hint ok">Se mantiene en la cuenta nueva</div></div></div>
+          <div class="fr c2"><div class="fg"><label>PIN actual</label><input type="text" id="cambio-pin-ant" value="" readonly></div><div class="fg"><label>Vencimiento</label><input type="text" id="cambio-vcto-ant" value="" readonly><div class="hint ok">Se mantiene en la cuenta nueva</div></div></div>
         </div>
       </div>
       <div><div class="fst" style="color:var(--green);margin-bottom:8px">Cuenta nueva — se asigna</div>
@@ -4894,12 +4894,22 @@ function selClienteCambio(id, nombre, tel) {
   document.getElementById('cambio-busq').value = '';
   document.getElementById('cambio-sub').textContent = nombre + ' · ' + id;
   // Cargar suscripciones del cliente desde SUBS_FULL (incluye vencidas)
-  console.log('[CAMBIO] Buscando subs para:', id, '| SUBS_FULL total:', SUBS_FULL.length);
   const subs = SUBS_FULL.filter(s => s.clienteId === id);
-  console.log('[CAMBIO] Subs encontradas:', subs.length, subs.map(s=>s.perfil));
-  const subSel = document.querySelector('#m-cambio .colold select');
+  const subSel = document.getElementById('acceso-sub-sel');
   if (subSel) {
     if (subs.length) {
+      subSel.onchange = function() {
+        const sel = subs.find(s => s.perfil === this.value.split('|')[2]);
+        if (!sel) return;
+        const cE = document.getElementById('acceso-correo-val');
+        const pE = document.getElementById('cambio-pin-ant');
+        const vE = document.getElementById('cambio-vcto-ant');
+        const kE = document.getElementById('cambio-clave-ant');
+        if (cE) cE.value = sel.correo || '';
+        if (pE) pE.value = sel.pin    || '';
+        if (vE) vE.value = sel.fVcto  || '';
+        if (kE) { kE.value = '••••••••'; kE.dataset.real = sel.clave || ''; }
+      };
       subSel.innerHTML = subs.map(s => {
         const platNom = PLATS[s.plat]?.nombre || s.plat;
         const dias = s.dias < 0 ? ` (vencida hace ${Math.abs(s.dias)}d)` : s.dias === 0 ? ' (vence hoy)' : ` (${s.dias}d)`;
@@ -4907,10 +4917,15 @@ function selClienteCambio(id, nombre, tel) {
       }).join('');
       // Auto-rellenar campos con la primera suscripción
       const first = subs[0];
-      const correoEl = document.querySelector('#m-cambio .colold input[placeholder*="orreo"], #m-cambio .colold .fg:nth-child(2) input');
-      const vctoEl   = document.querySelector('#m-cambio .colold input[placeholder*="enci"], #m-cambio .colold .fg:nth-child(4) input');
+      // Poblar campos de la cuenta anterior
+      const correoEl = document.getElementById('acceso-correo-val');
+      const pinEl    = document.getElementById('cambio-pin-ant');
+      const vctoEl   = document.getElementById('cambio-vcto-ant');
+      const claveEl  = document.getElementById('cambio-clave-ant');
       if (correoEl) correoEl.value = first.correo || '';
+      if (pinEl)    pinEl.value    = first.pin    || '';
       if (vctoEl)   vctoEl.value   = first.fVcto  || '';
+      if (claveEl)  { claveEl.value = '••••••••'; claveEl.dataset.real = first.clave || ''; }
     } else {
       subSel.innerHTML = '<option>— Sin suscripciones —</option>';
     }
