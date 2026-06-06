@@ -159,6 +159,12 @@ async function dbCargarClientes() {
     });
     renderC(CLIENTES);
     console.log('Clientes cargados desde Supabase:', data.length);
+    // Actualizar contador para nuevos IDs
+    const maxId = CLIENTES.reduce((max, c) => {
+      const n = parseInt((c.id || '').replace('CLI-', '')) || 0;
+      return n > max ? n : max;
+    }, 0);
+    if (maxId > 0) NEXT_CLI_ID = maxId + 1;
   }
 }
 
@@ -216,10 +222,13 @@ function renderVentasDB() {
   tb.innerHTML = VENTAS_DB.map(v => {
     const plats = (v.plataformas||v.plats||'').split('+').map(p =>
       `<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
-    const fecha = v.fecha_inicio
-      ? v.fecha_inicio.split('-').reverse().join('/')
+    const fechaRaw = v.vigencia_ini || v.fecha_inicio || '';
+    const fecha = fechaRaw
+      ? fechaRaw.split('-').reverse().join('/')
       : (v.created_at ? v.created_at.substring(0,10).split('-').reverse().join('/') : '—');
-    const vcto  = v.fecha_vcto || v.fecha_fin || '—';
+    const vctoRaw = v.vigencia_fin || v.fecha_vcto || v.fecha_fin || v.fecha_vcto || '—';
+    // Normalizar a dd/mm/yyyy si viene en YYYY-MM-DD
+    const vcto = vctoRaw !== '—' && vctoRaw.includes('-') ? vctoRaw.split('-').reverse().join('/') : vctoRaw;
     const vigencia = `${fecha}→${vcto}`;
     return `<tr>
       <td style="font-size:12px">${fecha}</td>
@@ -249,23 +258,45 @@ async function dbCargarSuscripciones() {
         perfil: s.perfil_id || '—',
         correo: s.correo || '—',
         clave: '—',
-        nombre: s.clientes ? s.clientes.nombre + ' ' + s.clientes.apellido : '—',
-        tel: s.clientes ? normalizeTel(s.clientes.telefono) : '—',
+        nombre: s.clientes ? (s.clientes.nombre + ' ' + (s.clientes.apellido||'')).trim() : (s.nombre || '—'),
+        tel: s.clientes ? normalizeTel(s.clientes.telefono) : normalizeTel(s.telefono||''),
         usuario: s.usuario || '—',
         pin: s.pin || '—',
         fIni: s.fecha_inicio ? s.fecha_inicio.split('-').reverse().join('/') : '—',
         fVcto: s.fecha_vcto ? s.fecha_vcto.split('-').reverse().join('/') : '—',
-        dias: 0,
+        dias: (() => {
+          if (!s.fecha_vcto) return 0;
+          const [yy,mm,dd] = s.fecha_vcto.split('-');
+          const hoy = new Date(); hoy.setHours(0,0,0,0);
+          return Math.ceil((new Date(+yy,+mm-1,+dd) - hoy) / 86400000);
+        })(),
         tipoCliente: s.tipo_cliente || 'Nuevo',
         monto: parseFloat(s.monto),
         tipo: s.tipo,
         plat: s.plataforma,
-        combo: s.combo_id || '—',
+        combo: s.combo_id && s.combo_id !== 'undefined' ? s.combo_id : '—',
         est: s.estado
       });
     });
     console.log('Suscripciones cargadas desde Supabase:', data.length);
+    // Poblar plats y dias en CLIENTES desde suscripciones activas
+    sincronizarPlatsClientes();
   }
+}
+
+function sincronizarPlatsClientes() {
+  // Resetear plats y dias de todos los clientes
+  CLIENTES.forEach(c => { c.plats = []; c.dias = 999; });
+  // Poblar desde SUBS_FULL
+  SUBS_FULL.forEach(s => {
+    const cli = CLIENTES.find(c => c.id === s.clienteId);
+    if (!cli) return;
+    if (!cli.plats.includes(s.plat)) cli.plats.push(s.plat);
+    if (s.dias < cli.dias) cli.dias = s.dias; // guardar el vencimiento más próximo
+  });
+  // Normalizar dias=999 a 0 para clientes sin suscripciones activas
+  CLIENTES.forEach(c => { if (c.dias === 999) c.dias = 0; });
+  renderC(CLIENTES);
 }
 
 // Indicador de conexión
@@ -2377,6 +2408,8 @@ async function confirmarVenta(){
     plataformas: ventaData.plats.join('+'),
     perfiles: resumen,
     pins: Object.values(pins).join('/'),
+    vigencia_ini: fIniVal,
+    vigencia_fin: vctoRaw,   // YYYY-MM-DD para normalización consistente
     fecha_inicio: fIniVal,
     fecha_vcto: vcto,
     monto: monto
@@ -3230,6 +3263,7 @@ async function dbCargarPerfilesDisp() {
 
 // Próximos códigos disponibles (4 dígitos, se actualiza desde Supabase)
 const NEXT_CODIGO = {NF:'NF0001', DS:'DS0001', HB:'HB0001', PV:'PV0001'};
+let NEXT_CLI_ID = 1; // Se actualiza al cargar clientes desde Supabase
 
 // Cargar siguiente código disponible desde Supabase para cada plataforma
 async function dbCargarNextCodigos() {
@@ -4890,7 +4924,7 @@ function renderSubs(data) {
     const estBadge = s.est==='activo'?'<span class="b bg">Activo</span>':s.est==='sin_renovar'?'<span class="b ba">Sin renovar</span>':'<span class="b br">Vencido</span>';
     const tipoBadge = s.tipo==='Combo' ? '<span class="b bpu">Combo</span>' : '<span class="b bi">Individual</span>';
     const tcBadge = s.tipoCliente==='Nuevo' ? '<span class="b bg">Nuevo</span>' : '<span class="b bp">Renovación</span>';
-    const comboStr = s.combo !== '—' ? `<span style="font-size:11px;color:var(--purple)">${s.combo}</span>` : '—';
+    const comboStr = s.combo && s.combo !== '—' && s.combo !== 'undefined' ? `<span style="font-size:11px;color:var(--purple)">${s.combo}</span>` : '—';
     return `<tr>
       <td style="font-family:var(--mono);font-size:11px">${s.clienteId}</td>
       <td style="font-family:var(--mono);font-size:12px"><strong>${s.perfil}</strong></td>
