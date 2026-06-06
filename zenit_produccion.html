@@ -785,6 +785,7 @@ async function intentarLogin() {
 </div>
 <!-- COBRANZA -->
 <div class="view" id="v-cobranza">
+  <div class="sbox" style="margin-bottom:12px"><i class="ti ti-search"></i><input type="text" id="cob-busq" placeholder="Buscar cliente, plataforma..." oninput="document.querySelector('#cobtabs .tab.on')?.click()"></div>
   <div class="tabs" id="cobtabs">
     <div class="tab on" onclick="tabCob(this,'tc-hoy')">Vencen hoy<span class="tcnt">3</span></div>
     <div class="tab" onclick="tabCob(this,'tc-1d')">Mañana<span class="tcnt">8</span></div>
@@ -1039,10 +1040,20 @@ async function intentarLogin() {
 <!-- SUSCRIPCIONES -->
 <div class="view" id="v-suscripciones">
   <div style="display:flex;gap:9px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
-    <div class="sbox" style="flex:1;max-width:320px"><i class="ti ti-search"></i><input type="text" placeholder="Cliente, perfil, teléfono..." oninput="filtSubs(this.value)"></div>
-    <select onchange="filtSubsPlat(this.value)"><option value="">Todas las plataformas</option><option value="NF">Netflix</option><option value="DS">Disney+</option><option value="HB">HBO Max</option><option value="PV">Prime Video</option></select>
-    <select onchange="filtSubsEst(this.value)"><option value="">Todos los estados</option><option value="activo">Activos</option><option value="vencido">Vencidos</option><option value="sin_renovar">Sin renovar</option><option value="inactivo">Inactivos</option></select>
-    <select onchange="filtSubsDias(this.value)"><option value="">Todos los vencimientos</option><option value="hoy">Vencen hoy</option><option value="3d">En 3 días</option><option value="7d">En 7 días</option></select>
+    <div class="sbox" style="flex:1;max-width:320px"><i class="ti ti-search"></i><input type="text" id="subs-busq" placeholder="Cliente, perfil, teléfono..." oninput="filtSubs(this.value)"></div>
+    <select id="subs-filtro-plat" onchange="filtSubsPlat(this.value)">
+      <option value="">Todas las plataformas</option>
+      <option value="NF">Netflix</option>
+      <option value="DS">Disney+</option>
+      <option value="HB">HBO Max</option>
+      <option value="PV">Prime Video</option>
+      <option value="NF_SOLO">Netflix (solo)</option>
+      <option value="DS_SOLO">Disney+ (solo)</option>
+      <option value="HB_SOLO">HBO Max (solo)</option>
+      <option value="PV_SOLO">Prime Video (solo)</option>
+    </select>
+    <select id="subs-filtro-est" onchange="filtSubsEst(this.value)"><option value="">Todos los estados</option><option value="activo">Activos</option><option value="vencido">Vencidos</option><option value="sin_renovar">Sin renovar</option><option value="inactivo">Inactivos</option></select>
+    <select id="subs-filtro-dias" onchange="filtSubsDias(this.value)"><option value="">Todos los vencimientos</option><option value="hoy">Vencen hoy</option><option value="3d">En 3 días</option><option value="7d">En 7 días</option></select>
   </div>
   <div class="card" style="overflow-x:auto;padding:0">
     <table style="min-width:1400px">
@@ -2204,8 +2215,19 @@ function tabCob(el,id){
   });
   // Renderizar tabla en el contenedor activo
   const tbodyMap = {'tc-hoy':'tcob-hoy','tc-1d':'tcob-1d','tc-3d':'tcob-3d','tc-todos':'tcob-todos'};
+  const cobBusca = (document.getElementById('cob-busq')?.value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   const tbody = document.getElementById(tbodyMap[id] || 'tcob-hoy');
   if (!tbody) return;
+  // Aplicar búsqueda de texto en cobranza
+  if (cobBusca) {
+    filtrados = filtrados.filter(s => {
+      const nom = (s.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      return nom.includes(cobBusca) ||
+        normalizeTel(s.tel||'').includes(normalizeTel(cobBusca)) ||
+        (s.plat||'').toLowerCase().includes(cobBusca) ||
+        (s.perfil||'').toLowerCase().includes(cobBusca);
+    });
+  }
   if (!filtrados.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No hay suscripciones en este período</td></tr>'; return; }
   const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
   tbody.innerHTML = filtrados.map(s => {
@@ -5326,26 +5348,36 @@ function toggleClaveSub(btn, clave) {
 function filtSubs(q) { _aplicarFiltrosSubs(); }
 // Filtros de suscripciones — se combinan todos activos
 function _aplicarFiltrosSubs() {
-  const busca = (document.querySelector('#v-suscripciones input[oninput*="filtSubs"]')?.value || '').toLowerCase().trim();
-  const plat  = document.querySelector('#v-suscripciones select:nth-of-type(1)')?.value || '';
-  const est   = document.querySelector('#v-suscripciones select:nth-of-type(2)')?.value || '';
-  const dias  = document.querySelector('#v-suscripciones select:nth-of-type(3)')?.value || '';
+  const busca = (document.getElementById('subs-busq') || document.querySelector('#v-suscripciones input[oninput*="filtSubs"]'))?.value?.toLowerCase().trim() || '';
+  const plat  = document.getElementById('subs-filtro-plat')?.value || '';
+  const est   = document.getElementById('subs-filtro-est')?.value || '';
+  const dias  = document.getElementById('subs-filtro-dias')?.value || '';
   let data = SUBS_FULL;
-  if (plat)  data = data.filter(s => s.plat === plat || (s.plat||'').split('+').includes(plat));
+  if (plat) {
+    if (plat.endsWith('_SOLO')) {
+      const p = plat.replace('_SOLO','');
+      data = data.filter(s => s.plat === p); // exacto, sin combos
+    } else {
+      data = data.filter(s => s.plat === plat || (s.plat||'').split('+').includes(plat));
+    }
+  }
   if (est)   data = data.filter(s => s.est === est);
   if (dias)  data = data.filter(s => dias==='hoy' ? s.dias===0 : dias==='3d' ? s.dias<=3 : s.dias<=7);
   if (busca) {
-    const bNorm = normalizeTel(busca);
-    data = data.filter(s =>
-      (s.nombre||'').toLowerCase().includes(busca) ||
-      normalizeTel(s.tel||'').includes(bNorm) ||
-      (s.tel||'').replace(/[^0-9]/g,'').includes(busca.replace(/[^0-9]/g,'')) ||
-      (s.perfil||'').toLowerCase().includes(busca) ||
-      (s.clienteId||'').toLowerCase().includes(busca) ||
-      (s.correo||'').toLowerCase().includes(busca) ||
-      (s.usuario||'').toLowerCase().includes(busca) ||
-      (s.pin||'').includes(busca)
-    );
+    const bNorm  = normalizeTel(busca);
+    const bLower = busca.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    data = data.filter(s => {
+      const nombre  = (s.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const usuario = (s.usuario||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      return nombre.includes(bLower) ||
+        normalizeTel(s.tel||'').includes(bNorm) ||
+        (s.tel||'').replace(/[^0-9]/g,'').includes(busca.replace(/[^0-9]/g,'')) ||
+        (s.perfil||'').toLowerCase().includes(busca) ||
+        (s.clienteId||'').toLowerCase().includes(busca) ||
+        (s.correo||'').toLowerCase().includes(busca) ||
+        usuario.includes(bLower) ||
+        (s.pin||'').includes(busca);
+    });
   }
   renderSubs(data);
 }
