@@ -259,7 +259,6 @@ function renderVentasDB() {
 async function dbCargarSuscripciones() {
   const { data, error } = await supa.from('suscripciones')
     .select('*, clientes(nombre, apellido, telefono)')
-    .eq('estado', 'activo')
     .order('created_at', { ascending: false })
     .limit(2000);
   if (error) { console.error('Error cargando suscripciones:', error); return; }
