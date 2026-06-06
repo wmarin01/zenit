@@ -587,7 +587,6 @@ async function intentarLogin() {
     if (u.estado && u.estado.toLowerCase() !== 'activo') throw new Error('no_user');
     const storedPass = (u.password_hash || u.password || u.clave || '').trim();
     const inputPass  = password.trim();
-    console.log('Login debug — stored:', JSON.stringify(storedPass), 'input:', JSON.stringify(inputPass), 'match:', storedPass === inputPass);
     if (storedPass !== inputPass) throw new Error('bad_pass');
     // Login exitoso
     sessionStorage.setItem('zenit_usuario', JSON.stringify(data[0]));
