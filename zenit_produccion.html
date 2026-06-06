@@ -4894,7 +4894,9 @@ function selClienteCambio(id, nombre, tel) {
   document.getElementById('cambio-busq').value = '';
   document.getElementById('cambio-sub').textContent = nombre + ' · ' + id;
   // Cargar suscripciones del cliente desde SUBS_FULL (incluye vencidas)
+  console.log('[CAMBIO] Buscando subs para:', id, '| SUBS_FULL total:', SUBS_FULL.length);
   const subs = SUBS_FULL.filter(s => s.clienteId === id);
+  console.log('[CAMBIO] Subs encontradas:', subs.length, subs.map(s=>s.perfil));
   const subSel = document.querySelector('#m-cambio .colold select');
   if (subSel) {
     if (subs.length) {
