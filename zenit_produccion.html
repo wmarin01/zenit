@@ -5090,28 +5090,13 @@ async function guardarEdicionSub() {
 
     if (error) throw error;
 
-    // Si cambia a inactivo → liberar el perfil en inventario
+    // Si cambia estado → recargar perfiles disponibles (disponibilidad se calcula
+    // cruzando inventario con suscripciones activas, no hay campo ocupado/disponible)
     const subActual = SUBS_FULL.find(s => s.id == id);
     const estadoAnterior = subActual?.est || '';
-    if (estado === 'inactivo' && estadoAnterior !== 'inactivo' && subActual?.perfil && subActual.perfil !== '—') {
-      const { error: epErr } = await supa.from('perfiles')
-        .update({ estado: 'activo' })
-        .eq('id', subActual.perfil);
-      if (epErr) console.warn('No se pudo liberar perfil:', epErr);
-      else {
-        // También actualizar PERFILES_DISP en memoria
-        const plat = subActual.plat;
-        if (PERFILES_DISP[plat]) {
-          // Re-cargar perfiles disponibles
-          await dbCargarPerfilesDisp();
-        }
-        console.log('[PERFIL] Liberado:', subActual.perfil);
-      }
-    }
-
-    // Si cambia de inactivo a activo → marcar perfil como ocupado
-    if (estado === 'activo' && estadoAnterior === 'inactivo' && subActual?.perfil && subActual.perfil !== '—') {
-      await supa.from('perfiles').update({ estado: 'ocupado' }).eq('id', subActual.perfil);
+    if (estado !== estadoAnterior) {
+      await dbCargarPerfilesDisp();
+      console.log('[PERFIL] Perfiles recargados por cambio de estado:', estadoAnterior, '→', estado);
     }
 
     // Registrar en historial
