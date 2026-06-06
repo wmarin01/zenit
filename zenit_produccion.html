@@ -579,12 +579,16 @@ async function intentarLogin() {
       .from('usuarios_sistema')
       .select('*')
       .eq('usuario', usuario)
-      .eq('estado', 'Activo')
       .limit(1);
-    if (error) throw new Error('conn_error');
+    if (error) { console.error('Login DB error:', error); throw new Error('conn_error'); }
     if (!data || !data.length) throw new Error('no_user');
-    const storedPass = data[0].password || data[0].clave || data[0].contrasena || '';
-    if (storedPass !== password) throw new Error('bad_pass');
+    const u = data[0];
+    // Verificar estado (case-insensitive)
+    if (u.estado && u.estado.toLowerCase() !== 'activo') throw new Error('no_user');
+    const storedPass = (u.password_hash || u.password || u.clave || '').trim();
+    const inputPass  = password.trim();
+    console.log('Login debug — stored:', JSON.stringify(storedPass), 'input:', JSON.stringify(inputPass), 'match:', storedPass === inputPass);
+    if (storedPass !== inputPass) throw new Error('bad_pass');
     // Login exitoso
     sessionStorage.setItem('zenit_usuario', JSON.stringify(data[0]));
     const welcome = document.getElementById('zenit-welcome');
