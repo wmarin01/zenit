@@ -66,7 +66,7 @@ async function dbGuardarVenta(venta) {
     plataformas: venta.plats,
     perfiles: venta.perfiles,
     pins: venta.pins,
-    vigencia_ini: venta.fechaIni,
+    vigencia_ini: venta.fechaIni && venta.fechaIni.includes('/') ? venta.fechaIni.split('/').reverse().join('-') : venta.fechaIni,
     vigencia_fin: venta.fechaFin,
     canal: venta.canal || 'WhatsApp',
     monto: venta.monto
@@ -1369,6 +1369,68 @@ async function intentarLogin() {
 </div></div>
 
 <!-- Venta nueva CORREGIDA -->
+
+<!-- MODAL EDITAR SUSCRIPCIÓN -->
+<div class="ov" id="m-edit-sub"><div class="modal" style="max-width:660px">
+  <div class="mh">
+    <div class="mico" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)"><i class="ti ti-edit"></i></div>
+    <div><div class="mtit">Editar suscripción</div><div class="msub" id="edit-sub-titulo">—</div></div>
+    <button class="mcl" onclick="closeModal('m-edit-sub')"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="mb">
+    <input type="hidden" id="edit-sub-id">
+    <input type="hidden" id="edit-sub-clienteid">
+    <!-- Fila 1: Correo + Clave -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="fg"><label>Correo</label><input type="email" id="edit-sub-correo" placeholder="correo@gmail.com"></div>
+      <div class="fg"><label>Clave</label>
+        <div style="position:relative">
+          <input type="password" id="edit-sub-clave" placeholder="contraseña" style="padding-right:36px">
+          <button onclick="const i=document.getElementById('edit-sub-clave');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3)"><i class="ti ti-eye"></i></button>
+        </div>
+      </div>
+    </div>
+    <!-- Fila 2: Usuario + PIN -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="fg"><label>Usuario</label><input type="text" id="edit-sub-usuario" placeholder="Nombre usuario"></div>
+      <div class="fg"><label>PIN</label><input type="text" id="edit-sub-pin" placeholder="0000" maxlength="6"></div>
+    </div>
+    <!-- Fila 3: F. Inicio + F. Vencimiento -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="fg"><label>Fecha inicio</label><input type="date" id="edit-sub-fini"></div>
+      <div class="fg"><label>Fecha vencimiento</label><input type="date" id="edit-sub-fvcto"></div>
+    </div>
+    <!-- Fila 4: Monto + Estado -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="fg"><label>Monto ($)</label><input type="number" id="edit-sub-monto" step="0.01" min="0" placeholder="0.00"></div>
+      <div class="fg"><label>Estado</label>
+        <select id="edit-sub-estado">
+          <option value="activo">Activo</option>
+          <option value="sin_renovar">Sin renovar</option>
+          <option value="inactivo">Inactivo</option>
+        </select>
+      </div>
+    </div>
+    <!-- Fila 5: Tipo cliente -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:4px">
+      <div class="fg"><label>Tipo cliente</label>
+        <select id="edit-sub-tipo-cliente">
+          <option value="Nuevo">Nuevo</option>
+          <option value="Renovación">Renovación</option>
+        </select>
+      </div>
+    </div>
+    <!-- Nota de auditoría -->
+    <div class="fg" style="margin-top:8px"><label>Motivo del cambio (opcional)</label>
+      <input type="text" id="edit-sub-motivo" placeholder="Corrección de datos, error de registro...">
+    </div>
+  </div>
+  <div class="mf">
+    <button class="btn" onclick="closeModal('m-edit-sub')">Cancelar</button>
+    <button class="btn btn-p" onclick="guardarEdicionSub()"><i class="ti ti-check"></i> Guardar cambios</button>
+  </div>
+</div></div>
+
 <div class="ov" id="m-venta"><div class="modal" style="max-width:700px">
   <div class="mh"><div class="mico" style="background:var(--accent2)"><i class="ti ti-shopping-cart"></i></div><div><div class="mtit">Nueva venta</div><div class="msub">Complete todos los campos obligatorios</div></div><button class="mcl" onclick="closeModal('m-venta')"><i class="ti ti-x"></i></button></div>
   <div class="mb">
@@ -2462,7 +2524,10 @@ async function confirmarVenta(){
     await dbGuardarVenta({
       clienteId: ventaData.clienteId, nombre: ventaData.clienteNombre,
       plats: ventaData.plats.join('+'), perfiles: resumen,
-      pins: Object.values(pins).join('/'), fechaIni: fIniVal, fechaFin: vcto, monto
+      pins: Object.values(pins).join('/'),
+      fechaIni: fIniVal,
+      fechaFin: vcto.includes('/') ? vcto.split('/').reverse().join('-') : vcto,
+      monto
     });
     for (const p of ventaData.plats) {
       const perf = ventaData.perfilesSel[p];
@@ -3307,7 +3372,7 @@ async function dbCargarNextCodigos() {
 }
 
 // Suscripciones demo por cliente
-const SUBS_DEMO = {};
+// SUBS_DEMO eliminado — se usa SUBS_FULL (datos reales de Supabase)
 
 
 // Agregar botón Reutilizar a filas con estado Cancelada
@@ -4044,7 +4109,20 @@ function limpiarClientePago() {
 }
 
 function renderSubsPago(clienteId) {
-  const subs = SUBS_DEMO[clienteId] || [];
+  // Usar SUBS_FULL (datos reales de Supabase) — todas las subs del cliente
+  const subsRaw = SUBS_FULL.filter(s => s.clienteId === clienteId);
+  // Mapear al formato que espera renderSubsPago
+  const subs = subsRaw.map(s => ({
+    plat:   s.plat,
+    perfil: s.perfil || '—',
+    vcto:   s.fVcto  || '—',
+    precio: s.monto  || 0,
+    dias:   s.dias   || 0,
+    correo: s.correo || '',
+    clave:  s.clave  || '',
+    clienteId: s.clienteId,
+    subId:  s.id
+  }));
   const lista = document.getElementById('pago-subs-lista');
   const mesesLista = document.getElementById('pago-meses-lista');
   if (!lista) return;
@@ -4092,7 +4170,9 @@ function calcVctoPago(idx, vctoActual) {
   const nuevo = calcNuevoVcto(vctoActual, meses);
   const el = document.getElementById('vcto-sub-'+idx);
   if (el) el.textContent = nuevo;
-  const subs = SUBS_DEMO[pagoData.clienteId] || [];
+  const subs = SUBS_FULL.filter(s => s.clienteId === pagoData.clienteId).map(s => ({
+    plat: s.plat, perfil: s.perfil||'—', vcto: s.fVcto||'—', precio: s.monto||0, dias: s.dias||0
+  }));
   calcTotalPago(subs);
   updResumenPago(subs);
 }
@@ -4105,7 +4185,9 @@ function toggleSubPago(idx, precio) {
   chk.checked = !chk.checked;
   row?.classList.toggle('on', chk.checked);
   if (mrow) mrow.style.display = chk.checked ? 'flex' : 'none';
-  const subs = SUBS_DEMO[pagoData.clienteId] || [];
+  const subs = SUBS_FULL.filter(s => s.clienteId === pagoData.clienteId).map(s => ({
+    plat: s.plat, perfil: s.perfil||'—', vcto: s.fVcto||'—', precio: s.monto||0, dias: s.dias||0
+  }));
   calcTotalPago(subs);
   updResumenPago(subs);
 }
@@ -4811,13 +4893,25 @@ function selClienteCambio(id, nombre, tel) {
   document.getElementById('cambio-cli-txt').textContent = nombre + ' · ' + tel + ' · ' + id;
   document.getElementById('cambio-busq').value = '';
   document.getElementById('cambio-sub').textContent = nombre + ' · ' + id;
-  // Cargar suscripciones del cliente
-  const subs = SUBS_DEMO[id] || [];
-  const sel = document.getElementById('sel-motivo')?.closest('.modal')?.querySelector('select[id=""]') || document.querySelector('#m-cambio select:first-of-type');
-  // Actualizar selector de suscripción activa
+  // Cargar suscripciones del cliente desde SUBS_FULL (incluye vencidas)
+  const subs = SUBS_FULL.filter(s => s.clienteId === id);
   const subSel = document.querySelector('#m-cambio .colold select');
-  if (subSel && subs.length) {
-    subSel.innerHTML = subs.map(s => `<option>${PLATS[s.plat]?.nombre || s.plat} · ${s.perfil}</option>`).join('');
+  if (subSel) {
+    if (subs.length) {
+      subSel.innerHTML = subs.map(s => {
+        const platNom = PLATS[s.plat]?.nombre || s.plat;
+        const dias = s.dias < 0 ? ` (vencida hace ${Math.abs(s.dias)}d)` : s.dias === 0 ? ' (vence hoy)' : ` (${s.dias}d)`;
+        return `<option value="${s.clienteId}|${s.plat}|${s.perfil}" data-plat="${s.plat}" data-perfil="${s.perfil||'—'}" data-correo="${s.correo||''}" data-vcto="${s.fVcto||''}">${platNom} · ${s.perfil||'—'}${dias}</option>`;
+      }).join('');
+      // Auto-rellenar campos con la primera suscripción
+      const first = subs[0];
+      const correoEl = document.querySelector('#m-cambio .colold input[placeholder*="orreo"], #m-cambio .colold .fg:nth-child(2) input');
+      const vctoEl   = document.querySelector('#m-cambio .colold input[placeholder*="enci"], #m-cambio .colold .fg:nth-child(4) input');
+      if (correoEl) correoEl.value = first.correo || '';
+      if (vctoEl)   vctoEl.value   = first.fVcto  || '';
+    } else {
+      subSel.innerHTML = '<option>— Sin suscripciones —</option>';
+    }
   }
   // Mostrar contenido
   document.getElementById('cambio-contenido').style.display = 'block';
@@ -4919,6 +5013,102 @@ const SUBS_FULL = [];
 
 let SUBS_FILTRADAS = [...SUBS_FULL];
 
+
+// ── EDITAR SUSCRIPCIÓN ──────────────────────────────────────────────────
+function abrirEditarSubById(id) {
+  const s = SUBS_FULL.find(x => x.id == id);
+  if (!s) { toast('Suscripción no encontrada','error'); return; }
+  abrirEditarSub(s);
+}
+
+function abrirEditarSub(s) {
+  // Poblar campos del modal
+  document.getElementById('edit-sub-id').value        = s.id || '';
+  document.getElementById('edit-sub-clienteid').value = s.clienteId || '';
+  document.getElementById('edit-sub-titulo').textContent = (s.nombre||'') + ' · ' + (s.plat||'') + ' · ' + (s.perfil||'');
+  document.getElementById('edit-sub-correo').value    = s.correo || '';
+  document.getElementById('edit-sub-clave').value     = s.clave  || '';
+  document.getElementById('edit-sub-usuario').value   = s.usuario || '';
+  document.getElementById('edit-sub-pin').value       = s.pin    || '';
+  document.getElementById('edit-sub-monto').value     = s.monto  || '';
+  document.getElementById('edit-sub-motivo').value    = '';
+  // Convertir dd/mm/yyyy → YYYY-MM-DD para input date
+  const toISO = d => { if (!d||d==='—') return ''; if (d.includes('/')) { const [dd,mm,yy]=d.split('/'); return `${yy}-${mm}-${dd}`; } return d; };
+  document.getElementById('edit-sub-fini').value      = toISO(s.fIni);
+  document.getElementById('edit-sub-fvcto').value     = toISO(s.fVcto);
+  // Estado y tipo cliente
+  const estSel = document.getElementById('edit-sub-estado');
+  if (estSel) estSel.value = s.est || 'activo';
+  const tcSel = document.getElementById('edit-sub-tipo-cliente');
+  if (tcSel) tcSel.value = s.tipoCliente || 'Nuevo';
+  openModal('m-edit-sub');
+}
+
+async function guardarEdicionSub() {
+  const id         = parseInt(document.getElementById('edit-sub-id').value);
+  const clienteId  = document.getElementById('edit-sub-clienteid').value;
+  const correo     = document.getElementById('edit-sub-correo').value.trim();
+  const clave      = document.getElementById('edit-sub-clave').value.trim();
+  const usuario    = document.getElementById('edit-sub-usuario').value.trim();
+  const pin        = document.getElementById('edit-sub-pin').value.trim();
+  const monto      = parseFloat(document.getElementById('edit-sub-monto').value) || 0;
+  const estado     = document.getElementById('edit-sub-estado').value;
+  const tipoCliente= document.getElementById('edit-sub-tipo-cliente').value;
+  const motivo     = document.getElementById('edit-sub-motivo').value.trim();
+  const fIni       = document.getElementById('edit-sub-fini').value;   // YYYY-MM-DD
+  const fVcto      = document.getElementById('edit-sub-fvcto').value;  // YYYY-MM-DD
+
+  if (!id) { toast('Error: suscripción sin ID','error'); return; }
+
+  const btn = document.querySelector('#m-edit-sub .btn-p');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
+
+  try {
+    const { error } = await supa.from('suscripciones').update({
+      correo, usuario, pin, monto,
+      estado, tipo_cliente: tipoCliente,
+      fecha_inicio: fIni || undefined,
+      fecha_vcto:   fVcto || undefined,
+    }).eq('id', id);
+
+    if (error) throw error;
+
+    // Registrar en historial
+    const titulo = document.getElementById('edit-sub-titulo').textContent;
+    await dbGuardarHistorial('Edición suscripción', titulo + (motivo ? ' · ' + motivo : ''), 'var(--accent)');
+
+    // Actualizar en memoria
+    const idx = SUBS_FULL.findIndex(s => s.id == id);
+    if (idx !== -1) {
+      const toDisplay = d => d ? d.split('-').reverse().join('/') : '—';
+      SUBS_FULL[idx] = {
+        ...SUBS_FULL[idx],
+        correo, usuario, pin, monto, est: estado, tipoCliente,
+        fIni:  toDisplay(fIni),
+        fVcto: toDisplay(fVcto),
+        dias: (() => {
+          if (!fVcto) return 0;
+          const [yy,mm,dd] = fVcto.split('-');
+          const hoy = new Date(); hoy.setHours(0,0,0,0);
+          return Math.ceil((new Date(+yy,+mm-1,+dd) - hoy) / 86400000);
+        })()
+      };
+    }
+
+    closeModal('m-edit-sub');
+    renderSubs(SUBS_FULL);
+    sincronizarPlatsClientes();
+    toast('Suscripción actualizada correctamente', 'ok');
+
+  } catch(e) {
+    console.error('Error editando suscripcion:', e);
+    toast('Error al guardar: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-check"></i> Guardar cambios';
+  }
+}
+
 function renderSubs(data) {
   const tbody = document.getElementById('tb-subs');
   if (!tbody) return;
@@ -4957,6 +5147,7 @@ function renderSubs(data) {
       <td>${comboStr}</td>
       <td>${estBadge}</td>
       <td class="tda">
+        <button class="btn btn-sm btn-ic" onclick="abrirEditarSubById(${s.id})" title="Editar"><i class="ti ti-edit"></i></button>
         <button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago')" title="Registrar pago"><i class="ti ti-cash"></i></button>
         <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${s.nombre}','${s.plat}','$${s.monto.toFixed(2)}','${s.dias===0?'vencimiento':s.dias<=1?'1d':'3d'}')" title="WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>
       </td>
