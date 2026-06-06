@@ -5090,9 +5090,34 @@ async function guardarEdicionSub() {
 
     if (error) throw error;
 
+    // Si cambia a inactivo → liberar el perfil en inventario
+    const subActual = SUBS_FULL.find(s => s.id == id);
+    const estadoAnterior = subActual?.est || '';
+    if (estado === 'inactivo' && estadoAnterior !== 'inactivo' && subActual?.perfil && subActual.perfil !== '—') {
+      const { error: epErr } = await supa.from('perfiles')
+        .update({ estado: 'activo' })
+        .eq('id', subActual.perfil);
+      if (epErr) console.warn('No se pudo liberar perfil:', epErr);
+      else {
+        // También actualizar PERFILES_DISP en memoria
+        const plat = subActual.plat;
+        if (PERFILES_DISP[plat]) {
+          // Re-cargar perfiles disponibles
+          await dbCargarPerfilesDisp();
+        }
+        console.log('[PERFIL] Liberado:', subActual.perfil);
+      }
+    }
+
+    // Si cambia de inactivo a activo → marcar perfil como ocupado
+    if (estado === 'activo' && estadoAnterior === 'inactivo' && subActual?.perfil && subActual.perfil !== '—') {
+      await supa.from('perfiles').update({ estado: 'ocupado' }).eq('id', subActual.perfil);
+    }
+
     // Registrar en historial
     const titulo = document.getElementById('edit-sub-titulo').textContent;
-    await dbGuardarHistorial('Edición suscripción', titulo + (motivo ? ' · ' + motivo : ''), 'var(--accent)');
+    const cambioEstado = estado !== estadoAnterior ? ` · Estado: ${estadoAnterior} → ${estado}` : '';
+    await dbGuardarHistorial('Edición suscripción', titulo + cambioEstado + (motivo ? ' · ' + motivo : ''), 'var(--accent)');
 
     // Actualizar en memoria
     const idx = SUBS_FULL.findIndex(s => s.id == id);
