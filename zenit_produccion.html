@@ -2061,7 +2061,7 @@ function renderDashboard() {
     } else {
       vcTbody.innerHTML = criticos.map(s => {
         const vb = s.diasVcto===0 ? '<span class="b br">Hoy</span>' : '<span class="b ba">Mañana</span>';
-        const platDot = `<span class="pd"><span class="dot" style="background:${PC2[s.plat]||'var(--accent)'}"></span>${s.plat}</span>`;
+        const platDot = (s.plat||'').split('+').map(p=>`<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
         return `<tr>
           <td><strong>${s.nombre}</strong></td>
           <td>${platDot}</td>
@@ -2209,7 +2209,7 @@ function tabCob(el,id){
   if (!filtrados.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No hay suscripciones en este período</td></tr>'; return; }
   const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
   tbody.innerHTML = filtrados.map(s => {
-    const platDot = `<span class="pd"><span class="dot" style="background:${PC2[s.plat]||'var(--accent)'}"></span>${s.plat}</span>`;
+    const platDot = (s.plat||'').split('+').map(p=>`<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
     const vb = s.diasVcto===0 ? '<span class="b br">Hoy</span>' : s.diasVcto===1 ? '<span class="b ba">Mañana</span>' : `<span class="b" style="background:rgba(245,200,35,.15);color:#f5c842">${s.diasVcto} días</span>`;
     return `<tr>
       <td><strong>${s.nombre}</strong></td>
@@ -5331,7 +5331,7 @@ function _aplicarFiltrosSubs() {
   const est   = document.querySelector('#v-suscripciones select:nth-of-type(2)')?.value || '';
   const dias  = document.querySelector('#v-suscripciones select:nth-of-type(3)')?.value || '';
   let data = SUBS_FULL;
-  if (plat)  data = data.filter(s => s.plat === plat);
+  if (plat)  data = data.filter(s => s.plat === plat || (s.plat||'').split('+').includes(plat));
   if (est)   data = data.filter(s => s.est === est);
   if (dias)  data = data.filter(s => dias==='hoy' ? s.dias===0 : dias==='3d' ? s.dias<=3 : s.dias<=7);
   if (busca) {
