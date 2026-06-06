@@ -266,10 +266,11 @@ async function dbCargarSuscripciones() {
   if (data && data.length > 0) {
     data.forEach(s => {
       SUBS_FULL.push({
+        id: s.id,
         clienteId: s.cliente_id,
         perfil: s.perfil_id || '—',
         correo: s.correo || '—',
-        clave: '—',
+        clave: s.clave || '—',
         nombre: s.clientes ? (s.clientes.nombre + ' ' + (s.clientes.apellido||'')).trim() : (s.nombre || '—'),
         tel: s.clientes ? normalizeTel(s.clientes.telefono) : normalizeTel(s.telefono||''),
         usuario: s.usuario || '—',
@@ -283,8 +284,8 @@ async function dbCargarSuscripciones() {
           return Math.ceil((new Date(+yy,+mm-1,+dd) - hoy) / 86400000);
         })(),
         tipoCliente: s.tipo_cliente || 'Nuevo',
-        monto: parseFloat(s.monto),
-        tipo: s.tipo,
+        monto: parseFloat(s.monto) || 0,
+        tipo: s.tipo || 'Individual',
         plat: s.plataforma,
         combo: s.combo_id && s.combo_id !== 'undefined' ? s.combo_id : '—',
         est: s.estado
@@ -5175,12 +5176,19 @@ function _aplicarFiltrosSubs() {
   if (plat)  data = data.filter(s => s.plat === plat);
   if (est)   data = data.filter(s => s.est === est);
   if (dias)  data = data.filter(s => dias==='hoy' ? s.dias===0 : dias==='3d' ? s.dias<=3 : s.dias<=7);
-  if (busca) data = data.filter(s =>
-    (s.nombre||'').toLowerCase().includes(busca) ||
-    normalizeTel(s.tel||'').includes(normalizeTel(busca)) || (s.tel||'').toLowerCase().includes(busca) ||
-    (s.perfil||'').toLowerCase().includes(busca) ||
-    (s.clienteId||'').toLowerCase().includes(busca)
-  );
+  if (busca) {
+    const bNorm = normalizeTel(busca);
+    data = data.filter(s =>
+      (s.nombre||'').toLowerCase().includes(busca) ||
+      normalizeTel(s.tel||'').includes(bNorm) ||
+      (s.tel||'').replace(/[^0-9]/g,'').includes(busca.replace(/[^0-9]/g,'')) ||
+      (s.perfil||'').toLowerCase().includes(busca) ||
+      (s.clienteId||'').toLowerCase().includes(busca) ||
+      (s.correo||'').toLowerCase().includes(busca) ||
+      (s.usuario||'').toLowerCase().includes(busca) ||
+      (s.pin||'').includes(busca)
+    );
+  }
   renderSubs(data);
 }
 function filtSubsPlat(v) { _aplicarFiltrosSubs(); }
