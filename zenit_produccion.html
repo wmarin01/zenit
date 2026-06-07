@@ -1580,7 +1580,7 @@ async function intentarLogin() {
         </div>
         <div class="cx" id="cx-venta"><div class="fr c3"><div class="fg"><label>Moneda</label><select><option>USDT</option><option>BTC</option></select></div><div class="fg"><label>Monto neto</label><input type="text" id="v-neto"></div><div class="fg"><label>Comisión red</label><input type="text" placeholder="0.00"><div class="hint w">Se suma al total</div></div></div></div>
         <div class="fr c2">
-          <div class="fg"><label>Nro. comprobante<span class="req">*</span></label><input type="text" placeholder="Referencia / hash" oninput="valComp(this,'hcv')"><div class="hint" id="hcv">Validación en tiempo real</div></div>
+          <div class="fg"><label>Nro. comprobante<span class="req">*</span></label><input type="text" id="v-comp" placeholder="Referencia / hash" oninput="this.value=this.value.toUpperCase();valComp(this,'hcv')" style="text-transform:uppercase"><div class="hint" id="hcv">Validación en tiempo real</div></div>
           <div class="fg"><label>Imagen comprobante</label><input type="file" accept="image/*"><div class="hint">Opcional</div></div>
         </div>
         <div class="fg"><label>Notas</label><textarea rows="2" placeholder="Opcional..."></textarea></div>
@@ -1650,7 +1650,7 @@ async function intentarLogin() {
         </div>
         <div class="cx" id="cx-pago"><div class="fr c3"><div class="fg"><label>Moneda</label><select><option>USDT</option><option>BTC</option></select></div><div class="fg"><label>Monto neto</label><input type="text" id="pago-neto"></div><div class="fg"><label>Comisión red</label><input type="text" placeholder="0.00"><div class="hint w">Se suma al total</div></div></div></div>
         <div class="fr c2">
-          <div class="fg"><label>Nro. comprobante<span class="req">*</span></label><input type="text" id="pago-comp" placeholder="Referencia / hash" oninput="valComp(this,'hcp')"><div class="hint" id="hcp">Validación en tiempo real</div></div>
+          <div class="fg"><label>Nro. comprobante<span class="req">*</span></label><input type="text" id="pago-comp" placeholder="Referencia / hash" oninput="this.value=this.value.toUpperCase();valComp(this,'hcp')" style="text-transform:uppercase"><div class="hint" id="hcp">Validación en tiempo real</div></div>
           <div class="fg"><label>Imagen comprobante</label><input type="file" accept="image/*"><div class="hint">Opcional</div></div>
         </div>
         <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);cursor:pointer;font-weight:400"><input type="checkbox" style="width:auto;margin:0">Es pago parcial (requiere autorización Master)</label>
@@ -2502,7 +2502,15 @@ async function confirmarVenta(){
   }
 
   // 5. Historial
-  const resumen = ventaData.plats.map(p => ventaData.perfilesSel[p]?.codigo||'—').join('+');
+  // Obtener perfiles seleccionados — soporta múltiples por plataforma (NF_0, NF_1)
+  const getPerfilByPlat = (plat, idx=0) => {
+    const key = ventaData.perfilesSel[plat] ? plat : plat+'_'+idx;
+    return ventaData.perfilesSel[key] || ventaData.perfilesSel[plat] || null;
+  };
+  const resumen = ventaData.plats.map((p,i) => {
+    const key = ventaData.plats.filter((x,j) => x===p && j<=i).length > 1 ? p+'_'+(ventaData.plats.filter((x,j)=>x===p&&j<i).length) : p;
+    return ventaData.perfilesSel[key]?.codigo || ventaData.perfilesSel[p]?.codigo || '—';
+  }).join('+');
   // TABLA VENTAS — agregar a memoria para render inmediato
   VENTAS_DB.unshift({
     nombre: ventaData.clienteNombre,
@@ -2603,7 +2611,7 @@ async function confirmarPago() {
   const checkboxes = document.querySelectorAll('#pago-subs-lista input[type=checkbox]:checked');
   if (!checkboxes.length) { toast('Selecciona al menos una suscripción', 'error'); return; }
 
-  const monto  = parseFloat(document.getElementById('pago-monto')?.value?.replace('$','')) || 0;
+  const monto  = parseFloat((document.getElementById('pago-monto')?.value || '').replace('$','').replace(',','.').trim()) || 0;
   const banco  = document.getElementById('pago-banco')?.value || 'Banco General';
   const forma  = document.getElementById('pago-forma')?.value || 'Yappy';
   const comp   = document.getElementById('pago-comp')?.value?.trim() || '';
@@ -2691,8 +2699,8 @@ async function confirmarPago() {
     console.error('Error registrando pago:', e);
     toast('Error al registrar: ' + (e.message || e), 'error');
   } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-check"></i>Registrar pago';
+    const btnF = document.getElementById('btn-registrar-pago');
+    if (btnF) { btnF.disabled = false; btnF.innerHTML = '<i class="ti ti-check"></i>Registrar pago'; }
   }
 }
 function confirmarCambio(){
@@ -3419,8 +3427,8 @@ async function dbCargarPerfilesDisp() {
   try {
     // 1. Traer todas las cuentas activas del inventario
     const {data: cuentas, error} = await supa
-      .from('inventario')
-      .select('id, plataforma, correo, clave, max_perfiles, estado')
+      .from('cuentas_inventario')
+      .select('codigo, plataforma, correo, clave, max_perfiles, estado')
       .eq('estado', 'Activa');
     if (error) throw error;
     if (!cuentas || !cuentas.length) return;
@@ -3437,18 +3445,19 @@ async function dbCargarPerfilesDisp() {
 
     cuentas.forEach(inv => {
       const plat = inv.plataforma;
+      const cuentaId = inv.codigo || inv.id;
       if (!PERFILES_DISP[plat]) return;
-      const maxP = parseInt(inv.max_perfiles) || 0;
+      const maxP = parseInt(inv.max_perfiles) || 5;
       for (let n = 1; n <= maxP; n++) {
-        const codigo = inv.id + n; // ej: NF0057 + 1 = NF00571
+        const codigo = cuentaId + n;
         if (!ocupados.has(codigo)) {
           PERFILES_DISP[plat].push({
             codigo,
             num: n,
-            cuenta: inv.id,
+            cuenta: cuentaId,
             correo: inv.correo || '—',
             clave:  inv.clave  || '—',
-            origen: inv.id + ' · perfil ' + n
+            origen: cuentaId + ' · perfil ' + n
           });
         }
       }
@@ -3595,7 +3604,16 @@ function ventaPaso3() {
   ['vpaso1','vpaso2','vpaso3','vpaso4','vpaso5'].forEach((id,i) => document.getElementById(id).style.display = i===2?'block':'none');
   document.getElementById('v-cli-info3').textContent = ventaData.clienteNombre + ' · ' + formatTel(ventaData.clienteTel);
   // Refrescar perfiles disponibles antes de mostrar (por si el inventario cambió)
-  dbCargarPerfilesDisp().then(() => renderPerfilesVenta());
+  dbCargarPerfilesDisp().then(() => {
+    renderPerfilesVenta();
+    // Sugerir nombre del cliente en campo usuario
+    const cli = CLIENTES.find(c => c.id === ventaData.clienteId);
+    if (cli) {
+      const nombreSugerido = title_case(cli.n + ' ' + cli.a);
+      const uInput = document.getElementById('v-usuario');
+      if (uInput && !uInput.value) uInput.value = nombreSugerido;
+    }
+  });
   renderUsuariosVenta();
   if (!ventaData.pins) ventaData.pins = {};
   renderPinsVenta();
@@ -4139,18 +4157,49 @@ function selPerfilVenta(el, codigo, num, plat) {
   // Si ya está seleccionado, deseleccionar
   if (el.classList.contains('on')) {
     el.classList.remove('on');
-    delete ventaData.perfilesSel[plat];
-    if (ventaData.pins) delete ventaData.pins[plat];
+    // Buscar y eliminar la key correspondiente (puede ser plat o plat_N)
+    const keyExist = Object.keys(ventaData.perfilesSel).find(k => ventaData.perfilesSel[k]?.codigo === codigo);
+    if (keyExist) delete ventaData.perfilesSel[keyExist];
+    if (ventaData.pins && keyExist) delete ventaData.pins[keyExist];
     renderPinsVenta();
     return;
   }
 
-  // Deseleccionar perfiles de la misma plataforma y seleccionar el nuevo
-  allPi.forEach(p => { const c = p.id?.replace('perf-',''); if (platPerfs.includes(c)) p.classList.remove('on'); });
-  el.classList.add('on');
-  // Guardar también el correo para usarlo en cobros
-  const perfData = (PERFILES_DISP[plat]||[]).find(x => x.codigo === codigo);
-  ventaData.perfilesSel[plat] = {codigo, num, plat, correo: perfData?.correo || '—', clave: perfData?.clave || '—'};
+  // Para múltiples perfiles de la misma plataforma, usar índice
+  const maxPerfs = (ventaData.plats||[]).filter(p => p === plat).length;
+  const selCount = Object.keys(ventaData.perfilesSel).filter(k => k.startsWith(plat+'_') || k === plat).length;
+
+  if (maxPerfs <= 1) {
+    // Un solo perfil — comportamiento normal
+    allPi.forEach(p => { const c = p.id?.replace('perf-',''); if (platPerfs.includes(c)) p.classList.remove('on'); });
+    el.classList.add('on');
+    const perfData = (PERFILES_DISP[plat]||[]).find(x => x.codigo === codigo);
+    ventaData.perfilesSel[plat] = {codigo, num, plat, correo: perfData?.correo || '—', clave: perfData?.clave || '—'};
+    if (!ventaData.pins) ventaData.pins = {};
+    ventaData.pins[plat] = generarPIN(ventaData.clienteId, plat, num);
+  } else {
+    // Múltiples perfiles de la misma plataforma — usar índice
+    const yaSeleccionados = Object.keys(ventaData.perfilesSel).filter(k => k === plat || k.startsWith(plat+'_'));
+    // Si ya está seleccionado este perfil, deseleccionar
+    const existeKey = yaSeleccionados.find(k => ventaData.perfilesSel[k]?.codigo === codigo);
+    if (existeKey) {
+      el.classList.remove('on');
+      delete ventaData.perfilesSel[existeKey];
+      renderPinsVenta();
+      return;
+    }
+    if (yaSeleccionados.length >= maxPerfs) {
+      toast(`Solo puedes seleccionar ${maxPerfs} perfil(es) de ${PLATS[plat]?.nombre}`, 'warn');
+      return;
+    }
+    const idx = yaSeleccionados.length;
+    const key = maxPerfs === 1 ? plat : plat + '_' + idx;
+    el.classList.add('on');
+    const perfData = (PERFILES_DISP[plat]||[]).find(x => x.codigo === codigo);
+    ventaData.perfilesSel[key] = {codigo, num, plat, correo: perfData?.correo || '—', clave: perfData?.clave || '—'};
+    if (!ventaData.pins) ventaData.pins = {};
+    ventaData.pins[key] = generarPIN(ventaData.clienteId, plat, num);
+  }
   if (!ventaData.pins) ventaData.pins = {};
   ventaData.pins[plat] = generarPIN(ventaData.clienteId, plat, num);
   renderPinsVenta();
@@ -5410,6 +5459,14 @@ const PHONE_CONFIG = {
 };
 
 // ── Normalizar teléfono al guardar: solo + y dígitos ─────────────────────
+function title_case(str) {
+  if (!str) return '';
+  const MINS = new Set(['de','del','la','los','las','van','von','y','e']);
+  return str.trim().toLowerCase().split(' ').map((w,i) =>
+    (i===0 || !MINS.has(w)) ? w.charAt(0).toUpperCase()+w.slice(1) : w
+  ).join(' ');
+}
+
 function normalizeTel(tel) {
   if (!tel) return '';
   // Conservar el + inicial, eliminar todo lo demás que no sea dígito
