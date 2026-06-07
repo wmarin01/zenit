@@ -2209,7 +2209,19 @@ function filtC(q){
     return n.includes(r)||a.includes(r)||c.tel.includes(rn)||c.tel.replace(/[^0-9]/g,'').includes(q.replace(/[^0-9]/g,''))||c.id.toLowerCase().includes(r)||c.contactos.some(ct=>ct.v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(r));
   }));
 }
-function filtCEst(e){renderC(e?CLIENTES.filter(c=>c.est===e):CLIENTES);}
+function filtCEst(e){
+  const q = document.querySelector('#v-clientes .sbox input')?.value || '';
+  const r = q.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const rn = normalizeTel(q);
+  let data = CLIENTES;
+  if (e) data = data.filter(c => c.est === e);
+  if (r.length >= 1) data = data.filter(c => {
+    const n = (c.n||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const a = (c.a||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return n.includes(r)||a.includes(r)||normalizeTel(c.tel||'').includes(rn)||c.id.toLowerCase().includes(r);
+  });
+  renderC(data);
+}
 
 function renderCob(data){
   const _tcob = document.getElementById('tcob-hoy') || document.getElementById('tcob'); if(!_tcob) return;
@@ -2409,238 +2421,180 @@ function confirmarBloqueo(nombre){
 }
 
 async function confirmarVenta(){
-  if (!ventaData.clienteId) { toast('Selecciona un cliente primero','warn'); return; }
-  // Validar comprobante no duplicado
-  const docInp = document.querySelector('#m-venta input[oninput*="valComp"]');
-  if (docInp) {
-    const docVal = docInp.value.trim();
-    if (docVal.length < 4) { toast('Ingresa el número de comprobante','warn'); return; }
-    if (UC.includes(docVal) && !ventaData.dupAutorizado) {
-      // Volver al paso 4 y mostrar alerta con info
-      ['vpaso1','vpaso2','vpaso3','vpaso4','vpaso5'].forEach((id,i) => document.getElementById(id).style.display = i===3?'block':'none');
-      updVentaSteps(4);
-      const alertaDup2  = document.getElementById('v-alerta-dup');
-      const cobroAnt2   = COBROS.find(c => c.doc === docVal);
-      const numEl2      = document.getElementById('v-dup-num');
-      const fechaEl2    = document.getElementById('v-dup-fecha');
-      const cliEl2      = document.getElementById('v-dup-cliente');
-      if (numEl2)   numEl2.textContent   = docVal;
-      if (fechaEl2) fechaEl2.textContent = cobroAnt2 ? cobroAnt2.fecha : 'fecha desconocida';
-      if (cliEl2)   cliEl2.textContent   = cobroAnt2 ? cobroAnt2.nombre : 'cliente desconocido';
-      if (alertaDup2) alertaDup2.style.display = 'block';
-      if (docInp) { docInp.style.borderColor = 'var(--amber)'; docInp.focus(); }
-      return;
-    }
-  }
+  const tipo     = ventaData.tipo;
+  const comboId  = ventaData.plats.length > 1 && new Set(ventaData.plats).size > 1
+    ? ventaData.plats.join('+') : '—';
 
-  const usuarios  = getUsuariosVenta();
-  const pins      = ventaData.pins || {};
-  const precio    = document.getElementById('v-precio')?.value?.replace(/[^0-9.]/g,'') || '0';
-  const vctoRaw   = document.getElementById('v-fecha-vcto')?.value || '—';
-  const fIniVal   = document.getElementById('v-fecha-ini')?.value || '';
-  const fmtDate   = v => { if(!v||!v.includes('-')) return v||'—'; const [yy,mm,dd]=v.split('-'); return dd+'/'+mm+'/'+yy; };
-  const vcto      = fmtDate(vctoRaw);   // YYYY-MM-DD → dd/mm/yyyy
-  const fIniStr   = fmtDate(fIniVal);
-  const monto     = parseFloat(precio) || 0;
-  const tipo      = ventaData.tipo === 'individual' ? 'Individual' : 'Combo';
-  const comboId   = ventaData.plats.length > 1 ? ventaData.plats.join('+') : '—';
-  const cliente   = CLIENTES.find(c => c.id === ventaData.clienteId);
-  const now       = new Date();
-  const pad       = n => String(n).padStart(2,'0');
-  const fecha     = pad(now.getDate())+'/'+pad(now.getMonth()+1)+'/'+now.getFullYear();
-
-  const diasHasta = v => {
-    if (!v||v==='—') return 0;
-    const [dd,mm,yy] = v.split('/');
-    const diff = new Date(yy,mm-1,dd) - new Date();
-    return Math.max(0, Math.ceil(diff/86400000));
-  };
-
-  // Helper: buscar correo del perfil en PERFILES_DISP
-  const getCorrPerfil = (plat, codigo) => {
-    const p = (PERFILES_DISP[plat]||[]).find(x => x.codigo === codigo);
-    return p ? p.correo : '—';
-  };
-
-  // 1. SUBS_FULL — una entrada por plataforma
-  ventaData.plats.forEach(p => {
-    const perf    = ventaData.perfilesSel[p];
-    const perfCod = perf ? perf.codigo : '—';
-    // Usar correo de perfilesSel si está disponible
-    const correo  = ventaData.perfilesSel[p]?.correo || getCorrPerfil(p, perfCod);
-    const pin     = pins[p] || '—';
-    const usuario = usuarios[p] || '—';
-    // Para combo el monto es el total del combo (no dividir)
-    const montoSub = ventaData.tipo === 'combo' ? monto : monto;
-    SUBS_FULL.push({
-      clienteId:   ventaData.clienteId,
-      perfil:      perfCod,
-      correo,
-      clave:       '—',
-      nombre:      ventaData.clienteNombre,
-      tel:         ventaData.clienteTel,
-      usuario,
-      pin,
-      fIni:        fIniStr,
-      fVcto:       vcto,
-      dias:        diasHasta(vcto),
-      tipoCliente: 'Nuevo',
-      monto:       montoSub,
-      tipo,
-      plat:        p,
-      combo:       comboId,
-      est:         'activo'
-    });
-    // Actualizar plataformas del cliente
-    if (cliente && !cliente.plats.includes(p)) cliente.plats.push(p);
-  });
-  if (cliente) cliente.dias = diasHasta(vcto);
-
-  // Obtener correo del primer perfil y usuarios (ANTES de marcar ocupados)
-  // Usar correo guardado en perfilesSel (más confiable que buscar en PERFILES_DISP)
-  const correo2 = ventaData.plats.map(p => {
-    const pf = ventaData.perfilesSel[p];
-    if (!pf) return '—';
-    // Primero usar el correo guardado al seleccionar
-    if (pf.correo && pf.correo !== '—') return pf.correo;
-    // Fallback: buscar en PERFILES_DISP
-    return (PERFILES_DISP[p]||[]).find(x=>x.codigo===pf.codigo)?.correo || '—';
-  }).filter((v,i,a)=>a.indexOf(v)===i).join(' / ');
-  const usuario2 = Object.values(getUsuariosVenta()).join(' / ') || '—';
-
-  // 3. Marcar perfiles como ocupados
-  ventaData.plats.forEach(p => {
-    const perf = ventaData.perfilesSel[p];
-    if (perf && PERFILES_DISP[p]) {
-      PERFILES_DISP[p] = PERFILES_DISP[p].filter(pr => pr.codigo !== perf.codigo);
-    }
+  // Construir lista de entradas indexadas
+  const plats = ventaData.plats;
+  const uniquePlats = [...new Set(plats)];
+  const entries = plats.map((p, i) => {
+    const idxEnPlat = plats.slice(0,i).filter(x=>x===p).length;
+    const key  = getPerfKey(plats, p, idxEnPlat);
+    const perf = ventaData.perfilesSel[key] || ventaData.perfilesSel[p] || null;
+    return {p, i, idxEnPlat, key, perf};
   });
 
-  // 4. Actualizar tabla suscripciones si está visible
-  // Actualizar SUBS_FULL en memoria para que renderC y renderSubs reflejen la nueva venta
-  for (const p of ventaData.plats) {
-    const perf = ventaData.perfilesSel[p];
-    SUBS_FULL.unshift({
-      clienteId: ventaData.clienteId,
-      nombre: ventaData.clienteNombre,
-      tel: ventaData.clienteTel,
-      plat: p, perfil: perf?.codigo || '—',
-      correo: perf?.correo || '—',
-      usuario: usuarios[p] || '—',
-      pin: pins[p] || '—',
-      fIni: fIniStr, fVcto: vcto,
-      monto, est: 'activo',
-      dias: (() => { try { const [dd,mm,yy]=vcto.split('/'); return Math.ceil((new Date(+yy,+mm-1,+dd)-new Date())/86400000); } catch(e){return 0;} })()
-    });
-    // Actualizar plats del cliente en CLIENTES
-    const cli = CLIENTES.find(c => c.id === ventaData.clienteId);
-    if (cli && !cli.plats.includes(p)) cli.plats.push(p);
-  }
-  if (document.getElementById('v-suscripciones')?.classList.contains('on')) {
-    renderSubs(SUBS_FULL);
-  }
-
-  // 5. Historial
-  // Obtener perfiles seleccionados — soporta múltiples por plataforma (NF_0, NF_1)
-  const getPerfilByPlat = (plat, idx=0) => {
-    const key = ventaData.perfilesSel[plat] ? plat : plat+'_'+idx;
-    return ventaData.perfilesSel[key] || ventaData.perfilesSel[plat] || null;
-  };
-  const resumen = ventaData.plats.map((p,i) => {
-    const key = ventaData.plats.filter((x,j) => x===p && j<=i).length > 1 ? p+'_'+(ventaData.plats.filter((x,j)=>x===p&&j<i).length) : p;
-    return ventaData.perfilesSel[key]?.codigo || ventaData.perfilesSel[p]?.codigo || '—';
-  }).join('+');
-  // TABLA VENTAS — agregar a memoria para render inmediato
-  VENTAS_DB.unshift({
-    nombre: ventaData.clienteNombre,
-    plataformas: ventaData.plats.join('+'),
-    perfiles: resumen,
-    pins: Object.values(pins).join('/'),
-    vigencia_ini: fIniVal,
-    vigencia_fin: vctoRaw,   // YYYY-MM-DD para normalización consistente
-    fecha_inicio: fIniVal,
-    fecha_vcto: vcto,
-    monto: monto
+  // Obtener usuarios y pins usando keys indexadas
+  const usuarios = getUsuariosVenta();
+  const pins     = {};
+  entries.forEach(({p, key, perf}) => {
+    if (perf) pins[key] = ventaData.pins?.[key] || ventaData.pins?.[p] || generarPIN(ventaData.clienteId, p, perf.num);
   });
-  renderVentasDB();
-  if (ventaData.dupAutorizado) {
-    const docDup = document.querySelector('#m-venta input[oninput*="valComp"]')?.value || '—';
-    agregarHistorial('⚠ Comprobante duplicado autorizado', ventaData.clienteNombre+' — Doc: '+docDup+' — autorizado por operador', 'var(--amber)');
-  }
-  ventaData.dupAutorizado = false;
-  agregarHistorial('Venta nueva', ventaData.clienteNombre+' — '+resumen+' — $'+monto.toFixed(2), 'var(--green)');
-  // Registrar en cobros
-  const banco2 = document.querySelector('#m-venta select:nth-of-type(3)')?.options[document.querySelector('#m-venta select:nth-of-type(3)').selectedIndex]?.text || 'Banco General';
-  const forma2 = document.querySelector('#m-venta select:nth-of-type(4)')?.options[document.querySelector('#m-venta select:nth-of-type(4)').selectedIndex]?.text || 'Yappy';
-  const doc2   = document.querySelector('#m-venta input[oninput*="valComp"]')?.value || '—';
 
-  COBROS.unshift({
-    fecha: fIniStr, tipo:'Venta nueva',
-    clienteId: ventaData.clienteId,
-    nombre: ventaData.clienteNombre,
-    tel: ventaData.clienteTel,
-    plat: ventaData.plats.join('+'),
-    correo: correo2,
-    usuario: usuario2,
-    monto, banco: banco2, forma: forma2, doc: doc2,
-    operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
-    est:'procesado'
-  });
-  // Registrar comprobante para evitar duplicados futuros
-  if (doc2 && doc2 !== '—') UC.push(doc2);
-  // Actualizar métricas si cobros está visible
-  if (document.getElementById('v-cobros')?.classList.contains('on')) updMetricasCobros();
+  // Validaciones
+  const faltaPerfil = entries.find(e => !e.perf);
+  if (faltaPerfil) { toast('Selecciona un perfil para ' + (PLATS[faltaPerfil.p]?.nombre || faltaPerfil.p), 'warn'); return; }
+  const faltaUsuario = entries.find(e => !usuarios[e.key] || usuarios[e.key].length < 1);
+  if (faltaUsuario) { toast('Ingresa el usuario para ' + (PLATS[faltaUsuario.p]?.nombre || faltaUsuario.p), 'warn'); return; }
 
-  // Guardar en Supabase
+  // Fechas
+  const fIniEl  = document.getElementById('v-fecha-ini');
+  const fVctoEl = document.getElementById('v-fecha-vcto');
+  if (!fIniEl?.value || !fVctoEl?.value) { toast('Completa las fechas de vigencia', 'warn'); return; }
+  const fIniVal = fIniEl.value;   // YYYY-MM-DD
+  const fVctoVal= fVctoEl.value;  // YYYY-MM-DD
+  const fIniStr = fIniVal.split('-').reverse().join('/');
+  const vctoStr = fVctoVal.split('-').reverse().join('/');
+  const vcto    = fVctoVal; // YYYY-MM-DD para Supabase
+
+  // Pago
+  const montoEl = document.getElementById('v-monto');
+  const bancoEl = document.getElementById('v-banco');
+  const formaEl = document.getElementById('v-forma');
+  const compEl  = document.getElementById('v-comp');
+  const monto   = parseFloat(montoEl?.value?.replace('$','').trim()) || ventaData.planPrecio || 0;
+  const banco   = bancoEl?.value || 'Banco General';
+  const forma   = formaEl?.value || 'Yappy';
+  const doc     = compEl?.value?.trim() || '';
+
+  if (!monto) { toast('Ingresa el monto del pago', 'warn'); return; }
+
+  // Canal
+  const canalEl = document.querySelector('#v-pago .canal-sel .on, #v-pago .btn-canal.on');
+  const canal   = canalEl?.dataset?.canal || 'WhatsApp';
+
+  // Mostrar loading
+  const btnConf = document.getElementById('btn-confirmar-venta');
+  if (btnConf) { btnConf.disabled = true; btnConf.innerHTML = '<i class="ti ti-loader"></i> Guardando...'; }
+
   try {
-    await dbGuardarCliente(CLIENTES.find(c => c.id === ventaData.clienteId) || {id: ventaData.clienteId, n: ventaData.clienteNombre.split(' ')[0], a: ventaData.clienteNombre.split(' ').slice(1).join(' '), tel: ventaData.clienteTel, est: 'activo'});
+    // Correo de cada perfil (primer perfil del combo o perfil único)
+    const correos = entries.map(e => e.perf?.correo || '—');
+    const correo2 = [...new Set(correos)].join(' / ');
+    const usuario2= entries.map(e => usuarios[e.key] || '—').join(' / ');
+
+    // 1. Guardar venta
     await dbGuardarVenta({
       clienteId: ventaData.clienteId, nombre: ventaData.clienteNombre,
-      plats: ventaData.plats.join('+'), perfiles: resumen,
-      pins: Object.values(pins).join('/'),
-      fechaIni: fIniVal,
-      fechaFin: vcto.includes('/') ? vcto.split('/').reverse().join('-') : vcto,
-      monto
+      plats: [...new Set(plats)].join('+'),
+      perfiles: entries.map(e=>e.perf?.codigo||'—').join('+'),
+      pins: entries.map(e=>pins[e.key]||'—').join('/'),
+      fechaIni: fIniVal, fechaFin: fVctoVal, monto, canal
     });
-    for (const p of ventaData.plats) {
-      const perf = ventaData.perfilesSel[p];
+
+    // 2. Guardar suscripción por cada entrada
+    for (const {p, key, perf, idxEnPlat} of entries) {
       await dbGuardarSuscripcion({
-        clienteId: ventaData.clienteId, plat: p, tipo,
-        combo: comboId, correo: perf?.correo || '—',
-        usuario: usuarios[p] || '—', pin: pins[p] || '—',
-        perfilId: perf?.codigo || null,
-        fIni: fIniStr, fVcto: vcto, monto, tipoCliente: 'Nuevo'
+        clienteId: ventaData.clienteId, plat: p, tipo: tipo==='combo'?'Combo':'Individual',
+        combo: comboId, correo: perf?.correo||'—',
+        usuario: usuarios[key]||'—', pin: pins[key]||'—',
+        perfilId: perf?.codigo||null,
+        fIni: fIniStr, fVcto: vctoStr, monto, tipoCliente: 'Nuevo'
       });
     }
+
+    // 3. Guardar cobro
     await dbGuardarCobro({
       tipo: 'Venta nueva', clienteId: ventaData.clienteId,
-      nombre: ventaData.clienteNombre, tel: ventaData.clienteTel,
-      plat: ventaData.plats.join('+'), correo: correo2, usuario: usuario2,
-      monto, banco: banco2, forma: forma2, doc: doc2,
+      nombre: ventaData.clienteNombre, tel: normalizeTel(ventaData.clienteTel),
+      plat: [...new Set(plats)].join('+'), correo: correo2, usuario: usuario2,
+      monto, banco, forma, doc,
       fechaIni: fIniVal,
       operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
-      dupAutorizado: ventaData.dupAutorizado
+      dupAutorizado: ventaData.dupAutorizado || false
     });
-    if (doc2 && doc2 !== '—') await dbRegistrarComprobante(doc2);
+
+    // 4. Historial
+    const resumen = entries.map(e=>e.perf?.codigo||'—').join('+');
     await dbGuardarHistorial('Venta nueva', ventaData.clienteNombre + ' — ' + resumen + ' — $' + monto.toFixed(2), 'var(--green)');
-  } catch(e) { console.warn('Error guardando en Supabase:', e); }
 
-  closeModal('m-venta');
-  toast('Venta registrada correctamente','ok');
+    // 5. Actualizar memoria
+    VENTAS_DB.unshift({
+      nombre: ventaData.clienteNombre,
+      plataformas: [...new Set(plats)].join('+'),
+      perfiles: resumen,
+      pins: entries.map(e=>pins[e.key]||'—').join('/'),
+      vigencia_ini: fIniVal, vigencia_fin: fVctoVal, monto
+    });
+    renderVentasDB();
 
-  // 6. WhatsApp con contexto completo
-  const waContext = {
-    tipo: ventaData.tipo,
-    plats: ventaData.plats,
-    perfilesSel: ventaData.perfilesSel,
-    pins,
-    usuarios,
-    vcto,
-    monto: '$'+monto.toFixed(2)
-  };
-  const waPlatNom = ventaData.tipo==='combo' ? 'Combo '+comboId : (PLATS[ventaData.plats[0]]?.nombre||'—');
-  setTimeout(() => abrirWA(ventaData.clienteNombre, waPlatNom, '$'+monto.toFixed(2), 'entrega', waContext), 500);
+    for (const {p, key, perf} of entries) {
+      SUBS_FULL.unshift({
+        id: Date.now() + Math.random(),
+        clienteId: ventaData.clienteId,
+        nombre: ventaData.clienteNombre,
+        tel: ventaData.clienteTel,
+        plat: p, perfil: perf?.codigo||'—',
+        correo: perf?.correo||'—',
+        usuario: usuarios[key]||'—',
+        pin: pins[key]||'—',
+        fIni: fIniStr, fVcto: vctoStr,
+        monto, est: 'activo', tipoCliente: 'Nuevo',
+        dias: Math.ceil((new Date(fVctoVal)-new Date())/86400000)
+      });
+      if (PERFILES_DISP[p]) {
+        PERFILES_DISP[p] = PERFILES_DISP[p].filter(pr => pr.codigo !== (perf?.codigo));
+      }
+    }
+
+    // Actualizar plats del cliente
+    const cli = CLIENTES.find(c => c.id === ventaData.clienteId);
+    if (cli) {
+      [...new Set(plats)].forEach(p => { if (!cli.plats.includes(p)) cli.plats.push(p); });
+    }
+
+    COBROS.unshift({
+      fecha: fIniStr, tipo: 'Venta nueva',
+      clienteId: ventaData.clienteId, nombre: ventaData.clienteNombre,
+      tel: normalizeTel(ventaData.clienteTel),
+      plat: [...new Set(plats)].join('+'),
+      correo: correo2, usuario: usuario2, monto, banco, forma, doc,
+      operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
+      est: 'procesado'
+    });
+
+    closeModal('m-venta');
+    sincronizarPlatsClientes();
+    renderDashboard();
+    toast('Venta registrada correctamente ✓', 'ok');
+
+    // 6. Abrir WA con datos del primer perfil
+    const firstEntry = entries[0];
+    setTimeout(() => abrirWA(
+      ventaData.clienteNombre,
+      PLATS[firstEntry.p]?.nombre || firstEntry.p,
+      '$' + monto.toFixed(2),
+      'entrega',
+      {
+        correo: firstEntry.perf?.correo,
+        clave:  firstEntry.perf?.clave,
+        usuario: usuarios[firstEntry.key],
+        pin:    pins[firstEntry.key],
+        vcto:   vctoStr,
+        perfilesSel: ventaData.perfilesSel,
+        plats:  ventaData.plats
+      }
+    ), 400);
+
+  } catch(e) {
+    console.error('[VENTA] Error:', e);
+    toast('Error al guardar la venta: ' + (e.message || e), 'error');
+  } finally {
+    if (btnConf) { btnConf.disabled = false; btnConf.innerHTML = '<i class="ti ti-check"></i>Confirmar venta'; }
+  }
 }
+
 async function confirmarPago() {
   const clienteId  = pagoData.clienteId;
   const nombre     = pagoData.clienteNombre;
@@ -3701,6 +3655,28 @@ function renderResultadosCli(data, contId, onSelect) {
 
 // ── FLUJO NUEVA VENTA ────────────────────────────────────────
 let ventaData = {clienteId:'', clienteNombre:'', clienteTel:'', tipo:'individual', plats:[], perfilesSel:{}, meses:1, fechaIni:'2026-05-26'};
+// ── Helper: obtener clave indexada de perfilesSel ───────────────────────
+// Para ['NF','NF'] → NF_0, NF_1
+// Para ['NF','DS'] → NF, DS
+// Para ['NF']      → NF
+function getPerfKey(plats, plat, idx) {
+  const count = plats.filter(x => x === plat).length;
+  return count > 1 ? plat + '_' + idx : plat;
+}
+function getPerfByIdx(perfilesSel, plats, plat, idx) {
+  const key = getPerfKey(plats, plat, idx);
+  return perfilesSel[key] || perfilesSel[plat] || null;
+}
+function getAllPerfsForPlat(perfilesSel, plats, plat) {
+  const count = plats.filter(x => x === plat).length;
+  const result = [];
+  for (let i = 0; i < count; i++) {
+    const perf = getPerfByIdx(perfilesSel, plats, plat, i);
+    if (perf) result.push({key: getPerfKey(plats, plat, i), perf, idx: i});
+  }
+  return result;
+}
+
 
 function ventaPaso1() {
   ['vpaso1','vpaso2','vpaso3','vpaso4','vpaso5'].forEach((id,i) => {
@@ -3773,7 +3749,12 @@ function ventaPaso3() {
 }
 function ventaPaso4() {
   // Validar que hay perfiles seleccionados para todas las plataformas
-  const platSinPerfil = ventaData.plats.find(p => !ventaData.perfilesSel[p]);
+  // Verificar perfil para cada entrada (soporta NF_0, NF_1 para multi-perfil)
+  const platSinPerfil = ventaData.plats.find((p, i) => {
+    const idxEnPlat = ventaData.plats.slice(0,i).filter(x=>x===p).length;
+    const key = ventaData.plats.filter(x=>x===p).length > 1 ? p+'_'+idxEnPlat : p;
+    return !ventaData.perfilesSel[key] && !ventaData.perfilesSel[p];
+  });
   if (platSinPerfil) {
     const perfsDisp = PERFILES_DISP[platSinPerfil] || [];
     if (perfsDisp.length === 0) {
@@ -3785,7 +3766,11 @@ function ventaPaso4() {
   }
   // Validar que todos los usuarios están llenos
   const usuarios = getUsuariosVenta();
-  const faltaUsuario = ventaData.plats.find(p => !usuarios[p] || usuarios[p] === '—' || usuarios[p].length < 1);
+  const faltaUsuario = ventaData.plats.find((p, i) => {
+    const idxEnPlat = ventaData.plats.slice(0,i).filter(x=>x===p).length;
+    const key = ventaData.plats.filter(x=>x===p).length > 1 ? p+'_'+idxEnPlat : p;
+    return !usuarios[key] || usuarios[key].length < 1;
+  });
   if (faltaUsuario) {
     toast('Ingresa el usuario (nombre en pantalla) para ' + (PLATS[faltaUsuario]?.nombre || faltaUsuario), 'warn');
     // Enfocar el campo vacío
@@ -5728,15 +5713,18 @@ function _aplicarFiltrosSubs() {
   if (busca) {
     const bNorm  = normalizeTel(busca);
     const bLower = busca.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const bDigit = busca.replace(/[^0-9]/g,'');
     data = data.filter(s => {
       const nombre  = (s.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       const usuario = (s.usuario||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const correo  = (s.correo||'').toLowerCase();
+      const telNorm = normalizeTel(s.tel||'');
       return nombre.includes(bLower) ||
-        normalizeTel(s.tel||'').includes(bNorm) ||
-        (s.tel||'').replace(/[^0-9]/g,'').includes(busca.replace(/[^0-9]/g,'')) ||
-        (s.perfil||'').toLowerCase().includes(busca) ||
-        (s.clienteId||'').toLowerCase().includes(busca) ||
-        (s.correo||'').toLowerCase().includes(busca) ||
+        telNorm.includes(bNorm) ||
+        (bDigit && telNorm.replace(/[^0-9]/g,'').includes(bDigit)) ||
+        (s.perfil||'').toLowerCase().includes(bLower) ||
+        (s.clienteId||'').toLowerCase().includes(bLower) ||
+        correo.includes(bLower) ||
         usuario.includes(bLower) ||
         (s.pin||'').includes(busca);
     });
@@ -5990,7 +5978,7 @@ function copiarLink(link) {
 }
 
 function filtAccesos(q) {
-  const r = q.toLowerCase();
+  const r = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 async function dbCargarAccesos() {
   const tbody = document.getElementById('tb-accesos');
   if (!tbody) return;
@@ -6196,11 +6184,17 @@ function renderCobros(data) {
 }
 
 function filtCobros(q) {
-  const r = q.toLowerCase();
-  renderCobros(COBROS.filter(c =>
-    c.nombre.toLowerCase().includes(r) || c.clienteId.toLowerCase().includes(r) ||
-    c.tel.includes(r) || c.doc.toLowerCase().includes(r)
-  ));
+  const r  = q.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const rn = normalizeTel(q);
+  renderCobros(COBROS.filter(c => {
+    const nom = (c.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return nom.includes(r) ||
+      (c.clienteId||'').toLowerCase().includes(r) ||
+      normalizeTel(c.tel||'').includes(rn) ||
+      (c.doc||'').toLowerCase().includes(r) ||
+      (c.plat||'').toLowerCase().includes(r) ||
+      (c.tipo||'').toLowerCase().includes(r);
+  }));
 }
 function filtCobrosTipo(v) { renderCobros(v ? COBROS.filter(c=>c.tipo===v) : COBROS); }
 function filtCobrosForma(v) { renderCobros(v ? COBROS.filter(c=>c.forma===v) : COBROS); }
@@ -7013,17 +7007,19 @@ async function cargarInventario() {
 }
 
 function filtrarInventario() {
-  const busca = (document.getElementById('inv-busca')?.value || '').toLowerCase().trim();
-  const plat  = document.getElementById('inv-plat')?.value || '';
+  const busca = (document.getElementById('inv-busca')?.value || '')
+    .toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const plat   = document.getElementById('inv-plat')?.value || '';
   const estado = document.getElementById('inv-estado')?.value || '';
   let lista = INV_CACHE;
   if (plat)   lista = lista.filter(i => i.plataforma === plat);
   if (estado) lista = lista.filter(i => i.estado === estado);
-  if (busca)  lista = lista.filter(i =>
-    (i.id||'').toLowerCase().includes(busca) ||
-    (i.correo||'').toLowerCase().includes(busca) ||
-    (i.proveedor||'').toLowerCase().includes(busca)
-  );
+  if (busca)  lista = lista.filter(i => {
+    const id  = (i.id||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const cor = (i.correo||'').toLowerCase();
+    const pro = (i.proveedor||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return id.includes(busca) || cor.includes(busca) || pro.includes(busca);
+  });
   renderInventario(lista);
 }
 
