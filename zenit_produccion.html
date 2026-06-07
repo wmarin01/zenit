@@ -1024,15 +1024,8 @@ async function intentarLogin() {
     </tbody></table></div></div>
   </div>
   <div class="pp" id="pp-motivos">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:11px"><button class="btn btn-p btn-sm" onclick="openModal('m-param-form','Nuevo motivo de cambio')"><i class="ti ti-plus"></i>Nuevo motivo</button></div>
-    <div class="card"><div class="tw"><table><thead><tr><th>Motivo</th><th>Tipo de cambio</th><th>Estado</th><th></th></tr></thead><tbody id="tb-motivos">
-      <tr><td><strong>Cuenta dañada</strong></td><td><span class="b bi">Misma plataforma</span></td><td><span class="b bg">Activo</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'motivo')"><i class="ti ti-edit"></i></button></td></tr>
-      <tr><td><strong>Cuenta eliminada</strong></td><td><span class="b bi">Misma plataforma</span></td><td><span class="b bg">Activo</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'motivo')"><i class="ti ti-edit"></i></button></td></tr>
-      <tr><td><strong>Códigos Netflix consumidos</strong></td><td><span class="b bi">Misma plataforma</span></td><td><span class="b bg">Activo</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'motivo')"><i class="ti ti-edit"></i></button></td></tr>
-      <tr><td><strong>Cuenta cancelada por proveedor de origen</strong></td><td><span class="b bpu">Distinta plataforma</span></td><td><span class="b bg">Activo</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'motivo')"><i class="ti ti-edit"></i></button></td></tr>
-      <tr><td><strong>Plataforma de origen sin disponibilidad</strong></td><td><span class="b bpu">Distinta plataforma</span></td><td><span class="b bg">Activo</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'motivo')"><i class="ti ti-edit"></i></button></td></tr>
-      <tr><td><strong>Migración por acuerdo con el cliente</strong></td><td><span class="b bpu">Distinta plataforma</span></td><td><span class="b bg">Activo</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'motivo')"><i class="ti ti-edit"></i></button></td></tr>
-      <tr><td><strong>Cortesía por inconveniente en el servicio</strong></td><td><span class="b bpu">Distinta plataforma</span></td><td><span class="b bg">Activo</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'motivo')"><i class="ti ti-edit"></i></button></td></tr>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:11px"><button class="btn btn-p btn-sm" onclick="abrirModalNuevoMotivo()"><i class="ti ti-plus"></i>Nuevo motivo</button></div>
+    <div class="card"><div class="tw"><table><thead><tr><th>Motivo</th><th>Tipo de cambio</th><th>Estado</th><th></th></tr></thead><tbody id="tb-motivos"><tr id="motivos-loading"><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">Cargando...</td></tr>
     </tbody></table></div></div>
   </div>
 </div>
@@ -1382,6 +1375,39 @@ async function intentarLogin() {
 <!-- Venta nueva CORREGIDA -->
 
 <!-- MODAL EDITAR SUSCRIPCIÓN -->
+
+<!-- MODAL NUEVO/EDITAR MOTIVO DE CAMBIO -->
+<div class="ov" id="m-motivo-form"><div class="modal" style="max-width:500px">
+  <div class="mh">
+    <div class="mico" style="background:linear-gradient(135deg,#f59e0b,#d97706)"><i class="ti ti-tag"></i></div>
+    <div><div class="mtit" id="m-motivo-titulo">Nuevo motivo de cambio</div></div>
+    <button class="mcl" onclick="closeModal('m-motivo-form')"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="mb">
+    <input type="hidden" id="motivo-edit-id">
+    <div class="fg"><label>Descripción del motivo<span class="req">*</span></label>
+      <input type="text" id="motivo-desc" placeholder="Ej: Cuenta dañada por el proveedor">
+    </div>
+    <div class="fg"><label>Tipo<span class="req">*</span></label>
+      <select id="motivo-tipo">
+        <option value="Misma plataforma">Misma plataforma (NF→NF)</option>
+        <option value="Distinta plataforma">Distinta plataforma (NF→DS)</option>
+        <option value="Ambos">Ambos tipos</option>
+      </select>
+    </div>
+    <div class="fg"><label>Estado</label>
+      <select id="motivo-estado">
+        <option value="Activo">Activo</option>
+        <option value="Inactivo">Inactivo</option>
+      </select>
+    </div>
+  </div>
+  <div class="mf">
+    <button class="btn" onclick="closeModal('m-motivo-form')">Cancelar</button>
+    <button class="btn btn-p" onclick="guardarMotivo()"><i class="ti ti-check"></i> Guardar</button>
+  </div>
+</div></div>
+
 <div class="ov" id="m-edit-sub"><div class="modal" style="max-width:660px">
   <div class="mh">
     <div class="mico" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)"><i class="ti ti-edit"></i></div>
@@ -2148,11 +2174,11 @@ function goTo(v,el){
   else if (v==='cobros')        ha.innerHTML=`<button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
   else if (v==='suscripciones') ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
   else if (v==='cobranza')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Registrar pago</button>`;
-  else if (v==='inventario')    { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-cuenta')"><i class="ti ti-plus"></i>Nueva cuenta</button><button class="hbtn" onclick="openModal('m-cambio')"><i class="ti ti-arrows-exchange"></i>Cambio de cuenta</button>`; cargarInventario(); }
+  else if (v==='inventario')    { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-cuenta')"><i class="ti ti-plus"></i>Nueva cuenta</button><button class="hbtn" onclick="openModal('m-cambio');cargarMotivosCambio();"><i class="ti ti-arrows-exchange"></i>Cambio de cuenta</button>`; cargarInventario(); }
   else if (v==='proveedores')   { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-proveedor')"><i class="ti ti-plus"></i>Nuevo proveedor</button>`; dbCargarProveedores(); }
   else if (v==='egresos')       { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-egreso')"><i class="ti ti-plus"></i>Nuevo egreso</button>`; dbCargarEgresos(); }
   else if (v==='reportes')      ha.innerHTML='';
-  else if (v==='tablas')        ha.innerHTML='';
+  else if (v==='tablas')        { ha.innerHTML=''; setTimeout(()=>{ cargarTablaMotivos(); cargarMotivosCambio(); },100); }
   else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); }
   else if (v==='accesos')       { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`; setTimeout(()=>{ if(typeof dbCargarAccesos==='function') dbCargarAccesos(); },100); }
   else if (v==='historial')     { ha.innerHTML=''; setTimeout(()=>{ if(typeof dbCargarHistorial==='function') dbCargarHistorial(); },100); }
@@ -2788,11 +2814,11 @@ async function confirmarCambio(){
     }
 
     closeModal('m-cambio');
-    // Recargar suscripciones desde Supabase para reflejar el cambio
+    // Recargar suscripciones desde Supabase — limpiar y recargar completo
+    SUBS_FULL.length = 0;
     await dbCargarSuscripciones();
-    if (document.getElementById('v-suscripciones')?.classList.contains('on')) {
-      renderSubs(SUBS_FULL);
-    }
+    sincronizarPlatsClientes();
+    renderSubs(SUBS_FULL);
     toast('Cambio registrado correctamente ✓', 'ok');
 
     // 5. Abrir WA con datos reales
@@ -4026,7 +4052,8 @@ function updPerfilesVenta() {
     const perfiles = parseInt(precioOpt.dataset.perfiles || '1');
     ventaData.planPrecio  = precio;
     ventaData.planPerfiles = perfiles;
-    ventaData.plats = [plat];
+    // Para planes de 2+ perfiles de la misma plataforma, repetir en el array
+    ventaData.plats = Array(perfiles).fill(plat);
     if (prev && plat) {
       const pluralP = perfiles === 1 ? 'perfil' : 'perfiles';
       prev.textContent = `${PLATS[plat]?.nombre || plat} · ${perfiles} ${pluralP} — $${precio.toFixed(2)}`;
@@ -4267,6 +4294,7 @@ function selPerfilVenta(el, codigo, num, plat) {
 
   // Para múltiples perfiles de la misma plataforma, usar índice
   const maxPerfs = (ventaData.plats||[]).filter(p => p === plat).length;
+  console.log('[PERFIL] plat:', plat, '| ventaData.plats:', ventaData.plats, '| maxPerfs:', maxPerfs, '| planPerfiles:', ventaData.planPerfiles);
   const selCount = Object.keys(ventaData.perfilesSel).filter(k => k.startsWith(plat+'_') || k === plat).length;
 
   if (maxPerfs <= 1) {
@@ -4384,10 +4412,14 @@ function limpiarClientePago() {
 }
 
 function renderSubsPago(clienteId) {
-  // Usar SUBS_FULL (datos reales de Supabase) — todas las subs del cliente
+  // Usar SUBS_FULL — deduplicar por perfil (quedarse con la más reciente)
   const subsRaw = SUBS_FULL.filter(s => s.clienteId === clienteId);
-  // Mapear al formato que espera renderSubsPago
-  const subs = subsRaw.map(s => ({
+  const subsSeen = new Map();
+  subsRaw.forEach(s => {
+    const key = s.perfil + '_' + s.plat;
+    if (!subsSeen.has(key) || s.id > subsSeen.get(key).id) subsSeen.set(key, s);
+  });
+  const subs = Array.from(subsSeen.values()).map(s => ({
     plat:   s.plat,
     perfil: s.perfil || '—',
     vcto:   s.fVcto  || '—',
@@ -5305,7 +5337,6 @@ function limpiarClienteCambio() {
 
 
 // ── HISTORIAL DINÁMICO ───────────────────────────────────────
-function agregarHistorial(accion, detalle, color) {
 async function dbCargarHistorial() {
   const tbody = document.getElementById('tb-historial') || document.querySelector('#v-historial tbody');
   if (!tbody) return;
@@ -5323,7 +5354,7 @@ async function dbCargarHistorial() {
       : '—';
     const rolBadge = (h.operador||'').toLowerCase().includes('master')
       ? '<span class="b bg">Master</span>'
-      : '<span class="b bp">'+( h.operador||'Sistema')+'</span>';
+      : '<span class="b bp">'+(h.operador||'Sistema')+'</span>';
     return `<tr>
       <td style="font-size:12px">${fecha}</td>
       <td>${rolBadge}</td>
@@ -5333,6 +5364,7 @@ async function dbCargarHistorial() {
   }).join('');
 }
 
+function agregarHistorial(accion, detalle, color) {
   const tbody = document.querySelector('#v-historial tbody');
   if (!tbody) return;
   const now = new Date();
@@ -5390,6 +5422,85 @@ const SUBS_FULL = [];
 
 let SUBS_FILTRADAS = [...SUBS_FULL];
 
+
+// ── MOTIVOS DE CAMBIO ──────────────────────────────────────────────────
+function abrirModalNuevoMotivo() {
+  document.getElementById('motivo-edit-id').value = '';
+  document.getElementById('motivo-desc').value = '';
+  document.getElementById('motivo-tipo').value = 'Misma plataforma';
+  document.getElementById('motivo-estado').value = 'Activo';
+  document.getElementById('m-motivo-titulo').textContent = 'Nuevo motivo de cambio';
+  openModal('m-motivo-form');
+}
+
+async function guardarMotivo() {
+  const id    = document.getElementById('motivo-edit-id').value;
+  const desc  = document.getElementById('motivo-desc').value.trim();
+  const tipo  = document.getElementById('motivo-tipo').value;
+  const estado= document.getElementById('motivo-estado').value;
+  if (!desc) { toast('Ingresa la descripción del motivo','warn'); return; }
+
+  const btn = document.querySelector('#m-motivo-form .btn-p');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
+
+  try {
+    let error;
+    if (id) {
+      ({error} = await supa.from('motivos_cambio').update({motivo:desc, tipo, estado}).eq('id', id));
+    } else {
+      ({error} = await supa.from('motivos_cambio').insert({motivo:desc, tipo, estado}));
+    }
+    if (error) throw error;
+    closeModal('m-motivo-form');
+    cargarTablaMotivos();
+    cargarMotivosCambio(); // recargar dropdown
+    toast('Motivo guardado correctamente ✓','ok');
+    await dbGuardarHistorial(id?'Editar motivo':'Nuevo motivo', desc, 'var(--accent)');
+  } catch(e) {
+    toast('Error: '+(e.message||e),'error');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i> Guardar';
+  }
+}
+
+async function cargarTablaMotivos() {
+  const tbody = document.getElementById('tb-motivos');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">Cargando...</td></tr>';
+  const {data, error} = await supa.from('motivos_cambio').select('*').order('tipo').order('motivo');
+  if (error || !data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">'+(error?'Error cargando':'Sin motivos registrados')+'</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(m => {
+    const badge = m.tipo==='Misma plataforma'?'bi':m.tipo==='Distinta plataforma'?'bpu':'bp';
+    const estBadge = m.estado==='Activo'?'bg':'ba';
+    return `<tr>
+      <td><strong>${m.motivo}</strong></td>
+      <td><span class="b ${badge}">${m.tipo||'—'}</span></td>
+      <td><span class="b ${estBadge}">${m.estado||'—'}</span></td>
+      <td class="tda">
+        <button class="btn btn-sm btn-ic" onclick="editarMotivo(${m.id},'${(m.motivo||'').replace(/'/g,&quot;\'&quot;)}','${m.tipo}','${m.estado}')"><i class="ti ti-edit"></i></button>
+      </td></tr>`;
+  }).join('');
+}
+
+function editarMotivo(id, desc, tipo, estado) {
+  document.getElementById('motivo-edit-id').value = id;
+  document.getElementById('motivo-desc').value = desc;
+  document.getElementById('motivo-tipo').value = tipo;
+  document.getElementById('motivo-estado').value = estado;
+  document.getElementById('m-motivo-titulo').textContent = 'Editar motivo';
+  openModal('m-motivo-form');
+}
+
+async function cargarMotivosCambio() {
+  const sel = document.getElementById('sel-motivo');
+  if (!sel) return;
+  const {data} = await supa.from('motivos_cambio').select('*').eq('estado','Activo').order('tipo').order('motivo');
+  if (!data || !data.length) return;
+  sel.innerHTML = data.map(m => `<option value="${m.motivo}">${m.motivo}</option>`).join('');
+}
 
 // ── EDITAR SUSCRIPCIÓN ──────────────────────────────────────────────────
 function abrirEditarSubById(id) {
