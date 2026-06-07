@@ -2277,7 +2277,7 @@ function abrirWA(n,p,m,tipo,ctx){
   const sel=document.querySelector('#m-wa select');if(sel)sel.value=tipo;
   const fn = WA[tipo]||WA.vencimiento;
   // Plantilla entrega acepta contexto opcional
-  document.getElementById('wa-txt').innerHTML = tipo==='entrega' ? fn(n,p,m,ctx) : fn(n,p,m);
+  document.getElementById('wa-txt').innerHTML = fn(n,p,m,ctx);
   openModal('m-wa');
 }
 function cambPlant(v){document.getElementById('wa-txt').innerHTML=(WA[v]||WA.vencimiento)(waCtx.n,waCtx.p,waCtx.m);}
@@ -2728,9 +2728,28 @@ async function confirmarCambio(){
   const parts  = (subSel?.value || '').split('|');
   const subPlat   = parts[1] || '';
   const subPerfil = parts[2] || '';
-  const subActual = SUBS_FULL.find(s => s.clienteId === cambioData.clienteId && s.perfil === subPerfil);
+  console.log('[CAMBIO] clienteId:', cambioData.clienteId, '| plat:', subPlat, '| perfil:', subPerfil);
+  console.log('[CAMBIO] SUBS_FULL total:', SUBS_FULL.length);
+  // Buscar por clienteId y perfil, o solo por clienteId y plat si no hay perfil
+  let subActual = SUBS_FULL.find(s => s.clienteId === cambioData.clienteId && s.perfil === subPerfil);
+  if (!subActual) subActual = SUBS_FULL.find(s => s.clienteId === cambioData.clienteId && s.plat === subPlat);
+  console.log('[CAMBIO] subActual encontrada:', subActual?.id, subActual?.perfil);
 
-  if (!subActual?.id) { toast('No se encontró la suscripción activa','error'); return; }
+  if (!subActual?.id) {
+    // Intentar cargar desde Supabase directamente
+    const {data: subDB} = await supa.from('suscripciones')
+      .select('id, perfil_id, plataforma, estado')
+      .eq('cliente_id', cambioData.clienteId)
+      .eq('estado', 'activo')
+      .limit(1);
+    if (subDB?.length) {
+      subActual = {id: subDB[0].id, perfil: subDB[0].perfil_id, plat: subDB[0].plataforma};
+      console.log('[CAMBIO] subActual desde DB:', subActual);
+    } else {
+      toast('No se encontró suscripción activa para este cliente','error');
+      return;
+    }
+  }
 
   const btn = document.getElementById('btn-confirmar-cambio');
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
