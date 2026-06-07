@@ -5480,9 +5480,14 @@ async function cargarTablaMotivos() {
       <td><span class="b ${badge}">${m.tipo||'—'}</span></td>
       <td><span class="b ${estBadge}">${m.estado||'—'}</span></td>
       <td class="tda">
-        <button class="btn btn-sm btn-ic" onclick="editarMotivo(${m.id},'${(m.motivo||'').replace(/'/g,&quot;\'&quot;)}','${m.tipo}','${m.estado}')"><i class="ti ti-edit"></i></button>
+        <button class="btn btn-sm btn-ic" onclick="editarMotivoById(${m.id})"><i class="ti ti-edit"></i></button>
       </td></tr>`;
   }).join('');
+}
+
+async function editarMotivoById(id) {
+  const {data} = await supa.from('motivos_cambio').select('*').eq('id',id).single();
+  if (data) editarMotivo(data.id, data.motivo, data.tipo, data.estado);
 }
 
 function editarMotivo(id, desc, tipo, estado) {
