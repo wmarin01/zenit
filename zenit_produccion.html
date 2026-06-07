@@ -715,8 +715,8 @@ async function intentarLogin() {
     </div>
   </div>
   <div class="card"><div class="ct"><i class="ti ti-receipt" style="color:var(--accent)"></i>Últimas transacciones</div>
-    <div class="tw"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Plataforma</th><th>Comprobante</th><th>Tipo</th><th>Monto</th></tr></thead><tbody>
-<tr id="dash-trans-loading"><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr>
+    <div class="tw"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Plataforma</th><th>Comprobante</th><th>Tipo</th><th>Monto</th></tr></thead><tbody id="dash-trans-tbody">
+<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr>
     </tbody></table></div>
   </div>
 </div>
@@ -2139,25 +2139,28 @@ function renderDashboard() {
   }
 
   // ── Últimas transacciones ─────────────────────────────────────
-  const transTbody = document.querySelector('#v-dashboard tbody:last-of-type') ||
-    document.getElementById('dash-trans-loading')?.parentElement;
-  const ultimos = COBROS.slice(0,5);
-  const dashTransTbody = document.querySelector('#v-dashboard table:last-of-type tbody') || document.getElementById('dash-trans-loading')?.closest('tbody');
-  const transTbody2 = dashTransTbody || transTbody;
-  if (transTbody2 && ultimos.length) {
-    const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
-    transTbody2.innerHTML = ultimos.map(c => {
-      const plats = c.plat.split('+').map(p=>`<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
-      const tipoBadge = c.tipo==='Venta nueva' ? '<span class="b bg">Venta nueva</span>' : '<span class="b bi">Renovación</span>';
-      return `<tr>
-        <td>${c.fecha}</td>
-        <td><strong>${c.nombre}</strong></td>
-        <td>${plats}</td>
-        <td style="font-family:var(--mono)">${c.doc||'—'}</td>
-        <td>${tipoBadge}</td>
-        <td style="color:var(--green);font-weight:500">$${c.monto.toFixed(2)}</td>
-      </tr>`;
-    }).join('');
+  const transTbody2 = document.getElementById('dash-trans-tbody');
+  const ultimos = COBROS.slice(0, 8);
+  if (transTbody2) {
+    if (!ultimos.length) {
+      transTbody2.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Sin transacciones registradas</td></tr>';
+    } else {
+      const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
+      transTbody2.innerHTML = ultimos.map(c => {
+        const plats = (c.plat||'').split('+').map(p=>`<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
+        const tipoBadge = c.tipo==='Venta nueva'
+          ? '<span class="b bg">Venta nueva</span>'
+          : '<span class="b bi">Renovación</span>';
+        return `<tr>
+          <td style="font-size:12px">${c.fecha||'—'}</td>
+          <td><strong>${c.nombre||'—'}</strong></td>
+          <td>${plats||'—'}</td>
+          <td style="font-family:var(--mono);font-size:12px">${c.doc||'—'}</td>
+          <td>${tipoBadge}</td>
+          <td style="color:var(--green);font-weight:500">$${(c.monto||0).toFixed(2)}</td>
+        </tr>`;
+      }).join('');
+    }
   }
 }
 
