@@ -2154,8 +2154,8 @@ function goTo(v,el){
   else if (v==='reportes')      ha.innerHTML='';
   else if (v==='tablas')        ha.innerHTML='';
   else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); }
-  else if (v==='accesos')       { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`; dbCargarAccesos(); }
-  else if (v==='historial')     { ha.innerHTML=''; dbCargarHistorial(); }
+  else if (v==='accesos')       { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`; setTimeout(()=>{ if(typeof dbCargarAccesos==='function') dbCargarAccesos(); },100); }
+  else if (v==='historial')     { ha.innerHTML=''; setTimeout(()=>{ if(typeof dbCargarHistorial==='function') dbCargarHistorial(); },100); }
   else if (v==='usuarios')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-usuario')"><i class="ti ti-plus"></i>Nuevo usuario</button>`;
   else                          ha.innerHTML='';
   if(v==='dashboard') renderDashboard();
@@ -2788,7 +2788,11 @@ async function confirmarCambio(){
     }
 
     closeModal('m-cambio');
-    renderSubs(SUBS_FULL);
+    // Recargar suscripciones desde Supabase para reflejar el cambio
+    await dbCargarSuscripciones();
+    if (document.getElementById('v-suscripciones')?.classList.contains('on')) {
+      renderSubs(SUBS_FULL);
+    }
     toast('Cambio registrado correctamente ✓', 'ok');
 
     // 5. Abrir WA con datos reales
