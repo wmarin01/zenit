@@ -436,15 +436,10 @@ td strong{color:var(--text);font-weight:500}
 label{font-size:11px;color:var(--text2);font-weight:500}
 .req{color:var(--red);margin-left:2px}
 input[type=text],input[type=number],input[type=date],input[type=email],input[type=password],select,textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;font-size:13px;color:var(--text);font-family:var(--font);outline:none;width:100%;transition:border-color .15s}
-input[type=date]{color-scheme:dark;color:var(--text)}
-input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1) brightness(1.5);cursor:pointer;opacity:.7}
+input[type=date]{color-scheme:light;color:#1e293b;background:#f8fafc;border:1px solid var(--border)}
+input[type=date]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.8;filter:none}
 input[type=date]::-webkit-calendar-picker-indicator:hover{opacity:1}
-input[type=date]::-webkit-datetime-edit{color:var(--text)}
-input[type=date]::-webkit-datetime-edit-fields-wrapper{color:var(--text)}
-input[type=date]::-webkit-datetime-edit-text{color:var(--text3)}
-input[type=date]::-webkit-datetime-edit-month-field,
-input[type=date]::-webkit-datetime-edit-day-field,
-input[type=date]::-webkit-datetime-edit-year-field{color:var(--text)}
+input[type=date]:focus{border-color:var(--accent);background:#fff}
 input:focus,select:focus,textarea:focus{border-color:var(--accent2)}
 input[readonly]{background:var(--bg4);color:var(--text2)}
 input::placeholder,textarea::placeholder{color:var(--text3)}
@@ -3845,47 +3840,46 @@ function ventaPaso5() {
 
 function ventaPaso5Resumen() {
   ['vpaso1','vpaso2','vpaso3','vpaso4','vpaso5'].forEach((id,i) => document.getElementById(id).style.display = i===4?'block':'none');
-  // Construir resumen
+
+  const plats    = ventaData.plats;
   const usuarios = getUsuariosVenta();
-  const usuario = Object.values(usuarios).join(' / ') || '—';
-  const pin = ventaData.pins ? Object.values(ventaData.pins).join(' / ') : (document.getElementById('pinval')?.textContent || '—');
-  const vctoRaw5 = document.getElementById('v-fecha-vcto')?.value || '—';
-  // Convertir YYYY-MM-DD → dd/mm/yyyy para mostrar
-  const fmtD5 = v => { if(!v||!v.includes('-')) return v||'—'; const [yy,mm,dd]=v.split('-'); return dd+'/'+mm+'/'+yy; };
-  const vcto = fmtD5(vctoRaw5);
-  // Formatear fecha ini legible
-  const fIniVal = document.getElementById('v-fecha-ini')?.value || ventaData.fechaIni || '';
-  const fIniStr = fmtD5(fIniVal);
+  const fmtD5    = v => { if(!v||!v.includes('-')) return v||'—'; const [yy,mm,dd]=v.split('-'); return `${dd}/${mm}/${yy}`; };
+  const vcto     = fmtD5(document.getElementById('v-fecha-vcto')?.value || '');
+  const fIniStr  = fmtD5(document.getElementById('v-fecha-ini')?.value || ventaData.fechaIni || '');
+  let total = ventaData.planPrecio || 0;
+  if (ventaData.tipo === 'combo' && comboSelIdx >= 0) total = COMBOS[comboSelIdx].precio;
+
+  // Construir entradas indexadas usando helpers
+  const entries = plats.map((p, i) => {
+    const idxEnPlat = plats.slice(0,i).filter(x=>x===p).length;
+    const key  = getPerfKey(plats, p, idxEnPlat);
+    const perf = ventaData.perfilesSel[key] || ventaData.perfilesSel[p] || null;
+    const usu  = usuarios[key] || usuarios[p] || '—';
+    const pin  = ventaData.pins?.[key] || ventaData.pins?.[p] || '—';
+    const label = plats.filter(x=>x===p).length > 1
+      ? `${PLATS[p]?.nombre||p} ${idxEnPlat+1}`
+      : (PLATS[p]?.nombre||p);
+    return {p, key, perf, usu, pin, label};
+  });
 
   let rows = `<div class="sr"><span class="sl">Cliente</span><span>${ventaData.clienteNombre}</span></div>`;
-  rows += `<div class="sr"><span class="sl">Tipo</span><span>${ventaData.tipo === 'individual' ? 'Individual' : 'Combo'}</span></div>`;
-  // Total: usar precio del plan seleccionado (guardado en ventaData.planPrecio)
-  let total = 0;
-  if (ventaData.tipo === 'combo' && comboSelIdx >= 0) {
-    total = COMBOS[comboSelIdx].precio;
-  } else {
-    total = ventaData.planPrecio || 0;
-  }
-  ventaData.plats.forEach(p => {
-    const perf = Object.values(ventaData.perfilesSel).find(x => x && x.plat === p);
-    rows += `<div class="sr"><span class="sl">${PLATS[p].nombre}</span><span style="font-family:var(--mono)">${perf ? perf.codigo : '—'}</span></div>`;
+  rows += `<div class="sr"><span class="sl">Tipo</span><span>${ventaData.tipo==='individual'?'Individual':'Combo'}</span></div>`;
+
+  // Perfiles
+  entries.forEach(({label, perf}) => {
+    rows += `<div class="sr"><span class="sl">${label}</span><span style="font-family:var(--mono)">${perf?.codigo||'—'}</span></div>`;
   });
-  // Usuarios por plataforma (ya calculados arriba)
-  ventaData.plats.forEach(p => {
-    const u = usuarios[p] || '—';
-    rows += `<div class="sr"><span class="sl">Usuario ${PLATS[p]?.nombre||p}</span><span>${u}</span></div>`;
+  // Usuarios
+  entries.forEach(({label, usu}) => {
+    rows += `<div class="sr"><span class="sl">Usuario ${label}</span><span>${usu}</span></div>`;
   });
-  // PINs por plataforma
-  if (ventaData.plats.length === 1) {
-    rows += `<div class="sr"><span class="sl">PIN</span><span style="font-family:var(--mono);letter-spacing:4px">${(ventaData.pins&&ventaData.pins[ventaData.plats[0]])||pin}</span></div>`;
-  } else {
-    ventaData.plats.forEach(p => {
-      const pinP = (ventaData.pins&&ventaData.pins[p]) || '—';
-      rows += `<div class="sr"><span class="sl">PIN ${PLATS[p]?.nombre||p}</span><span style="font-family:var(--mono);letter-spacing:4px">${pinP}</span></div>`;
-    });
-  }
+  // PINs
+  entries.forEach(({label, pin}) => {
+    rows += `<div class="sr"><span class="sl">PIN ${label}</span><span style="font-family:var(--mono);letter-spacing:4px">${pin}</span></div>`;
+  });
+
   rows += `<div class="sr"><span class="sl">Vigencia</span><span>${fIniStr} → ${vcto}</span></div>`;
-  rows += `<div class="sr"><span>Total</span><span style="color:var(--green)">$${total.toFixed(2)}</span></div>`;
+  rows += `<div class="sr"><span><strong>Total</strong></span><span style="color:var(--green);font-weight:600">$${total.toFixed(2)}</span></div>`;
   document.getElementById('v-resumen').innerHTML = rows;
   updVentaSteps(5);
 }
