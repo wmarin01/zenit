@@ -1699,8 +1699,11 @@ async function intentarLogin() {
         <div style="background:rgba(62,207,142,.05);border:1px solid rgba(62,207,142,.2);border-radius:var(--r);padding:12px 14px">
           <div class="fg" id="plat-nueva-grp" style="display:none;margin-bottom:8px"><label>Nueva plataforma<span class="req">*</span></label><select><option>Disney+ (DS)</option><option>HBO Max (HB)</option><option>Prime Video (PV)</option></select></div>
           <div class="fg" style="margin-bottom:8px"><label>Seleccionar perfil disponible<span class="req">*</span></label>
-            <div id="cambio-perfiles-lista" style="margin-top:5px;max-height:180px;overflow-y:auto">
-              <div style="color:var(--text3);font-size:12px;padding:8px">Selecciona un cliente primero</div>
+            <div style="margin-top:5px">
+              <input type="text" id="cambio-perfil-busq" placeholder="Buscar perfil o cuenta..." style="margin-bottom:6px;font-size:12px" oninput="filtrarPerfilesCambio(this.value)">
+              <div id="cambio-perfiles-lista" style="max-height:260px;overflow-y:auto">
+                <div style="color:var(--text3);font-size:12px;padding:8px">Selecciona un cliente primero</div>
+              </div>
             </div>
           </div>
           <div class="fr c2">
@@ -5107,7 +5110,7 @@ function poblarCamposAntCambio(sel) {
 function poblarPerfilesDisponiblesCambio(plat) {
   const lista = document.getElementById('cambio-perfiles-lista');
   if (!lista) return;
-  const perfs = (PERFILES_DISP[plat] || []).slice(0, 100);
+  const perfs = PERFILES_DISP[plat] || [];
   if (!perfs.length) {
     lista.innerHTML = '<div style="color:var(--amber);font-size:12px;padding:8px">Sin perfiles disponibles para ' + (PLATS[plat]?.nombre || plat) + '</div>';
     return;
@@ -5126,6 +5129,22 @@ function poblarPerfilesDisponiblesCambio(plat) {
       '<span class="b bg">Disponible</span></div>'
     ).join('')
   ).join('');
+}
+
+function filtrarPerfilesCambio(q) {
+  const lista = document.getElementById('cambio-perfiles-lista');
+  if (!lista) return;
+  const busca = q.toLowerCase().trim();
+  lista.querySelectorAll('.pi').forEach(el => {
+    const txt = el.textContent.toLowerCase();
+    el.style.display = (!busca || txt.includes(busca)) ? '' : 'none';
+  });
+  // También mostrar/ocultar encabezados de cuenta
+  lista.querySelectorAll('div[style*="color:var(--text3)"]').forEach(header => {
+    const next = header.nextElementSibling;
+    const visible = next && next.style.display !== 'none';
+    header.style.display = visible ? '' : 'none';
+  });
 }
 
 function selPerfilCambio(el) {
