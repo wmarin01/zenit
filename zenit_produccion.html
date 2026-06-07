@@ -2708,16 +2708,88 @@ async function confirmarPago() {
     if (btnF) { btnF.disabled = false; btnF.innerHTML = '<i class="ti ti-check"></i>Registrar pago'; }
   }
 }
-function confirmarCambio(){
+async function confirmarCambio(){
   if (!cambioData.clienteId) { toast('Selecciona un cliente primero','warn'); return; }
-  const tipo = document.getElementById('tipo-cambio')?.value || 'misma';
-  const motivo = document.getElementById('sel-motivo')?.value || '—';
-  const nota = document.querySelector('#m-cambio textarea')?.value?.trim() || '';
-  // Registrar en historial
-  agregarHistorial('Cambio de ' + (tipo==='misma'?'cuenta':'plataforma'), cambioData.clienteNombre + ' — ' + motivo + (nota?' · '+nota:''));
-  closeModal('m-cambio');
-  toast('Cambio registrado para ' + cambioData.clienteNombre,'ok');
-  setTimeout(() => abrirWA(cambioData.clienteNombre, 'Netflix', '$10.00', 'cambio'), 400);
+
+  // Perfil nuevo seleccionado
+  const perfilNuevoEl = document.querySelector('#cambio-perfiles-lista .pi.on');
+  if (!perfilNuevoEl) { toast('Selecciona un perfil nuevo','warn'); return; }
+
+  const perfilNuevoCod  = perfilNuevoEl.dataset.codigo;
+  const correoNuevo     = document.getElementById('cambio-correo-nuevo')?.value || perfilNuevoEl.dataset.correo || '';
+  const claveNueva      = perfilNuevoEl.dataset.clave || '';
+  const pinNuevo        = document.getElementById('cambio-pin-nuevo')?.value || document.getElementById('cambio-pin-ant')?.value || '';
+  const vcto            = document.getElementById('cambio-vcto-ant')?.value || '';
+  const motivo          = document.getElementById('sel-motivo')?.value || '—';
+  const nota            = document.querySelector('#m-cambio textarea')?.value?.trim() || '';
+
+  // Suscripción activa del cliente
+  const subSel = document.getElementById('acceso-sub-sel');
+  const parts  = (subSel?.value || '').split('|');
+  const subPlat   = parts[1] || '';
+  const subPerfil = parts[2] || '';
+  const subActual = SUBS_FULL.find(s => s.clienteId === cambioData.clienteId && s.perfil === subPerfil);
+
+  if (!subActual?.id) { toast('No se encontró la suscripción activa','error'); return; }
+
+  const btn = document.getElementById('btn-confirmar-cambio');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
+
+  try {
+    // 1. Actualizar suscripción con nuevo perfil y correo
+    const { error: subErr } = await supa.from('suscripciones')
+      .update({
+        perfil_id: perfilNuevoCod,
+        correo:    correoNuevo,
+        pin:       pinNuevo || subActual.pin,
+        estado:    'activo'
+      })
+      .eq('id', subActual.id);
+    if (subErr) throw subErr;
+
+    // 2. Registrar en historial
+    await dbGuardarHistorial(
+      'Cambio de cuenta',
+      cambioData.clienteNombre + ' · ' + subPerfil + ' → ' + perfilNuevoCod + ' · ' + motivo + (nota?' · '+nota:''),
+      'var(--accent)'
+    );
+
+    // 3. Actualizar en memoria
+    const idx = SUBS_FULL.findIndex(s => s.id === subActual.id);
+    if (idx !== -1) {
+      SUBS_FULL[idx].perfil  = perfilNuevoCod;
+      SUBS_FULL[idx].correo  = correoNuevo;
+      SUBS_FULL[idx].clave   = claveNueva;
+      SUBS_FULL[idx].pin     = pinNuevo || subActual.pin;
+    }
+
+    // 4. Quitar perfil nuevo de PERFILES_DISP
+    if (PERFILES_DISP[subPlat]) {
+      PERFILES_DISP[subPlat] = PERFILES_DISP[subPlat].filter(p => p.codigo !== perfilNuevoCod);
+    }
+
+    closeModal('m-cambio');
+    renderSubs(SUBS_FULL);
+    toast('Cambio registrado correctamente ✓', 'ok');
+
+    // 5. Abrir WA con datos reales
+    const monto = subActual.monto || 0;
+    const platNom = PLATS[subPlat]?.nombre || subPlat;
+    setTimeout(() => abrirWA(cambioData.clienteNombre, subPlat, '$'+monto.toFixed(2), 'cambio', {
+      correo: correoNuevo,
+      clave:  claveNueva,
+      perfil: perfilNuevoCod,
+      pin:    pinNuevo || subActual.pin,
+      vcto:   vcto
+    }), 400);
+
+  } catch(e) {
+    console.error('Error en cambio:', e);
+    toast('Error al guardar: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-check"></i>Confirmar cambio';
+  }
 }
 function confirmarClave(){closeModal('m-clave');toast('Contraseña actualizada · 2 clientes notificados','ok');}
 function guardarParam(){
