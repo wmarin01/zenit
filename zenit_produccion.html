@@ -1699,12 +1699,14 @@ async function intentarLogin() {
         <div style="background:rgba(62,207,142,.05);border:1px solid rgba(62,207,142,.2);border-radius:var(--r);padding:12px 14px">
           <div class="fg" id="plat-nueva-grp" style="display:none;margin-bottom:8px"><label>Nueva plataforma<span class="req">*</span></label><select><option>Disney+ (DS)</option><option>HBO Max (HB)</option><option>Prime Video (PV)</option></select></div>
           <div class="fg" style="margin-bottom:8px"><label>Seleccionar perfil disponible<span class="req">*</span></label>
-            <div style="margin-top:5px">
-              <div class="pi on" onclick="selPerfil(this)" style="margin-bottom:3px"><span class="pcode">NF005-3</span><span class="porig">Cuenta nueva</span><span class="b bg">Disponible</span></div>
-              <div class="pi" onclick="selPerfil(this)"><span class="pcode">NF008-2</span><span class="porig">Cliente vencido</span><span class="b bg">Disponible</span></div>
+            <div id="cambio-perfiles-lista" style="margin-top:5px;max-height:180px;overflow-y:auto">
+              <div style="color:var(--text3);font-size:12px;padding:8px">Selecciona un cliente primero</div>
             </div>
           </div>
-          <div class="fr c2"><div class="fg"><label>Correo (auto)</label><input type="text" value="nueva@gmail.com" readonly><div class="hint ok">Al seleccionar perfil</div></div><div class="fg"><label>PIN</label><input type="text" value="2209"><div class="hint ok">Pre-cargado. Modificable.</div></div></div>
+          <div class="fr c2">
+            <div class="fg"><label>Correo (auto)</label><input type="text" id="cambio-correo-nuevo" readonly placeholder="Al seleccionar perfil"><div class="hint ok">Al seleccionar perfil</div></div>
+            <div class="fg"><label>PIN nuevo</label><input type="text" id="cambio-pin-nuevo" placeholder="Se mantiene igual"><div class="hint ok">Pre-cargado. Modificable.</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -5089,6 +5091,56 @@ function buscarClienteCambio(q) {
   }
 }
 
+function poblarCamposAntCambio(sel) {
+  const cE = document.getElementById('acceso-correo-val');
+  const pE = document.getElementById('cambio-pin-ant');
+  const vE = document.getElementById('cambio-vcto-ant');
+  const kE = document.getElementById('cambio-clave-ant');
+  if (cE) cE.value = sel.correo || '';
+  if (pE) pE.value = sel.pin    || '';
+  if (vE) vE.value = sel.fVcto  || '';
+  const cuentaId = sel.perfil ? sel.perfil.slice(0,6) : null;
+  const clave = (cuentaId && INV_SUBS_MAP[cuentaId]?.clave) || sel.clave || '—';
+  if (kE) { kE.value = clave !== '—' ? '••••••••' : '—'; kE.dataset.real = clave; }
+}
+
+function poblarPerfilesDisponiblesCambio(plat) {
+  const lista = document.getElementById('cambio-perfiles-lista');
+  if (!lista) return;
+  const perfs = (PERFILES_DISP[plat] || []).slice(0, 100);
+  if (!perfs.length) {
+    lista.innerHTML = '<div style="color:var(--amber);font-size:12px;padding:8px">Sin perfiles disponibles para ' + (PLATS[plat]?.nombre || plat) + '</div>';
+    return;
+  }
+  const grupos = {};
+  perfs.forEach(p => {
+    if (!grupos[p.cuenta]) grupos[p.cuenta] = {correo: p.correo, items: []};
+    grupos[p.cuenta].items.push(p);
+  });
+  lista.innerHTML = Object.entries(grupos).map(([cuenta, {correo, items}]) =>
+    '<div style="font-size:10px;color:var(--text3);margin:4px 0 2px">' + cuenta + ' · ' + correo + '</div>' +
+    items.map(p =>
+      '<div class="pi" data-codigo="' + p.codigo + '" data-correo="' + (p.correo||'') + '" data-clave="' + (p.clave||'') + '" onclick="selPerfilCambio(this)" style="margin-bottom:3px">' +
+      '<span class="pcode">' + p.codigo + '</span>' +
+      '<span class="porig">' + p.origen + '</span>' +
+      '<span class="b bg">Disponible</span></div>'
+    ).join('')
+  ).join('');
+}
+
+function selPerfilCambio(el) {
+  el.closest('#cambio-perfiles-lista').querySelectorAll('.pi').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  const correoEl = document.getElementById('cambio-correo-nuevo');
+  const pinEl    = document.getElementById('cambio-pin-nuevo');
+  if (correoEl) correoEl.value = el.dataset.correo || '';
+  if (pinEl && !pinEl.value) pinEl.value = document.getElementById('cambio-pin-ant')?.value || '';
+  // Guardar en cambioData
+  cambioData.perfilNuevo = el.dataset.codigo;
+  cambioData.correoNuevo = el.dataset.correo;
+  cambioData.claveNueva  = el.dataset.clave;
+}
+
 function selClienteCambio(id, nombre, tel) {
   cambioData = {clienteId:id, clienteNombre:nombre, clienteTel:tel};
   document.getElementById('cambio-resultados').style.display = 'none';
@@ -5102,33 +5154,24 @@ function selClienteCambio(id, nombre, tel) {
   if (subSel) {
     if (subs.length) {
       subSel.onchange = function() {
-        const sel = subs.find(s => s.perfil === this.value.split('|')[2]);
+        const parts = this.value.split('|');
+        const sel = subs.find(s => s.perfil === parts[2] && s.plat === parts[1]);
         if (!sel) return;
-        const cE = document.getElementById('acceso-correo-val');
-        const pE = document.getElementById('cambio-pin-ant');
-        const vE = document.getElementById('cambio-vcto-ant');
-        const kE = document.getElementById('cambio-clave-ant');
-        if (cE) cE.value = sel.correo || '';
-        if (pE) pE.value = sel.pin    || '';
-        if (vE) vE.value = sel.fVcto  || '';
-        if (kE) { kE.value = '••••••••'; kE.dataset.real = sel.clave || ''; }
+        poblarCamposAntCambio(sel);
+        // Recargar perfiles disponibles para la plataforma de esta suscripción
+        poblarPerfilesDisponiblesCambio(sel.plat);
       };
+      // Poblar con la primera suscripción
+      if (subs.length) {
+        poblarCamposAntCambio(subs[0]);
+        poblarPerfilesDisponiblesCambio(subs[0].plat);
+      }
       subSel.innerHTML = subs.map(s => {
         const platNom = PLATS[s.plat]?.nombre || s.plat;
         const dias = s.dias < 0 ? ` (vencida hace ${Math.abs(s.dias)}d)` : s.dias === 0 ? ' (vence hoy)' : ` (${s.dias}d)`;
         return `<option value="${s.clienteId}|${s.plat}|${s.perfil}" data-plat="${s.plat}" data-perfil="${s.perfil||'—'}" data-correo="${s.correo||''}" data-vcto="${s.fVcto||''}">${platNom} · ${s.perfil||'—'}${dias}</option>`;
       }).join('');
-      // Auto-rellenar campos con la primera suscripción
-      const first = subs[0];
-      // Poblar campos de la cuenta anterior
-      const correoEl = document.getElementById('acceso-correo-val');
-      const pinEl    = document.getElementById('cambio-pin-ant');
-      const vctoEl   = document.getElementById('cambio-vcto-ant');
-      const claveEl  = document.getElementById('cambio-clave-ant');
-      if (correoEl) correoEl.value = first.correo || '';
-      if (pinEl)    pinEl.value    = first.pin    || '';
-      if (vctoEl)   vctoEl.value   = first.fVcto  || '';
-      if (claveEl)  { claveEl.value = '••••••••'; claveEl.dataset.real = first.clave || ''; }
+      // Campos poblados por poblarCamposAntCambio() arriba
     } else {
       subSel.innerHTML = '<option>— Sin suscripciones —</option>';
     }
@@ -6678,6 +6721,15 @@ async function cargarInventario() {
     // Debug: verificar NF0057
     // Log diagnóstico completo
     const primerasClaves = Object.keys(INV_SUBS_MAP).slice(0, 5);
+    // Poblar clave en SUBS_FULL desde el mapa de inventario
+    SUBS_FULL.forEach(s => {
+      if (!s.clave || s.clave === '—') {
+        const cuentaId = s.perfil ? s.perfil.slice(0,6) : null;
+        if (cuentaId && INV_SUBS_MAP[cuentaId]) {
+          s.clave = INV_SUBS_MAP[cuentaId].clave || '—';
+        }
+      }
+    });
     console.log('[INV] Total claves en mapa:', Object.keys(INV_SUBS_MAP).length);
     console.log('[INV] Primeras 5 claves:', primerasClaves);
     console.log('[INV] Ejemplo NF0057:', INV_SUBS_MAP['NF0057']);
