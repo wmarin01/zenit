@@ -2259,68 +2259,52 @@ function tabCob(el,id){
   el.classList.add('on');
   ['tc-hoy','tc-1d','tc-3d','tc-todos'].forEach(x=>{const d=document.getElementById(x);if(d)d.style.display='none';});
   const t=document.getElementById(id);if(t)t.style.display='block';
-  
   // Renderizar cobranza desde suscripciones activas de Supabase
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const subsActivas = SUBS_FULL.filter(s => s.est === 'activo' && s.fVcto && s.fVcto !== '—');
-  
-  // 🛡️ ESCUDO PROTECTOR: Evita bucles infinitos si hay fechas vacías o dañadas en Supabase
-  const withDays = [];
-  subsActivas.forEach(s => {
-    if (!s.fVcto || !s.fVcto.includes('/')) return; // Si no hay fecha válida, la salta de forma segura
-    
-    const [dd,mm,yy] = s.fVcto.split('/');
-    if (!dd || !mm || !yy) return;
-    
+  // Convertir fVcto dd/mm/yyyy → Date
+  const withDays = subsActivas.map(s => {
+    const [dd,mm,yy] = (s.fVcto||'').split('/');
     const vctoDate = new Date(+yy, +mm-1, +dd);
-    if (isNaN(vctoDate.getTime())) return; // Si la fecha es inválida, la salta de forma segura
-    
     const diff = Math.ceil((vctoDate - hoy) / 86400000);
-    withDays.push({...s, diasVcto: diff});
+    return {...s, diasVcto: diff};
   });
-
   let filtrados;
   if      (id==='tc-hoy')   filtrados = withDays.filter(s => s.diasVcto === 0);
   else if (id==='tc-1d')    filtrados = withDays.filter(s => s.diasVcto === 1);
   else if (id==='tc-3d')    filtrados = withDays.filter(s => s.diasVcto <= 3 && s.diasVcto >= 0);
   else                      filtrados = withDays.filter(s => s.diasVcto <= 30 && s.diasVcto >= 0);
-  
+  // Actualizar contadores en tabs
   const counts = {
     'tc-hoy':  withDays.filter(s=>s.diasVcto===0).length,
     'tc-1d':   withDays.filter(s=>s.diasVcto===1).length,
     'tc-3d':   withDays.filter(s=>s.diasVcto<=3&&s.diasVcto>=0).length,
     'tc-todos':withDays.filter(s=>s.diasVcto<=30&&s.diasVcto>=0).length,
   };
-  
   document.getElementById('cobtabs').querySelectorAll('.tab').forEach(tab => {
     const tabId = tab.getAttribute('onclick')?.match(/'(tc-[^']+)'/)?.[1];
     const cnt = tab.querySelector('.tcnt');
     if (tabId && cnt) cnt.textContent = counts[tabId] || 0;
   });
-  
+  // Renderizar tabla en el contenedor activo
   const tbodyMap = {'tc-hoy':'tcob-hoy','tc-1d':'tcob-1d','tc-3d':'tcob-3d','tc-todos':'tcob-todos'};
-  const cobBusca = (document.getElementById('cob-busq')?.value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+  const cobBusca = (document.getElementById('cob-busq')?.value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   const tbody = document.getElementById(tbodyMap[id] || 'tcob-hoy');
   if (!tbody) return;
-  
+  // Aplicar búsqueda de texto en cobranza
   if (cobBusca) {
     const cobDigits = cobBusca.replace(/[^0-9]/g,'');
     const cobHasD = cobDigits.length >= 4;
     const cobTelN = cobHasD ? normalizeTel(cobBusca) : '';
     filtrados = filtrados.filter(s => {
-      const nom = (s.nombre||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      const nom = (s.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       return nom.includes(cobBusca) ||
         (cobHasD && cobTelN && normalizeTel(s.tel||'').includes(cobTelN)) ||
         (s.plat||'').toLowerCase().includes(cobBusca) ||
         (s.perfil||'').toLowerCase().includes(cobBusca);
     });
   }
-  
-  if (!filtrados.length) { 
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No hay suscripciones en este período</td></tr>'; 
-    return; 
-  }
-  
+  if (!filtrados.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No hay suscripciones en este período</td></tr>'; return; }
   const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
   tbody.innerHTML = filtrados.map(s => {
     const platDot = (s.plat||'').split('+').map(p=>`<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
@@ -4487,13 +4471,13 @@ function limpiarClientePago() {
 }
 
 function renderSubsPago(clienteId) {
+  // Usar SUBS_FULL — deduplicar por perfil (quedarse con la más reciente)
   const subsRaw = SUBS_FULL.filter(s => s.clienteId === clienteId);
   const subsSeen = new Map();
   subsRaw.forEach(s => {
     const key = s.perfil + '_' + s.plat;
     if (!subsSeen.has(key) || s.id > subsSeen.get(key).id) subsSeen.set(key, s);
   });
-  
   const subs = Array.from(subsSeen.values()).map(s => ({
     plat:   s.plat,
     perfil: s.perfil || '—',
@@ -4501,23 +4485,21 @@ function renderSubsPago(clienteId) {
     precio: s.monto  || 0,
     dias:   s.dias   || 0,
     correo: s.correo || '',
-    clave:  s.clave  || '—', // 🛡️ ADAPTADOR: Evita el congelamiento si la contraseña no está vinculada
+    clave:  s.clave  || '',
     clienteId: s.clienteId,
     subId:  s.id
   }));
-  
   const lista = document.getElementById('pago-subs-lista');
   const mesesLista = document.getElementById('pago-meses-lista');
   if (!lista) return;
   
   if (!subs.length) {
     lista.innerHTML = '<div class="ab i"><i class="ti ti-info-circle"></i>Este cliente no tiene suscripciones activas.</div>';
-    document.getElementById('pago-subs-sec').style.display = 'block';
     return;
   }
 
   lista.innerHTML = subs.map((s,i) => {
-    const p = PLATS[s.plat] || {nombre: s.plat, color: 'var(--accent)'};
+    const p = PLATS[s.plat];
     const vbadge = s.dias === 0 ? '<span class="b br">Hoy</span>' : s.dias === 1 ? '<span class="b ba">Mañana</span>' : `<span class="b bi">${s.dias} días</span>`;
     return `<div class="pi" id="psub-${i}" style="padding:10px 12px;margin-bottom:5px" onclick="toggleSubPago(${i},${s.precio})">
       <input type="checkbox" id="chk-sub-${i}" data-subid="${s.subId||''}" data-plat="${s.plat}" checked style="width:auto;margin:0;flex-shrink:0">
@@ -4528,31 +4510,30 @@ function renderSubsPago(clienteId) {
     </div>`;
   }).join('');
 
-  mesesLista.innerHTML = subs.map((s,i) => {
-    const p = PLATS[s.plat] || {nombre: s.plat};
-    return `
+  // Campos de meses dinámicos
+  mesesLista.innerHTML = subs.map((s,i) => `
     <div class="fg" id="meses-row-${i}">
-      <label>${p.nombre} ${s.perfil}</label>
+      <label>${PLATS[s.plat].nombre} ${s.perfil}</label>
       <div style="display:flex;align-items:center;gap:8px">
         <input type="number" id="meses-sub-${i}" name="meses_${s.plat}" value="1" min="1" max="12" style="max-width:65px" oninput="calcVctoPago(${i},'${s.vcto}')">
         <span style="font-size:12px;color:var(--text3)">→ vence <strong id="vcto-sub-${i}" style="color:var(--text)">${calcNuevoVcto(s.vcto,1)}</strong></span>
       </div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 
   calcTotalPago(subs);
   updResumenPago(subs);
-  
+  // Inicializar fecha de pago con hoy
   const hoy = new Date().toISOString().split('T')[0];
   const fp = document.getElementById('pago-fecha');
   if (fp && !fp.value) fp.value = hoy;
-  
+  // Fecha vcto sugerida = vcto más próxima de las subs + 1 mes
   if (subs.length) {
     const vctoSugerida = calcNuevoVcto(subs[0].vcto, 1);
     const fv = document.getElementById('pago-fecha-vcto');
+    // convertir dd/mm/yyyy a YYYY-MM-DD
     if (fv && vctoSugerida) {
       const [dd,mm,yy] = vctoSugerida.split('/');
-      if (dd && mm && yy) fv.value = `${yy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+      if (dd && mm && yy) fv.value = `${yy}-${mm.zfill ? mm.zfill(2) : mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
     }
   }
 }
