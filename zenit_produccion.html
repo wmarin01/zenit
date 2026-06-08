@@ -1241,53 +1241,49 @@ async function intentarLogin() {
 </div></div>
 <!-- Proveedor -->
 <div class="ov" id="m-proveedor"><div class="modal" style="max-width:560px">
-  <div class="mh"><div class="mico" style="background:#5a3e00"><i class="ti ti-building-store"></i></div><div><div class="mtit">Proveedor</div><div class="msub">Datos del distribuidor de cuentas</div></div><button class="mcl" onclick="closeModal('m-proveedor')"><i class="ti ti-x"></i></button></div>
+  <div class="mh"><div class="mico" style="background:#5a3e00"><i class="ti ti-building-store"></i></div><div><div class="mtit" id="prov-titulo">Nuevo proveedor</div><div class="msub">Datos del distribuidor de cuentas</div></div><button class="mcl" onclick="closeModal('m-proveedor')"><i class="ti ti-x"></i></button></div>
   <div class="mb">
-    <div class="fr c2"><div class="fg"><label>Nombre<span class="req">*</span></label><input type="text" placeholder="Ej: Proveedor D"></div><div class="fg"><label>Contacto</label><input type="text" placeholder="Nombre de la persona"></div></div>
+    <input type="hidden" id="prov-edit-id">
     <div class="fr c2">
-          <div class="fg"><label>Teléfono / WhatsApp</label>
-            <div class="phone-wrap">
-              <select class="phone-country" id="prov-tel-pais" onchange="updPhoneMask('prov-tel-num','prov-tel-pais')">
-                <option value="PA">🇵🇦 +507</option>
-                <option value="CO">🇨🇴 +57</option>
-                <option value="VE">🇻🇪 +58</option>
-                <option value="NI">🇳🇮 +505</option>
-                <option value="PE">🇵🇪 +51</option>
-                <option value="BO">🇧🇴 +591</option>
-                <option value="US">🇺🇸 +1</option>
-                <option value="OT">🌐 Otro</option>
-              </select>
-              <input type="text" class="phone-input" id="prov-tel-num" placeholder="6000-0000" oninput="applyPhoneMask(this,'prov-tel-pais')">
-            </div>
-            <div class="hint" id="prov-tel-hint">Panamá — 8 dígitos</div>
-          </div>
-          <div class="fg"><label>País (sede)</label>
-            <select>
-              <option>Panamá</option><option>Colombia</option><option>Venezuela</option>
-              <option>Nicaragua</option><option>Perú</option><option>Bolivia</option>
-              <option>Estados Unidos</option><option>Otro</option>
-            </select>
-          </div>
+      <div class="fg"><label>Nombre<span class="req">*</span></label><input type="text" id="prov-nombre" placeholder="Ej: Proveedor D"></div>
+      <div class="fg"><label>Contacto</label><input type="text" id="prov-contacto" placeholder="Nombre de la persona"></div>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Teléfono / WhatsApp</label>
+        <div class="phone-wrap">
+          <select class="phone-country" id="prov-tel-pais" onchange="updPhoneMask('prov-tel-num','prov-tel-pais')">
+            <option value="PA">🇵🇦 +507</option><option value="CO">🇨🇴 +57</option>
+            <option value="VE">🇻🇪 +58</option><option value="NI">🇳🇮 +505</option>
+            <option value="PE">🇵🇪 +51</option><option value="BO">🇧🇴 +591</option>
+            <option value="US">🇺🇸 +1</option><option value="OT">🌐 Otro</option>
+          </select>
+          <input type="text" class="phone-input" id="prov-tel-num" placeholder="6000-0000" oninput="applyPhoneMask(this,'prov-tel-pais')">
         </div>
+        <div class="hint" id="prov-tel-hint">Panamá — 8 dígitos</div>
+      </div>
+      <div class="fg"><label>Estado</label>
+        <select id="prov-estado"><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select>
+      </div>
+    </div>
     <div class="fg" style="margin-bottom:11px"><label>Plataformas que provee</label>
       <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap">
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" style="width:auto"><span class="dot nf" style="width:9px;height:9px"></span>Netflix</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" style="width:auto"><span class="dot ds" style="width:9px;height:9px"></span>Disney+</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" style="width:auto"><span class="dot hb" style="width:9px;height:9px"></span>HBO Max</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" style="width:auto"><span class="dot pv" style="width:9px;height:9px"></span>Prime Video</label>
+        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-plat-NF" style="width:auto"><span class="dot nf" style="width:9px;height:9px"></span>Netflix</label>
+        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-plat-DS" style="width:auto"><span class="dot ds" style="width:9px;height:9px"></span>Disney+</label>
+        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-plat-HB" style="width:auto"><span class="dot hb" style="width:9px;height:9px"></span>HBO Max</label>
+        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-plat-PV" style="width:auto"><span class="dot pv" style="width:9px;height:9px"></span>Prime Video</label>
       </div>
     </div>
     <div class="fg" style="margin-bottom:11px"><label>Métodos de pago aceptados</label>
       <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap">
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" style="width:auto">ACH</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" style="width:auto">Yappy</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" style="width:auto">Binance Pay</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" style="width:auto">Efectivo</label>
+        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-met-ACH" style="width:auto">ACH</label>
+        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-met-Yappy" style="width:auto">Yappy</label>
+        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-met-Binance" style="width:auto">Binance Pay</label>
+        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-met-Efectivo" style="width:auto">Efectivo</label>
       </div>
     </div>
-    <div class="fg"><label>Notas</label><textarea rows="2" placeholder="Condiciones, acuerdos..."></textarea></div>
+    <div class="fg"><label>Notas</label><textarea id="prov-notas" rows="2" placeholder="Condiciones, acuerdos..."></textarea></div>
   </div>
-  <div class="mf"><button class="btn" onclick="closeModal('m-proveedor')">Cancelar</button><button class="btn btn-p" onclick="guardarProveedor()"><i class="ti ti-check"></i>Guardar proveedor</button></div>
+  <div class="mf"><button class="btn" onclick="closeModal('m-proveedor')">Cancelar</button><button class="btn btn-p" id="btn-guardar-prov" onclick="guardarProveedor()"><i class="ti ti-check"></i>Guardar proveedor</button></div>
 </div></div>
 <!-- Modal precio -->
 <div class="ov" id="m-precio"><div class="modal" style="max-width:560px">
@@ -2189,7 +2185,7 @@ function goTo(v,el){
   else if (v==='suscripciones') ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
   else if (v==='cobranza')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Registrar pago</button>`;
   else if (v==='inventario')    { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-cuenta')"><i class="ti ti-plus"></i>Nueva cuenta</button><button class="hbtn" onclick="openModal('m-cambio');cargarMotivosCambio();"><i class="ti ti-arrows-exchange"></i>Cambio de cuenta</button>`; cargarInventario(); }
-  else if (v==='proveedores')   { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-proveedor')"><i class="ti ti-plus"></i>Nuevo proveedor</button>`; dbCargarProveedores(); }
+  else if (v==='proveedores')   { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoProveedor()"><i class="ti ti-plus"></i>Nuevo proveedor</button>`; dbCargarProveedores(); }
   else if (v==='egresos')       { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-egreso')"><i class="ti ti-plus"></i>Nuevo egreso</button>`; dbCargarEgresos(); }
   else if (v==='reportes')      ha.innerHTML='';
   else if (v==='tablas')        { ha.innerHTML=''; setTimeout(()=>{ cargarTablaMotivos(); cargarMotivosCambio(); },100); }
@@ -5027,67 +5023,104 @@ function renderFilaMotivo(body) {
 
 
 // ── GUARDAR PROVEEDOR ────────────────────────────────────────
-function guardarProveedor() {
-  const modal = document.getElementById('m-proveedor');
-  const inputs = modal.querySelectorAll('input[type=text]');
-  const nombre = inputs[0]?.value?.trim();
-  const contacto = inputs[1]?.value?.trim() || '—';
-  const telefono = inputs[2]?.value?.trim() || '—';
+async function guardarProveedor() {
+  const id       = document.getElementById('prov-edit-id')?.value;
+  const nombre   = document.getElementById('prov-nombre')?.value?.trim();
+  const contacto = document.getElementById('prov-contacto')?.value?.trim() || '';
+  const telefono = normalizeTel(getPhoneValue('prov-tel-num','prov-tel-pais'));
+  const estado   = document.getElementById('prov-estado')?.value || 'activo';
+  const notas    = document.getElementById('prov-notas')?.value?.trim() || '';
+
   if (!nombre) { toast('El nombre del proveedor es requerido','warn'); return; }
 
-  // Plataformas seleccionadas
-  const platChecks = modal.querySelectorAll('input[type=checkbox]');
-  const platMap = {NF:'<span class="pd"><span class="dot nf"></span>NF</span>', DS:'<span class="pd"><span class="dot ds"></span>DS</span>', HB:'<span class="pd"><span class="dot hb"></span>HB</span>', PV:'<span class="pd"><span class="dot pv"></span>PV</span>'};
-  const metMap = {ACH:'<span class="b bi">ACH</span>', Yappy:'<span class="b bi">Yappy</span>', 'Binance Pay':'<span class="b bt">Binance</span>', Efectivo:'<span class="b bp">Efectivo</span>'};
-  const platLabels = ['NF','DS','HB','PV'];
-  const metLabels = ['ACH','Yappy','Binance Pay','Efectivo'];
-  let platsHtml = '', metsHtml = '';
-  platChecks.forEach((chk, i) => {
-    if (i < 4 && chk.checked) platsHtml += platMap[platLabels[i]] || '';
-    if (i >= 4 && i < 8 && chk.checked) metsHtml += (metMap[metLabels[i-4]] || '') + ' ';
-  });
-  if (!platsHtml) platsHtml = '—';
-  if (!metsHtml) metsHtml = '—';
+  // Plataformas y métodos
+  const plataformas = ['NF','DS','HB','PV'].filter(p => document.getElementById('prov-plat-'+p)?.checked);
+  const metodos     = ['ACH','Yappy','Binance','Efectivo'].filter(m => document.getElementById('prov-met-'+m)?.checked);
+
+  const btn = document.getElementById('btn-guardar-prov');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
+
+  try {
+    let error;
+    if (id) {
+      ({error} = await supa.from('proveedores').update({nombre, contacto, telefono, plataformas, metodos, estado}).eq('id', id));
+    } else {
+      ({error} = await supa.from('proveedores').insert({nombre, contacto, telefono, plataformas, metodos, estado}));
+    }
+    if (error) throw error;
+    await dbGuardarHistorial(id?'Editar proveedor':'Nuevo proveedor', nombre, 'var(--accent)');
+    closeModal('m-proveedor');
+    dbCargarProveedores();
+    toast((id?'Proveedor actualizado':'Proveedor "'+nombre+'" creado')+' ✓','ok');
+  } catch(e) {
+    toast('Error: '+(e.message||e),'error');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Guardar proveedor';
+  }
+}
+
+function abrirNuevoProveedor() {
+  document.getElementById('prov-edit-id').value = '';
+  document.getElementById('prov-nombre').value = '';
+  document.getElementById('prov-contacto').value = '';
+  document.getElementById('prov-tel-num').value = '';
+  document.getElementById('prov-notas').value = '';
+  document.getElementById('prov-estado').value = 'activo';
+  ['NF','DS','HB','PV'].forEach(p => { const el=document.getElementById('prov-plat-'+p); if(el) el.checked=false; });
+  ['ACH','Yappy','Binance','Efectivo'].forEach(m => { const el=document.getElementById('prov-met-'+m); if(el) el.checked=false; });
+  document.getElementById('prov-titulo').textContent = 'Nuevo proveedor';
+  openModal('m-proveedor');
+}
+
+async function editarProveedor(id) {
+  const {data, error} = await supa.from('proveedores').select('*').eq('id',id).single();
+  if (error||!data) { toast('Error cargando proveedor','error'); return; }
+  abrirNuevoProveedor();
+  document.getElementById('prov-edit-id').value = data.id;
+  document.getElementById('prov-nombre').value = data.nombre||'';
+  document.getElementById('prov-contacto').value = data.contacto||'';
+  document.getElementById('prov-notas').value = data.notas||'';
+  document.getElementById('prov-estado').value = data.estado||'activo';
+  document.getElementById('prov-titulo').textContent = 'Editar proveedor';
+  // Teléfono
+  if (data.telefono) {
+    const t = data.telefono.replace(/[^\d]/g,'');
+    document.getElementById('prov-tel-num').value = t.slice(-8);
+  }
+  // Plataformas
+  (data.plataformas||[]).forEach(p => { const el=document.getElementById('prov-plat-'+p); if(el) el.checked=true; });
+  // Métodos
+  (data.metodos||[]).forEach(m => { const el=document.getElementById('prov-met-'+m); if(el) el.checked=true; });
+  openModal('m-proveedor');
+}
 
 async function dbCargarProveedores() {
   const tbody = document.getElementById('tb-proveedores');
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
   const { data, error } = await supa.from('proveedores').select('*').order('nombre');
-  if (error) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:20px">Error cargando proveedores</td></tr>'; return; }
+  if (error) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:20px">Error: '+error.message+'</td></tr>'; return; }
   if (!data || !data.length) {
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">No hay proveedores registrados</td></tr>';
     return;
   }
-  tbody.innerHTML = data.map(p => `<tr>
-    <td><strong>${p.nombre||'—'}</strong></td>
-    <td style="font-size:12px">${p.contacto||'—'}</td>
-    <td style="font-size:12px">${formatTel(p.telefono||'')}</td>
-    <td>${(p.plataformas||'').split(',').map(x=>x.trim()).filter(Boolean).map(x=>`<span class="b bi" style="margin-right:2px">${x}</span>`).join('')||'—'}</td>
-    <td style="font-size:12px">${p.total_cuentas||'—'}</td>
-    <td style="font-size:12px">${p.metodo_pago||'—'}</td>
-    <td style="font-size:12px">${p.proximo_vcto||'—'}</td>
-    <td><span class="b ${(p.estado||'').toLowerCase()==='activo'?'bg':'ba'}">${p.estado||'—'}</span></td>
-    <td class="tda"><button class="btn btn-sm btn-ic" onclick="toast('Editar próximamente','info')"><i class="ti ti-edit"></i></button></td>
-  </tr>`).join('');
-}
-
-  const tbody = document.getElementById('tb-proveedores');
-  if (tbody) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td><strong>${nombre}</strong></td><td>${contacto}</td><td style="font-size:12px">${telefono}</td><td>${platsHtml}</td><td>0</td><td>${metsHtml}</td><td>—</td><td><span class="b bg">Activo</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="openModal('m-proveedor')"><i class="ti ti-edit"></i></button></td>`;
-    tbody.appendChild(tr);
-  }
-  // Sincronizar selector de proveedor en egreso
-  const selProv = document.getElementById('egreso-sel-prov');
-  if (selProv) {
-    const opt = document.createElement('option');
-    opt.textContent = nombre;
-    // Insertar antes de "No aplica" (último elemento)
-    selProv.insertBefore(opt, selProv.lastElementChild);
-  }
-  closeModal('m-proveedor');
-  toast('Proveedor "' + nombre + '" guardado','ok');
+  const PC = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
+  tbody.innerHTML = data.map(p => {
+    const plats = (p.plataformas||[]).map(x=>`<span class="pd"><span class="dot" style="background:${PC[x]||'var(--accent)'}"></span>${x}</span>`).join('')||'—';
+    const mets  = (p.metodos||[]).map(x=>`<span class="b bi" style="margin-right:2px">${x}</span>`).join('')||'—';
+    const est   = (p.estado||'activo').toLowerCase()==='activo'?'bg':'ba';
+    return `<tr>
+      <td><strong>${p.nombre||'—'}</strong></td>
+      <td style="font-size:12px">${p.contacto||'—'}</td>
+      <td style="font-size:12px">${formatTel(p.telefono||'')}</td>
+      <td>${plats}</td>
+      <td style="font-size:12px">—</td>
+      <td>${mets}</td>
+      <td style="font-size:12px">—</td>
+      <td><span class="b ${est}">${p.estado||'activo'}</span></td>
+      <td class="tda"><button class="btn btn-sm btn-ic" onclick="editarProveedor(${p.id})"><i class="ti ti-edit"></i></button></td>
+    </tr>`;
+  }).join('');
 }
 
 // ── GUARDAR EGRESO ───────────────────────────────────────────
