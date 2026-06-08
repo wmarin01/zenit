@@ -263,6 +263,7 @@ async function dbCargarSuscripciones() {
     .limit(2000);
   if (error) { console.error('Error cargando suscripciones:', error); return; }
   if (data && data.length > 0) {
+    SUBS_FULL.length = 0; // limpiar solo cuando hay datos nuevos
     data.forEach(s => {
       SUBS_FULL.push({
         id: s.id,
@@ -1999,23 +2000,29 @@ const WA={
   '1d':(n,p,m)=>`Hola <span class="wav">${n}</span>, tu <span class="wav">${p}</span> vence <strong>mañana</strong>.\nEnvía tu pago de <span class="wav">${m}</span> para no perder el servicio. 🙏`,
   pago:(n,p,m)=>`Hola <span class="wav">${n}</span> ✅\n\nRecibimos tu pago de <span class="wav">${m}</span> por <span class="wav">${p}</span>.\nSuscripción renovada. ¡Gracias! 🎉`,
   entrega:(n,p,m,ctx)=>{
-    // ctx = {tipo, plats, perfilesSel, pins, usuarios, vcto, monto}
-    if (!ctx || !ctx.plats || ctx.plats.length <= 1) {
-      // Individual - plantilla simple
-      const plat = ctx?.plats?.[0] || p;
-      const perf = ctx?.perfilesSel?.[plat] || {};
-      const pin  = ctx?.pins?.[plat] || '—';
-      const usr  = ctx?.usuarios?.[plat] || '—';
-      return `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu <span class="wav">${p}</span> ya está activa:\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👁️ Usuario: <span class="wav">${usr}</span>\n🔢 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span> 🍿`;
-    }
-    // Combo - una sección por plataforma
+    // ctx = {plats, perfilesSel, pins, vcto} — usa getPerfKey para claves indexadas
+    const plats = ctx?.plats || [];
     const PNOM = {NF:'Netflix',DS:'Disney+',HB:'HBO Max',PV:'Prime Video'};
     const PICO = {NF:'🔴',DS:'🔵',HB:'🟣',PV:'🔷'};
+
+    // Construir entradas indexadas
+    const entries = plats.map((pl, i) => {
+      const idxEnPlat = plats.slice(0,i).filter(x=>x===pl).length;
+      const key  = typeof getPerfKey==='function' ? getPerfKey(plats,pl,idxEnPlat) : pl;
+      const perf = ctx.perfilesSel?.[key] || ctx.perfilesSel?.[pl] || {};
+      const pin  = ctx.pins?.[key] || ctx.pins?.[pl] || '—';
+      const usr  = ctx.usuarios?.[key] || ctx.usuarios?.[pl] || '—';
+      return {pl, perf, pin, usr};
+    });
+
+    if (entries.length <= 1) {
+      // Individual
+      const {pl, perf, pin, usr} = entries[0] || {pl:p,perf:{},pin:'—',usr:'—'};
+      return `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu <span class="wav">${PNOM[pl]||pl}</span> ya está activa:\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👁️ Usuario: <span class="wav">${usr}</span>\n🔢 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span> 🍿`;
+    }
+    // Multi-perfil o combo
     let msg = `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu combo ya está activo:\n`;
-    ctx.plats.forEach(pl => {
-      const perf = ctx.perfilesSel?.[pl] || {};
-      const pin  = ctx.pins?.[pl] || '—';
-      const usr  = ctx.usuarios?.[pl] || '—';
+    entries.forEach(({pl, perf, pin, usr}) => {
       msg += `\n${PICO[pl]||'▶️'} <span class="wav">${PNOM[pl]||pl}</span>\n`;
       msg += `📧 Correo: <span class="wav">${perf?.correo||'—'}</span>\n`;
       msg += `🔑 Clave: <span class="wav">${perf?.clave||'—'}</span>\n`;
@@ -2324,16 +2331,15 @@ document.querySelectorAll('.ov').forEach(ov=>ov.addEventListener('click',e=>{if(
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.ov.on').forEach(ov=>ov.classList.remove('on'));});
 
 function abrirWA(n,p,m,tipo,ctx){
-  waCtx={n,p,m};
+  waCtx={n,p,m,ctx}; // guardar ctx para cambios de plantilla
   document.getElementById('wa-tit').textContent='Mensaje para '+n;
   document.getElementById('wa-sub').textContent=p+' · '+m;
   const sel=document.querySelector('#m-wa select');if(sel)sel.value=tipo;
   const fn = WA[tipo]||WA.vencimiento;
-  // Plantilla entrega acepta contexto opcional
   document.getElementById('wa-txt').innerHTML = fn(n,p,m,ctx);
   openModal('m-wa');
 }
-function cambPlant(v){document.getElementById('wa-txt').innerHTML=(WA[v]||WA.vencimiento)(waCtx.n,waCtx.p,waCtx.m);}
+function cambPlant(v){document.getElementById('wa-txt').innerHTML=(WA[v]||WA.vencimiento)(waCtx.n,waCtx.p,waCtx.m,waCtx.ctx);}
 function copiarWA(){
   navigator.clipboard.writeText(document.getElementById('wa-txt').innerText).then(()=>{
     const b=document.querySelector('#m-wa .btn-p');const o=b.innerHTML;
@@ -2784,8 +2790,7 @@ async function confirmarCambio(){
     }
 
     closeModal('m-cambio');
-    // Recargar suscripciones desde Supabase — limpiar y recargar completo
-    SUBS_FULL.length = 0;
+    // Recargar suscripciones sin vaciar el array (evita bloqueo de otros modales)
     await dbCargarSuscripciones();
     sincronizarPlatsClientes();
     renderSubs(SUBS_FULL);
