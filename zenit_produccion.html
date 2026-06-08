@@ -2212,11 +2212,17 @@ function renderC(data){
 }
 function filtC(q){
   const r  = q.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const rn = normalizeTel(q);
+  const digits = q.replace(/[^0-9]/g,'');
+  const hasDigits = digits.length >= 4;
+  const rn = hasDigits ? normalizeTel(q) : '';
   renderC(CLIENTES.filter(c=>{
     const n = (c.n||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     const a = (c.a||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    return n.includes(r)||a.includes(r)||c.tel.includes(rn)||c.tel.replace(/[^0-9]/g,'').includes(q.replace(/[^0-9]/g,''))||c.id.toLowerCase().includes(r)||c.contactos.some(ct=>ct.v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(r));
+    const telMatch = hasDigits && rn && (c.tel||'').includes(rn);
+    const telDigits = hasDigits && (c.tel||'').replace(/[^0-9]/g,'').includes(digits);
+    return n.includes(r)||a.includes(r)||telMatch||telDigits||
+           c.id.toLowerCase().includes(r)||
+           c.contactos.some(ct=>(ct.v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(r));
   }));
 }
 function filtCEst(e){
@@ -2225,11 +2231,17 @@ function filtCEst(e){
   const rn = normalizeTel(q);
   let data = CLIENTES;
   if (e) data = data.filter(c => c.est === e);
-  if (r.length >= 1) data = data.filter(c => {
-    const n = (c.n||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    const a = (c.a||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    return n.includes(r)||a.includes(r)||normalizeTel(c.tel||'').includes(rn)||c.id.toLowerCase().includes(r);
-  });
+  if (r.length >= 1) {
+    const digits2 = q.replace(/[^0-9]/g,'');
+    const hasD2 = digits2.length >= 4;
+    const rn2 = hasD2 ? normalizeTel(q) : '';
+    data = data.filter(c => {
+      const n = (c.n||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const a = (c.a||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const telMatch = hasD2 && rn2 && (c.tel||'').includes(rn2);
+      return n.includes(r)||a.includes(r)||telMatch||c.id.toLowerCase().includes(r);
+    });
+  }
   renderC(data);
 }
 
@@ -2281,10 +2293,13 @@ function tabCob(el,id){
   if (!tbody) return;
   // Aplicar búsqueda de texto en cobranza
   if (cobBusca) {
+    const cobDigits = cobBusca.replace(/[^0-9]/g,'');
+    const cobHasD = cobDigits.length >= 4;
+    const cobTelN = cobHasD ? normalizeTel(cobBusca) : '';
     filtrados = filtrados.filter(s => {
       const nom = (s.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       return nom.includes(cobBusca) ||
-        normalizeTel(s.tel||'').includes(normalizeTel(cobBusca)) ||
+        (cobHasD && cobTelN && normalizeTel(s.tel||'').includes(cobTelN)) ||
         (s.plat||'').toLowerCase().includes(cobBusca) ||
         (s.perfil||'').toLowerCase().includes(cobBusca);
     });
@@ -3645,12 +3660,15 @@ function activarBotonesReutilizar() {
 function buscarClientes(q) {
   const r  = q.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   if (r.length < 2) return [];
-  const rn = normalizeTel(q);
+  const digits = q.replace(/[^0-9]/g,'');
+  const hasDigits = digits.length >= 4; // solo buscar por tel si hay al menos 4 dígitos
+  const rn = hasDigits ? normalizeTel(q) : '';
   return CLIENTES.filter(c => {
     const n = (c.n||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     const a = (c.a||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    return n.includes(r) || a.includes(r) || c.tel.includes(rn) ||
-           c.tel.replace(/[^0-9]/g,'').includes(q.replace(/[^0-9]/g,'')) ||
+    const telMatch = hasDigits && rn && (c.tel||'').includes(rn);
+    const telDigits = hasDigits && (c.tel||'').replace(/[^0-9]/g,'').includes(digits);
+    return n.includes(r) || a.includes(r) || telMatch || telDigits ||
            c.id.toLowerCase().includes(r);
   });
 }
@@ -5806,17 +5824,18 @@ function _aplicarFiltrosSubs() {
   if (est)   data = data.filter(s => s.est === est);
   if (dias)  data = data.filter(s => dias==='hoy' ? s.dias===0 : dias==='3d' ? s.dias<=3 : s.dias<=7);
   if (busca) {
-    const bNorm  = normalizeTel(busca);
     const bLower = busca.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     const bDigit = busca.replace(/[^0-9]/g,'');
+    const bHasD  = bDigit.length >= 4;
+    const bNorm  = bHasD ? normalizeTel(busca) : '';
     data = data.filter(s => {
       const nombre  = (s.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       const usuario = (s.usuario||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       const correo  = (s.correo||'').toLowerCase();
       const telNorm = normalizeTel(s.tel||'');
       return nombre.includes(bLower) ||
-        telNorm.includes(bNorm) ||
-        (bDigit && telNorm.replace(/[^0-9]/g,'').includes(bDigit)) ||
+        (bHasD && bNorm && telNorm.includes(bNorm)) ||
+        (bHasD && bDigit && telNorm.replace(/[^0-9]/g,'').includes(bDigit)) ||
         (s.perfil||'').toLowerCase().includes(bLower) ||
         (s.clienteId||'').toLowerCase().includes(bLower) ||
         correo.includes(bLower) ||
@@ -6283,9 +6302,12 @@ function filtCobros(q) {
   const rn = normalizeTel(q);
   renderCobros(COBROS.filter(c => {
     const nom = (c.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const cDigits = r.replace(/[^0-9]/g,'');
+    const cHasD = cDigits.length >= 4;
+    const cRn = cHasD ? normalizeTel(q) : '';
     return nom.includes(r) ||
       (c.clienteId||'').toLowerCase().includes(r) ||
-      normalizeTel(c.tel||'').includes(rn) ||
+      (cHasD && cRn && normalizeTel(c.tel||'').includes(cRn)) ||
       (c.doc||'').toLowerCase().includes(r) ||
       (c.plat||'').toLowerCase().includes(r) ||
       (c.tipo||'').toLowerCase().includes(r);
