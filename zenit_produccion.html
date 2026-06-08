@@ -2904,77 +2904,87 @@ function guardarUsuario(){
   closeModal('m-usuario');
   toast('Usuario "' + nombre + '" creado correctamente','ok');
 }
-function guardarCuenta(){
-  const platVal = document.getElementById('cuenta-plat')?.value || 'NF';
-  const codigo  = document.getElementById('cuenta-codigo')?.value?.trim();
-  const correo  = document.getElementById('cuenta-correo')?.value?.trim();
-  const clave   = document.getElementById('cuenta-clave')?.value?.trim();
-  const fechaC  = document.getElementById('cuenta-fecha-compra')?.value || '';
-  const fechaV  = document.getElementById('cuenta-fecha-vcto-prov')?.value || '';
-  const costo   = document.getElementById('cuenta-costo')?.value?.trim() || '—';
-  const notas   = document.getElementById('cuenta-notas')?.value?.trim() || '';
-  const prov    = document.querySelector('#m-cuenta select:last-of-type')?.options[document.querySelector('#m-cuenta select:last-of-type').selectedIndex]?.text || '—';
+async function guardarCuenta(){
+  const platVal  = document.getElementById('cuenta-plat')?.value || 'NF';
+  const codigo   = document.getElementById('cuenta-codigo')?.value?.trim().toUpperCase();
+  const correo   = document.getElementById('cuenta-correo')?.value?.trim();
+  const clave    = document.getElementById('cuenta-clave')?.value?.trim();
+  const fechaC   = document.getElementById('cuenta-fecha-compra')?.value || null;
+  const fechaV   = document.getElementById('cuenta-vcto-prov')?.value || null;
+  const costoRaw = document.getElementById('cuenta-costo')?.value?.trim() || '';
+  const costo    = parseFloat(costoRaw.replace('$','').replace(',','.')) || null;
+  const notas    = document.getElementById('cuenta-notas')?.value?.trim() || '';
+  const provSel  = document.getElementById('cuenta-prov');
+  const provNom  = provSel?.options[provSel?.selectedIndex]?.text?.split(' ·')[0] || '';
 
   if (!codigo) { toast('El código de cuenta es requerido','warn'); return; }
   if (!correo) { toast('El correo de acceso es requerido','warn'); return; }
   if (!clave)  { toast('La clave de acceso es requerida','warn'); return; }
 
-  const fmtDate = v => { if(!v) return '—'; const [yy,mm,dd]=v.split('-'); return dd+'/'+mm+'/'+yy; };
-  const maxPerf = PLATS[platVal]?.max_perfiles || 5;
-  const platNom = PLATS[platVal]?.nombre || platVal;
-  const dotClr  = PLATS[platVal]?.color || 'var(--accent)';
-  const costoFmt = costo.startsWith('$') ? costo : (costo !== '—' ? '$'+costo : '—');
+  const maxPerf = platVal==='DS' ? 7 : platVal==='PV' ? 6 : 5;
 
-  const vctoStr = fechaV ? fmtDate(fechaV) : '—';
-  const fcStr   = fechaC ? fmtDate(fechaC) : '—';
+  const btn = document.querySelector('#m-cuenta .btn-p');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
 
-  const tbody = document.getElementById('tb-inv');
-  if (tbody) {
-    const tr = document.createElement('tr');
-    tr.dataset.correo = correo;
-    tr.dataset.clave      = clave;
-    tr.dataset.notas      = notas;
-    tr.dataset.fechaCompra = fechaC;
-    tr.dataset.fechaVcto   = fechaV;
-    tr.innerHTML = `
-      <td style="font-family:var(--mono)"><strong>${codigo}</strong></td>
-      <td><span class="pd"><span class="dot" style="background:${dotClr}"></span>${platNom}</span></td>
-      <td style="font-size:12px">${correo}</td>
-      <td><span style="font-family:var(--mono);font-size:12px" class="clave-mask">••••••</span><button class="btn btn-sm btn-ic" style="padding:2px 5px;margin-left:4px" onclick="toggleClave(this)" title="Ver clave"><i class="ti ti-eye"></i></button></td>
-      <td>${maxPerf}</td>
-      <td style="color:var(--green)">${maxPerf}</td>
-      <td>0</td>
-      <td style="font-size:12px">${fcStr}</td>
-      <td style="font-size:12px">${vctoStr}</td>
-      <td style="color:var(--red);font-size:12px">${costoFmt}</td>
-      <td><span class="b bg">Activa</span></td>
-      <td class="tda">
-        <button class="btn btn-sm btn-ic" onclick="abrirEditarCuenta(this)" title="Editar"><i class="ti ti-edit"></i></button>
-        <button class="btn btn-sm btn-a btn-ic" onclick="openModal('m-clave')" title="Cambiar contraseña"><i class="ti ti-lock"></i></button>
-        <button class="btn btn-sm btn-ic" onclick="toast('Vista de perfiles próximamente','info')"><i class="ti ti-eye"></i></button>
-        <button class="btn btn-sm btn-ic" style="color:var(--amber);border-color:var(--amber)" onclick="abrirIncidencia(this)" title="Incidencia proveedor"><i class="ti ti-alert-triangle"></i></button>
-      </td>`;
-    tr.dataset.reutilizaciones = '0';
-    tr.dataset.estadoCuenta = 'Activa';
-    tbody.appendChild(tr);
+  try {
+    // 1. Guardar en cuentas_inventario
+    const {error: e1} = await supa.from('cuentas_inventario').insert({
+      codigo, plataforma: platVal, correo, clave,
+      max_perfiles: maxPerf,
+      proveedor: provNom || null,
+      fecha_vcto_proveedor: fechaV ? fechaV.split('-').reverse().join('/') : null,
+      costo_proveedor: costo,
+      estado: 'Activa', notas
+    });
+    if (e1) throw e1;
+
+    // 2. Guardar espejo en inventario (para FK de perfiles)
+    const {error: e2} = await supa.from('inventario').insert({
+      id: codigo, plataforma: platVal, correo, clave, estado: 'Activa'
+    });
+    if (e2) console.warn('inventario insert:', e2.message);
+
+    // 3. Generar perfiles automáticamente
+    const perfiles = Array.from({length: maxPerf}, (_, i) => ({
+      id: codigo + (i+1),
+      inventario_id: codigo,
+      numero: i+1,
+      estado: 'activo'
+    }));
+    const {error: e3} = await supa.from('perfiles').insert(perfiles);
+    if (e3) console.warn('perfiles insert:', e3.message);
+
+    // 4. Actualizar PERFILES_DISP en memoria
+    if (!PERFILES_DISP[platVal]) PERFILES_DISP[platVal] = [];
+    perfiles.forEach(p => PERFILES_DISP[platVal].push({
+      codigo: p.id, num: p.numero, cuenta: codigo,
+      correo, clave, origen: codigo + ' · perfil ' + p.numero
+    }));
+
+    // 5. Actualizar código siguiente
+    const num = parseInt(codigo.replace(/[^0-9]/g,'')) || 0;
+    NEXT_CODIGO[platVal] = platVal + String(num+1).padStart(4,'0');
+
+    await dbGuardarHistorial('Nueva cuenta', codigo + ' · ' + (PLATS[platVal]?.nombre||platVal) + ' · ' + correo, 'var(--green)');
+
+    // Limpiar y recargar
+    document.getElementById('cuenta-codigo').value = '';
+    document.getElementById('cuenta-correo').value = '';
+    document.getElementById('cuenta-clave').value  = '';
+    if (document.getElementById('cuenta-vcto-prov')) document.getElementById('cuenta-vcto-prov').value = '';
+    document.getElementById('cuenta-costo').value  = '';
+    document.getElementById('cuenta-notas').value  = '';
+    updCuentaCodigo();
+    closeModal('m-cuenta');
+    cargarInventario();
+    toast(codigo + ' registrada · ' + maxPerf + ' perfiles generados ✓','ok');
+
+  } catch(e) {
+    console.error('[CUENTA]', e);
+    toast('Error al guardar: ' + (e.message||e), 'error');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Registrar cuenta';
   }
-
-  // Actualizar código siguiente
-  const num = parseInt(codigo.replace(/[^0-9]/g,'')) || 0;
-  NEXT_CODIGO[platVal] = platVal + String(num+1).padStart(4,'0');
-
-  // Limpiar formulario para próximo ingreso
-  document.getElementById('cuenta-codigo').value = '';
-  document.getElementById('cuenta-correo').value = '';
-  document.getElementById('cuenta-clave').value = '';
-  document.getElementById('cuenta-fecha-vcto-prov').value = '';
-  document.getElementById('cuenta-costo').value = '';
-  document.getElementById('cuenta-notas').value = '';
-  updCuentaCodigo();
-
-  closeModal('m-cuenta');
-  toast(codigo + ' registrada · ' + maxPerf + ' perfiles disponibles','ok');
-  agregarHistorial('Nueva cuenta registrada', codigo + ' · ' + platNom + ' · ' + correo);
 }
 
 // ── EDITAR CUENTA ─────────────────────────────────────────────
