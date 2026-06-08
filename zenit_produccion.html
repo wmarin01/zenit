@@ -1228,11 +1228,11 @@ async function intentarLogin() {
   <div class="mh"><div class="mico" style="background:var(--green2)"><i class="ti ti-server"></i></div><div><div class="mtit">Nueva cuenta de plataforma</div><div class="msub">Registro de cuenta comprada a proveedor</div></div><button class="mcl" onclick="closeModal('m-cuenta')"><i class="ti ti-x"></i></button></div>
   <div class="mb">
     <div class="fsec"><div class="fst">Datos de la cuenta</div>
-      <div class="fr c3"><div class="fg"><label>Plataforma<span class="req">*</span></label><select id="cuenta-plat" onchange="updCuentaCodigo()"><option value="NF">Netflix (NF)</option><option value="DS">Disney+ (DS)</option><option value="HB">HBO Max (HB)</option><option value="PV">Prime Video (PV)</option></select></div><div class="fg"><label>Proveedor<span class="req">*</span></label><select><option>Proveedor A</option><option>Proveedor B</option><option>Proveedor C</option></select></div><div class="fg"><label>Código<span class="req">*</span></label><input type="text" id="cuenta-codigo" placeholder="NF0001" oninput="validarCodigoCuenta(this)" style="text-transform:uppercase"><div class="hint ok" id="cuenta-codigo-hint">Selecciona plataforma para ver el siguiente disponible</div></div></div>
+      <div class="fr c3"><div class="fg"><label>Plataforma<span class="req">*</span></label><select id="cuenta-plat" onchange="updCuentaCodigo()"><option value="NF">Netflix (NF)</option><option value="DS">Disney+ (DS)</option><option value="HB">HBO Max (HB)</option><option value="PV">Prime Video (PV)</option></select></div><div class="fg"><label>Proveedor<span class="req">*</span></label><select id="cuenta-prov"><option value="">— Cargando... —</option></select></div><div class="fg"><label>Código<span class="req">*</span></label><input type="text" id="cuenta-codigo" placeholder="NF0001" oninput="validarCodigoCuenta(this)" style="text-transform:uppercase"><div class="hint ok" id="cuenta-codigo-hint">Selecciona plataforma para ver el siguiente disponible</div></div></div>
       <div class="fr c2"><div class="fg"><label>Correo de acceso<span class="req">*</span></label><input type="text" id="cuenta-correo" placeholder="cuenta@gmail.com"></div><div class="fg"><label>Clave de acceso<span class="req">*</span></label><input type="text" id="cuenta-clave" placeholder="Contraseña de la cuenta"></div></div>
     </div>
     <div class="fsec"><div class="fst">Fechas y costo</div>
-      <div class="fr c3"><div class="fg"><label>Fecha de compra<span class="req">*</span></label><input type="date" id="cuenta-fecha-compra" value="2026-05-26"></div><div class="fg"><label>Vencimiento proveedor<span class="req">*</span></label><input type="date"></div><div class="fg"><label>Días para alerta</label><input type="number" value="7" min="1" max="30"></div></div>
+      <div class="fr c3"><div class="fg"><label>Fecha de compra<span class="req">*</span></label><input type="date" id="cuenta-fecha-compra" value="2026-05-26"></div><div class="fg"><label>Vencimiento proveedor<span class="req">*</span></label><input type="date" id="cuenta-vcto-prov"></div><div class="fg"><label>Días para alerta</label><input type="number" value="7" min="1" max="30"></div></div>
       <div class="fr c2"><div class="fg"><label>Costo de compra<span class="req">*</span></label><input type="text" id="cuenta-costo" placeholder="$0.00"></div><div class="fg"><label>Notas</label><input type="text" id="cuenta-notas" placeholder="Opcional"></div></div>
     </div>
     <div class="ab i"><i class="ti ti-info-circle"></i>Al guardar, el sistema crea automáticamente los perfiles disponibles según el máximo de la plataforma.</div>
@@ -5041,7 +5041,11 @@ async function cargarSelectoresProveedores() {
   const optsConBlanco = '<option value="">— Seleccionar —</option>' + opts;
   const optsConNoAplica = optsConBlanco + '<option value="no_aplica">No aplica</option>';
 
-  // acceso-prov (modal nueva cuenta inventario)
+  // cuenta-prov (modal nueva cuenta de plataforma)
+  const cp = document.getElementById('cuenta-prov');
+  if (cp) cp.innerHTML = optsConBlanco;
+
+  // acceso-prov (modal nueva cuenta inventario — alternativo)
   const ap = document.getElementById('acceso-prov');
   if (ap) ap.innerHTML = optsConBlanco;
 
