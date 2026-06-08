@@ -1781,7 +1781,7 @@ async function intentarLogin() {
       </div>
     </div>
     <div class="fsec"><div class="fst">Proveedor y cuenta</div>
-      <div class="fr c2"><div class="fg"><label>Proveedor</label><select id="egreso-sel-prov"><option>— Seleccionar —</option><option>— Sin proveedores —</option><option>No aplica</option></select></div><div class="fg"><label>Cuenta específica</label><select><option>— Seleccionar —</option></select><div class="hint">Opcional</div></div></div>
+      <div class="fr c2"><div class="fg"><label>Proveedor</label><select id="egreso-sel-prov"><option value="">— Seleccionar —</option></select></div><div class="fg"><label>Cuenta específica</label><select><option>— Seleccionar —</option></select><div class="hint">Opcional</div></div></div>
     </div>
     <div class="fsec"><div class="fst">Período, forma de pago y monto</div>
       <div class="fr c3"><div class="fg"><label>Fecha egreso<span class="req">*</span></label><input type="date" id="cuenta-fecha-compra" value="2026-05-26"></div><div class="fg"><label>Período desde</label><input type="date" value="2026-06-01"></div><div class="fg"><label>Período hasta</label><input type="date" value="2026-06-30"></div></div>
@@ -1808,7 +1808,7 @@ async function intentarLogin() {
     <div class="fsec"><div class="fst">Proveedor y plataforma</div>
       <div class="fr c2">
         <div class="fg"><label>Proveedor<span class="req">*</span></label>
-          <select id="acceso-prov"><option>Proveedor A</option><option>Proveedor B</option><option>Proveedor C</option></select>
+          <select id="acceso-prov"><option value="">— Cargando... —</option></select>
         </div>
         <div class="fg"><label>Plataforma<span class="req">*</span></label>
           <select id="acceso-plat">
@@ -2184,9 +2184,9 @@ function goTo(v,el){
   else if (v==='cobros')        ha.innerHTML=`<button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
   else if (v==='suscripciones') ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
   else if (v==='cobranza')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Registrar pago</button>`;
-  else if (v==='inventario')    { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-cuenta')"><i class="ti ti-plus"></i>Nueva cuenta</button><button class="hbtn" onclick="openModal('m-cambio');cargarMotivosCambio();"><i class="ti ti-arrows-exchange"></i>Cambio de cuenta</button>`; cargarInventario(); }
+  else if (v==='inventario')    { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevaCuenta()"><i class="ti ti-plus"></i>Nueva cuenta</button><button class="hbtn" onclick="openModal('m-cambio');cargarMotivosCambio();"><i class="ti ti-arrows-exchange"></i>Cambio de cuenta</button>`; cargarInventario(); }
   else if (v==='proveedores')   { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoProveedor()"><i class="ti ti-plus"></i>Nuevo proveedor</button>`; dbCargarProveedores(); }
-  else if (v==='egresos')       { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-egreso')"><i class="ti ti-plus"></i>Nuevo egreso</button>`; dbCargarEgresos(); }
+  else if (v==='egresos')       { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoEgreso()"><i class="ti ti-plus"></i>Nuevo egreso</button>`; dbCargarEgresos(); }
   else if (v==='reportes')      ha.innerHTML='';
   else if (v==='tablas')        { ha.innerHTML=''; setTimeout(()=>{ cargarTablaMotivos(); cargarMotivosCambio(); },100); }
   else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); }
@@ -2576,6 +2576,7 @@ async function confirmarVenta(){
     closeModal('m-venta');
     sincronizarPlatsClientes();
     renderDashboard();
+  cargarSelectoresProveedores();
     toast('Venta registrada correctamente ✓', 'ok');
 
     // 6. Abrir WA con datos del primer perfil
@@ -5023,6 +5024,32 @@ function renderFilaMotivo(body) {
 
 
 // ── GUARDAR PROVEEDOR ────────────────────────────────────────
+// ── Cargar proveedores en todos los selectores del sistema ──────────────
+let PROVEEDORES_CACHE = [];
+async function cargarSelectoresProveedores() {
+  const {data, error} = await supa.from('proveedores')
+    .select('id, nombre, plataformas')
+    .eq('estado','activo')
+    .order('nombre');
+  if (error || !data) return;
+  PROVEEDORES_CACHE = data;
+
+  const opts = data.map(p => {
+    const plats = (p.plataformas||[]).join('+');
+    return `<option value="${p.id}">${p.nombre}${plats?' · '+plats:''}</option>`;
+  }).join('');
+  const optsConBlanco = '<option value="">— Seleccionar —</option>' + opts;
+  const optsConNoAplica = optsConBlanco + '<option value="no_aplica">No aplica</option>';
+
+  // acceso-prov (modal nueva cuenta inventario)
+  const ap = document.getElementById('acceso-prov');
+  if (ap) ap.innerHTML = optsConBlanco;
+
+  // egreso-sel-prov (modal nuevo egreso)
+  const ep = document.getElementById('egreso-sel-prov');
+  if (ep) ep.innerHTML = optsConNoAplica;
+}
+
 async function guardarProveedor() {
   const id       = document.getElementById('prov-edit-id')?.value;
   const nombre   = document.getElementById('prov-nombre')?.value?.trim();
@@ -5051,12 +5078,22 @@ async function guardarProveedor() {
     await dbGuardarHistorial(id?'Editar proveedor':'Nuevo proveedor', nombre, 'var(--accent)');
     closeModal('m-proveedor');
     dbCargarProveedores();
+    cargarSelectoresProveedores(); // actualizar todos los selects
     toast((id?'Proveedor actualizado':'Proveedor "'+nombre+'" creado')+' ✓','ok');
   } catch(e) {
     toast('Error: '+(e.message||e),'error');
   } finally {
     btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Guardar proveedor';
   }
+}
+
+function abrirNuevaCuenta() {
+  cargarSelectoresProveedores();
+  openModal('m-cuenta');
+}
+function abrirNuevoEgreso() {
+  cargarSelectoresProveedores();
+  openModal('m-egreso');
 }
 
 function abrirNuevoProveedor() {
