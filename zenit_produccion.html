@@ -2184,13 +2184,22 @@ function goTo(v,el){
   else if (v==='cobros')        ha.innerHTML=`<button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
   else if (v==='suscripciones') ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
   else if (v==='cobranza')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Registrar pago</button>`;
-  else if (v==='inventario')    { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevaCuenta()"><i class="ti ti-plus"></i>Nueva cuenta</button><button class="hbtn" onclick="openModal('m-cambio');cargarMotivosCambio();"><i class="ti ti-arrows-exchange"></i>Cambio de cuenta</button>`; cargarInventario(); }
-  else if (v==='proveedores')   { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoProveedor()"><i class="ti ti-plus"></i>Nuevo proveedor</button>`; dbCargarProveedores(); }
-  else if (v==='egresos')       { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoEgreso()"><i class="ti ti-plus"></i>Nuevo egreso</button>`; dbCargarEgresos(); }
-  else if (v==='reportes')      ha.innerHTML='';
-  else if (v==='tablas')        { ha.innerHTML=''; setTimeout(()=>{ cargarTablaMotivos(); cargarMotivosCambio(); },100); }
-  else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); }
-  else if (v==='accesos')       { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`; setTimeout(()=>{ if(typeof dbCargarAccesos==='function') dbCargarAccesos(); },100); }
+      else if (v==='inventario')    { 
+        ha.innerHTML = (!USUARIO_ACTIVO || USUARIO_ACTIVO.rol === 'Master') 
+          ? `<button class="hbtn p" onclick="abrirNuevaCuenta()"><i class="ti ti-plus"></i>Nueva cuenta</button><button class="hbtn" onclick="openModal('m-cambio');cargarMotivosCambio();"><i class="ti ti-arrows-exchange"></i>Cambio de cuenta</button>` 
+          : `<button class="hbtn" onclick="openModal('m-cambio');cargarMotivosCambio();"><i class="ti ti-arrows-exchange"></i>Cambio de cuenta</button>`; 
+        cargarInventario(); 
+      }
+      else if (v==='proveedores')   { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoProveedor()"><i class="ti ti-plus"></i>Nuevo proveedor</button>`; dbCargarProveedores(); }
+      else if (v==='egresos')       { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoEgreso()"><i class="ti ti-plus"></i>Nuevo egreso</button>`; dbCargarEgresos(); }
+      else if (v==='reportes')      ha.innerHTML='';
+      else if (v==='tablas')        { ha.innerHTML=''; setTimeout(()=>{ cargarTablaMotivos(); cargarMotivosCambio(); },100); }
+      else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); }
+      else if (v==='accesos')       { 
+        ha.innerHTML = (!USUARIO_ACTIVO || USUARIO_ACTIVO.rol === 'Master') 
+          ? `<button class="hbtn p" onclick="openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>` : ''; 
+        setTimeout(()=>{ if(typeof dbCargarAccesos==='function') dbCargarAccesos(); },100); 
+      }
   else if (v==='historial')     { ha.innerHTML=''; setTimeout(()=>{ if(typeof dbCargarHistorial==='function') dbCargarHistorial(); },100); }
   else if (v==='usuarios')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-usuario')"><i class="ti ti-plus"></i>Nuevo usuario</button>`;
   else                          ha.innerHTML='';
@@ -3387,17 +3396,44 @@ async function cargarUsuariosSistema() {
     const selMsj = document.querySelectorAll('select[id*="msj-usuario"], select[id*="wa-usuario"]');
     // También buscar el select de para quién es el mensaje en el modal de mensajería
     document.querySelectorAll('select option[value="wmarin01"]').forEach(opt => {
-      const sel = opt.closest('select');
-      if (sel) {
-        sel.innerHTML = data.map(u => `<option value="${u.usuario}">${u.nombre||u.usuario}</option>`).join('');
-      }
-    });
+          const sel = opt.closest('select');
+          if (sel) sel.innerHTML = data.map(u => `<option value="${u.usuario}">${u.nombre||u.usuario}</option>`).join('');
+        });
 
-    console.log('[USUARIOS] Cargados:', data.length, '| Activo:', USUARIO_ACTIVO?.usuario);
-  } catch(e) {
-    console.warn('[USUARIOS] Error:', e.message);
-  }
-}
+        // 🔒 EJECUTAR EL CANDADO DE ROLES INMEDIATAMENTE
+        aplicarPermisos();
+        
+        console.log('[USUARIOS] Cargados:', data.length, '| Activo:', USUARIO_ACTIVO?.usuario);
+      } catch(e) { console.warn('[USUARIOS] Error:', e.message); }
+    }
+
+    // 🔒 NUEVA FUNCIÓN: Oculta menús y botones según el rol
+    function aplicarPermisos() {
+      if (!USUARIO_ACTIVO) return;
+      const esMaster = USUARIO_ACTIVO.rol === 'Master';
+
+      // 1. Ocultar menús no permitidos para operadores
+      const vistasOperador = ['dashboard', 'clientes', 'ventas', 'cobros', 'suscripciones', 'cobranza', 'inventario', 'accesos'];
+      
+      document.querySelectorAll('.ni').forEach(item => {
+        const onclickVal = item.getAttribute('onclick') || '';
+        const match = onclickVal.match(/'([^']+)'/);
+        if (match && match[1]) {
+          const vistaDestino = match[1];
+          if (!esMaster && !vistasOperador.includes(vistaDestino)) {
+            item.style.display = 'none'; // Ocultamos el botón
+          } else {
+            item.style.display = 'flex'; // Lo mostramos
+          }
+        }
+      });
+
+      // 2. Ocultar títulos de sección (Administración, Sistema) si se quedan vacíos
+      document.querySelectorAll('.sb-sec').forEach(sec => {
+        const itemsVisibles = Array.from(sec.querySelectorAll('.ni')).filter(el => el.style.display !== 'none');
+        sec.style.display = itemsVisibles.length === 0 ? 'none' : 'block';
+      });
+    }
 
 function cerrarSesion() {
   USUARIO_ACTIVO = null;
@@ -6633,6 +6669,7 @@ async function iniciarApp() {
   try {
     await verificarConexion();
     await cargarPlanesPrecios();
+    await cargarParametros(); // 🚀 Inyectamos los Bancos y Formas de pago reales a los formularios
     await dbCargarClientes();
     await dbCargarCobros();
     await dbCargarVentas();
@@ -6838,6 +6875,10 @@ async function cargarParametros() {
   try {
     const {data} = await supa.from('bancos').select('*').eq('estado','Activo').order('nombre');
     if (data && data.length) {
+      // 🚀 Magia: Llenar todos los menús desplegables de bancos en el sistema
+      const optsBancos = data.map(b => `<option value="${b.nombre}">${b.nombre}</option>`).join('');
+      document.querySelectorAll('#pago-banco, select[id*="banco"]').forEach(sel => sel.innerHTML = optsBancos);
+
       document.getElementById('tb-bancos').innerHTML = data.map(b=>`
         <tr>
           <td><strong>${b.nombre}</strong></td>
@@ -6854,6 +6895,13 @@ async function cargarParametros() {
   try {
     const {data} = await supa.from('formas_pago').select('*').eq('estado','Activa').order('nombre');
     if (data && data.length) {
+      // 🚀 Magia: Llenar todos los menús desplegables de formas de pago en el sistema
+      const optsFormas = data.map(f => {
+        const val = f.nombre.toLowerCase().includes('binance') ? 'bin' : f.nombre;
+        return `<option value="${val}">${f.nombre}</option>`;
+      }).join('');
+      document.querySelectorAll('select[onchange*="chkCrypto"], #pago-forma, #inc-forma-dev').forEach(sel => sel.innerHTML = optsFormas);
+
       document.getElementById('tb-formas').innerHTML = data.map(f=>`
         <tr>
           <td><strong>${f.nombre}</strong></td>
