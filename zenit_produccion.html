@@ -279,9 +279,14 @@ async function dbCargarSuscripciones() {
         fVcto: s.fecha_vcto ? s.fecha_vcto.split('-').reverse().join('/') : '—',
         dias: (() => {
           if (!s.fecha_vcto) return 0;
-          const [yy,mm,dd] = s.fecha_vcto.split('-');
+          // 🚀 Tratamiento seguro de fechas: soporta YYYY-MM-DD, DD/MM/YYYY y formatos de combos sin romperse
+          let partes = s.fecha_vcto.includes('-') ? s.fecha_vcto.split('-') : s.fecha_vcto.split('/');
+          let anio = partes[0].length === 4 ? parseInt(partes[0]) : parseInt(partes[2]);
+          let mes = partes[0].length === 4 ? parseInt(partes[1]) : parseInt(partes[1]);
+          let dia = partes[0].length === 4 ? parseInt(partes[2]) : parseInt(partes[0]);
+          if (isNaN(anio) || isNaN(mes) || isNaN(dia)) return 0;
           const hoy = new Date(); hoy.setHours(0,0,0,0);
-          return Math.ceil((new Date(+yy,+mm-1,+dd) - hoy) / 86400000);
+          return Math.ceil((new Date(anio, mes - 1, dia) - hoy) / 86400000);
         })(),
         tipoCliente: s.tipo_cliente || 'Nuevo',
         monto: parseFloat(s.monto) || 0,
