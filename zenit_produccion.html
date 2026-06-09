@@ -4543,14 +4543,6 @@ function renderSubsPago(clienteId) {
     const key = (s.perfil || '—') + '_' + (s.plat || '—');
     if (!subsSeen.has(key)) subsSeen.set(key, s);
   });
-  const subsSeen = new Map();
-  subsRaw.forEach(s => {
-    const key = (s.perfil || '—') + '_' + (s.plat || '—');
-    // 🚀 Deduplicación limpia y segura sin romper la lógica por tipos de ID en combos
-    if (!subsSeen.has(key)) {
-      subsSeen.set(key, s);
-    }
-  });
   const subs = Array.from(subsSeen.values()).map(s => ({
     plat:   s.plat,
     perfil: s.perfil || '—',
@@ -4570,6 +4562,7 @@ function renderSubsPago(clienteId) {
     lista.innerHTML = '<div class="ab i"><i class="ti ti-info-circle"></i>Este cliente no tiene suscripciones activas.</div>';
     return;
   }
+}
 
   lista.innerHTML = subs.map((s,i) => {
     const p = PLATS[s.plat];
