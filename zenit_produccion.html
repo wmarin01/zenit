@@ -4537,7 +4537,8 @@ function limpiarClientePago() {
 
 function renderSubsPago(clienteId) {
   // Usar SUBS_FULL — deduplicar por perfil (quedarse con la más reciente)
-  const subsRaw = SUBS_FULL.filter(s => s.clienteId === clienteId);
+  // 🚀 Escudo protector: Solo jala las suscripciones de cuentas que NO estén inactivas
+  const subsRaw = SUBS_FULL.filter(s => s.clienteId === clienteId && s.estado !== 'Inactiva');
   const subsSeen = new Map();
   subsRaw.forEach(s => {
     const key = (s.perfil || '—') + '_' + (s.plat || '—');
