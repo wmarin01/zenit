@@ -4535,8 +4535,11 @@ function renderSubsPago(clienteId) {
   const subsRaw = SUBS_FULL.filter(s => s.clienteId === clienteId);
   const subsSeen = new Map();
   subsRaw.forEach(s => {
-    const key = s.perfil + '_' + s.plat;
-    if (!subsSeen.has(key) || s.id > subsSeen.get(key).id) subsSeen.set(key, s);
+    const key = (s.perfil || '—') + '_' + (s.plat || '—');
+    // 🚀 Deduplicación limpia y segura sin romper la lógica por tipos de ID en combos
+    if (!subsSeen.has(key)) {
+      subsSeen.set(key, s);
+    }
   });
   const subs = Array.from(subsSeen.values()).map(s => ({
     plat:   s.plat,
