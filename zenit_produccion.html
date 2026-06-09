@@ -4564,7 +4564,7 @@ function renderSubsPago(clienteId) {
   }
 
   lista.innerHTML = subs.map((s,i) => {
-    const p = PLATS[s.plat];
+    const p = PLATS[s.plat] || { nombre: s.plat, color: '#ccc' };
     const vbadge = s.dias === 0 ? '<span class="b br">Hoy</span>' : s.dias === 1 ? '<span class="b ba">Mañana</span>' : `<span class="b bi">${s.dias} días</span>`;
     return `<div class="pi" id="psub-${i}" style="padding:10px 12px;margin-bottom:5px" onclick="toggleSubPago(${i},${s.precio})">
       <input type="checkbox" id="chk-sub-${i}" data-subid="${s.subId||''}" data-plat="${s.plat}" checked style="width:auto;margin:0;flex-shrink:0">
