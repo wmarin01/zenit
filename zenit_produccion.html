@@ -1234,8 +1234,9 @@ async function intentarLogin() {
     <div class="fsec"><div class="fst">Fechas y costo</div>
       <div class="fr c3"><div class="fg"><label>Fecha de compra<span class="req">*</span></label><input type="date" id="cuenta-fecha-compra" value="2026-05-26"></div><div class="fg"><label>Vencimiento proveedor<span class="req">*</span></label><input type="date" id="cuenta-vcto-prov"></div><div class="fg"><label>Días para alerta</label><input type="number" value="7" min="1" max="30"></div></div>
       <div class="fr c2"><div class="fg"><label>Costo de compra<span class="req">*</span></label><input type="text" id="cuenta-costo" placeholder="$0.00"></div><div class="fg"><label>Notas</label><input type="text" id="cuenta-notas" placeholder="Opcional"></div></div>
-    </div>
-    <div class="ab i"><i class="ti ti-info-circle"></i>Al guardar, el sistema crea automáticamente los perfiles disponibles según el máximo de la plataforma.</div>
+          <div class="fg" id="grp-cuenta-estado" style="display:none;margin-top:11px"><label>Estado de la cuenta</label><select id="cuenta-estado"><option value="Activa">Activa</option><option value="Bloqueada">Bloqueada / Suspendida</option><option value="Inactiva">Inactiva</option></select><div class="hint w">Si la suspendes, dejará de aparecer disponible en ventas.</div></div>
+        </div>
+        <div class="ab i"><i class="ti ti-info-circle"></i>Al guardar, el sistema crea automáticamente los perfiles disponibles según el máximo de la plataforma.</div>
   </div>
   <div class="mf"><button class="btn" onclick="closeModal('m-cuenta')">Cancelar</button><button class="btn btn-p" onclick="guardarCuenta()"><i class="ti ti-check"></i>Registrar cuenta</button></div>
 </div></div>
@@ -1602,8 +1603,8 @@ async function intentarLogin() {
       <div class="fsec"><div class="fst">Precio y pago</div>
         <div class="fr c3">
           <div class="fg"><label>Precio<span class="req">*</span></label><input type="text" id="v-precio" placeholder="$0.00"><div class="hint ok" id="v-precio-hint">Según plan seleccionado. Modificable.</div></div>
-          <div class="fg"><label>Banco<span class="req">*</span></label><select id="pago-banco"><option>Banco General</option><option>Banistmo</option><option>BAC</option><option>Caja de Ahorros</option></select></div>
-          <div class="fg"><label>Forma de pago<span class="req">*</span></label><select onchange="chkCrypto(this,'cx-venta')"><option value="">Yappy</option><option value="">Transferencia / ACH</option><option value="bin">Binance Pay</option><option value="">Efectivo</option></select></div>
+          <div class="fg"><label>Banco<span class="req">*</span></label><select id="v-banco"><option>Banco General</option><option>Banistmo</option><option>BAC</option><option>Caja de Ahorros</option></select></div>
+          <div class="fg"><label>Forma de pago<span class="req">*</span></label><select id="v-forma" onchange="chkCrypto(this,'cx-venta')"><option value="Yappy">Yappy</option><option value="Transferencia / ACH">Transferencia / ACH</option><option value="bin">Binance Pay</option><option value="Efectivo">Efectivo</option></select></div>
         </div>
         <div class="cx" id="cx-venta"><div class="fr c3"><div class="fg"><label>Moneda</label><select><option>USDT</option><option>BTC</option></select></div><div class="fg"><label>Monto neto</label><input type="text" id="v-neto"></div><div class="fg"><label>Comisión red</label><input type="text" placeholder="0.00"><div class="hint w">Se suma al total</div></div></div></div>
         <div class="fr c2">
@@ -2498,10 +2499,11 @@ async function confirmarVenta(){
   const compEl  = document.getElementById('v-comp');
   const monto   = parseFloat(montoEl?.value?.replace('$','').trim()) || ventaData.planPrecio || 0;
   const banco   = bancoEl?.value || 'Banco General';
-  const forma   = formaEl?.value || 'Yappy';
-  const doc     = compEl?.value?.trim() || '';
+      const forma   = formaEl?.value || 'Yappy';
+      const doc     = compEl?.value?.trim() || '';
 
-  if (!monto) { toast('Ingresa el monto del pago', 'warn'); return; }
+      if (!monto) { toast('Ingresa el monto del pago', 'warn'); return; }
+      if (!doc || doc.length < 4) { toast('El Nro. de comprobante es obligatorio', 'warn'); return; }
 
   // Canal
   const canalEl = document.querySelector('#v-pago .canal-sel .on, #v-pago .btn-canal.on');
@@ -2644,9 +2646,10 @@ async function confirmarPago() {
   const comp   = document.getElementById('pago-comp')?.value?.trim() || '';
   const tel    = CLIENTES.find(c => c.id === clienteId)?.tel || '';
 
-  if (!monto)  { toast('Ingresa el monto', 'error'); return; }
+      if (!monto)  { toast('Ingresa el monto', 'error'); return; }
+      if (!comp || comp.length < 4) { toast('El Nro. de comprobante es obligatorio', 'warn'); return; }
 
-  const btn = document.getElementById('btn-registrar-pago');
+      const btn = document.getElementById('btn-registrar-pago');
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
 
   try {
@@ -2939,33 +2942,40 @@ async function guardarCuenta(){
   const costo    = parseFloat(costoRaw.replace('$','').replace(',','.')) || null;
   const notas    = document.getElementById('cuenta-notas')?.value?.trim() || '';
   const provSel  = document.getElementById('cuenta-prov');
-  const provNom  = provSel?.options[provSel?.selectedIndex]?.text?.split(' ·')[0] || '';
+      const provNom  = provSel?.options[provSel?.selectedIndex]?.text?.split(' ·')[0] || '';
 
-  if (!codigo) { toast('El código de cuenta es requerido','warn'); return; }
-  if (!correo) { toast('El correo de acceso es requerido','warn'); return; }
-  if (!clave)  { toast('La clave de acceso es requerida','warn'); return; }
+      const stSel = document.getElementById('cuenta-estado');
+      const estadoCta = (stSel && stSel.offsetParent !== null) ? stSel.value : 'Activa';
 
-  const maxPerf = platVal==='DS' ? 7 : platVal==='PV' ? 6 : 5;
+      if (!codigo) { toast('El código de cuenta es requerido','warn'); return; }
+      if (!correo) { toast('El correo de acceso es requerido','warn'); return; }
+      if (!clave)  { toast('La clave de acceso es requerida','warn'); return; }
 
-  const btn = document.querySelector('#m-cuenta .btn-p');
-  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
+      // 🚀 Validar que el correo no esté duplicado
+      const duplicado = INV_CACHE.find(c => c.correo.toLowerCase() === correo.toLowerCase() && c.id !== codigo && c.estado !== 'Inactiva');
+      if (duplicado) { toast('Este correo ya está registrado en la cuenta ' + duplicado.id, 'warn'); return; }
 
-  try {
-    // 1. Guardar en cuentas_inventario
-    const {error: e1} = await supa.from('cuentas_inventario').insert({
-      codigo, plataforma: platVal, correo, clave,
-      max_perfiles: maxPerf,
-      proveedor: provNom || null,
-      fecha_vcto_proveedor: fechaV ? fechaV.split('-').reverse().join('/') : null,
-      costo_proveedor: costo,
-      estado: 'Activa', notas
-    });
-    if (e1) throw e1;
+      const maxPerf = platVal==='DS' ? 7 : platVal==='PV' ? 6 : 5;
 
-    // 2. Guardar espejo en inventario (para FK de perfiles)
-    const {error: e2} = await supa.from('inventario').insert({
-      id: codigo, plataforma: platVal, correo, clave, estado: 'Activa'
-    });
+      const btn = document.querySelector('#m-cuenta .btn-p');
+      btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
+
+      try {
+        // 1. Guardar o actualizar en cuentas_inventario
+        const {error: e1} = await supa.from('cuentas_inventario').upsert({
+          codigo, plataforma: platVal, correo, clave,
+          max_perfiles: maxPerf,
+          proveedor: provNom || null,
+          fecha_vcto_proveedor: fechaV ? fechaV.split('-').reverse().join('/') : null,
+          costo_proveedor: costo,
+          estado: estadoCta, notas
+        }, { onConflict: 'codigo' });
+        if (e1) throw e1;
+
+        // 2. Guardar espejo en inventario (para FK de perfiles)
+        const {error: e2} = await supa.from('inventario').upsert({
+          id: codigo, plataforma: platVal, correo, clave, estado: estadoCta
+        }, { onConflict: 'id' });
     if (e2) console.warn('inventario insert:', e2.message);
 
     // 3. Generar perfiles automáticamente
@@ -3433,6 +3443,12 @@ async function cargarUsuariosSistema() {
         const itemsVisibles = Array.from(sec.querySelectorAll('.ni')).filter(el => el.style.display !== 'none');
         sec.style.display = itemsVisibles.length === 0 ? 'none' : 'block';
       });
+
+      // 3. Ocultar finanzas en el Dashboard para Operadores
+      const cardCobrado = document.getElementById('dash-cobrado')?.closest('.mc');
+      const cardGanancia = document.getElementById('dash-ganancia')?.closest('.mc');
+      if (cardCobrado) cardCobrado.style.display = esMaster ? 'block' : 'none';
+      if (cardGanancia) cardGanancia.style.display = esMaster ? 'block' : 'none';
     }
 
 function cerrarSesion() {
@@ -6876,8 +6892,8 @@ async function cargarParametros() {
     const {data} = await supa.from('bancos').select('*').eq('estado','Activo').order('nombre');
     if (data && data.length) {
       // 🚀 Magia: Llenar todos los menús desplegables de bancos en el sistema
-      const optsBancos = data.map(b => `<option value="${b.nombre}">${b.nombre}</option>`).join('');
-      document.querySelectorAll('#pago-banco, select[id*="banco"]').forEach(sel => sel.innerHTML = optsBancos);
+          const optsBancos = data.map(b => `<option value="${b.nombre}" ${b.nombre==='Banco General'?'selected':''}>${b.nombre}</option>`).join('');
+          document.querySelectorAll('#pago-banco, #v-banco, select[id*="banco"]').forEach(sel => sel.innerHTML = optsBancos);
 
       document.getElementById('tb-bancos').innerHTML = data.map(b=>`
         <tr>
@@ -6896,11 +6912,11 @@ async function cargarParametros() {
     const {data} = await supa.from('formas_pago').select('*').eq('estado','Activa').order('nombre');
     if (data && data.length) {
       // 🚀 Magia: Llenar todos los menús desplegables de formas de pago en el sistema
-      const optsFormas = data.map(f => {
-        const val = f.nombre.toLowerCase().includes('binance') ? 'bin' : f.nombre;
-        return `<option value="${val}">${f.nombre}</option>`;
-      }).join('');
-      document.querySelectorAll('select[onchange*="chkCrypto"], #pago-forma, #inc-forma-dev').forEach(sel => sel.innerHTML = optsFormas);
+          const optsFormas = data.map(f => {
+            const val = f.nombre.toLowerCase().includes('binance') ? 'bin' : f.nombre;
+            return `<option value="${val}" ${f.nombre==='Yappy'?'selected':''}>${f.nombre}</option>`;
+          }).join('');
+          document.querySelectorAll('select[onchange*="chkCrypto"], #pago-forma, #v-forma, #inc-forma-dev').forEach(sel => sel.innerHTML = optsFormas);
 
       document.getElementById('tb-formas').innerHTML = data.map(f=>`
         <tr>
@@ -7238,7 +7254,7 @@ function renderInventario(lista) {
           <td>${inv.costo ? '$'+parseFloat(inv.costo).toFixed(2) : '—'}</td>
           <td><span class="b ${estadoClass}">${inv.estado||'—'}</span></td>
           <td class="tda">
-            <button class="btn btn-sm btn-ic" onclick="editarCuenta('${inv.id}')"><i class="ti ti-edit"></i></button>
+            <button class="btn btn-sm btn-ic" onclick="abrirEditarCuenta(this)"><i class="ti ti-edit"></i></button>
           </td>`;
         tbody.appendChild(tr2);
       });
