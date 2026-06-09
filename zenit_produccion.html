@@ -4562,7 +4562,6 @@ function renderSubsPago(clienteId) {
     lista.innerHTML = '<div class="ab i"><i class="ti ti-info-circle"></i>Este cliente no tiene suscripciones activas.</div>';
     return;
   }
-}
 
   lista.innerHTML = subs.map((s,i) => {
     const p = PLATS[s.plat];
