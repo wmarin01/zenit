@@ -3052,6 +3052,14 @@ function abrirEditarCuenta(btn) {
   setVal('cuenta-costo',     costo);
   setVal('cuenta-notas',     notas);
 
+  // 🚀 MOSTRAR EL SELECTOR DE ESTADO (Solo al editar)
+  const grpEst = document.getElementById('grp-cuenta-estado');
+  if (grpEst) grpEst.style.display = 'block';
+  
+  const stSel = document.getElementById('cuenta-estado');
+  const estadoActual = tr.querySelector('td:nth-child(11)')?.textContent?.trim() || 'Activa';
+  if (stSel) stSel.value = estadoActual;
+
   // Cambiar título
   const tit = document.querySelector('#m-cuenta .mtit');
   if (tit) tit.textContent = 'Editar cuenta ' + codigo;
@@ -4701,13 +4709,13 @@ async function updCuentaCodigo() {
     NEXT_CODIGO[v] = next;
     hint.textContent = '✓ Siguiente disponible: ' + next;
     hint.className = 'hint ok';
-    inp.placeholder = next;
+    inp.value = next; // 🚀 Escribe el código real directamente en el campo
 
   } catch(e) {
     const next = NEXT_CODIGO[v] || (v + '0001');
     hint.textContent = 'Sugerido (sin conexión): ' + next;
     hint.className = 'hint w';
-    inp.placeholder = next;
+    inp.value = next; // 🚀 Escribe el código sugerido incluso sin conexión
   }
 }
 
