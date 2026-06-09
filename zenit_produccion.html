@@ -4536,20 +4536,12 @@ function limpiarClientePago() {
 }
 
 function renderSubsPago(clienteId) {
-  // 🚀 Filtro Definitivo: Solo se procesan las suscripciones que estén en estado "Activo"
-  const subsRaw = SUBS_FULL.filter(s => {
-    if (s.clienteId !== clienteId) return false;
-    
-    // Convertimos a texto limpio para comparar con el estado exacto
-    const est = (s.estado || '').trim();
-    
-    // Si la suscripción no está "Activo" (ej: está en "Sin renovar" o "Inactivo"), se descarta de inmediato
-    if (est !== 'Activo') return false;
-    
-    // Si no tiene fechas válidas, se descarta para evitar congelamiento de pantalla
-    if (!s.fVcto && !s.fecha_vcto) return false;
-    
-    return true;
+  // Usar SUBS_FULL — deduplicar por perfil (quedarse con la más reciente)
+  const subsRaw = SUBS_FULL.filter(s => s.clienteId === clienteId);
+  const subsSeen = new Map();
+  subsRaw.forEach(s => {
+    const key = (s.perfil || '—') + '_' + (s.plat || '—');
+    if (!subsSeen.has(key)) subsSeen.set(key, s);
   });
   const subsSeen = new Map();
   subsRaw.forEach(s => {
