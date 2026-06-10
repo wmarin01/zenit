@@ -2687,41 +2687,38 @@ async function confirmarPago() {
     if (!ok) throw new Error('Error al guardar cobro');
 
     // Actualizar fecha_vcto de cada suscripción seleccionada
+    // data-subids contiene JSON con todos los IDs (combo = 2 IDs, individual = 1 ID)
     for (const cb of checkboxes) {
-      const meses    = parseInt(document.querySelector(`input[name="meses_${cb.dataset.plat}"]`)?.value || '1');
-      // Obtener todos los subIds del combo (o el individual)
+      const meses = parseInt(document.querySelector(`input[name="meses_${cb.dataset.plat}"]`)?.value || '1');
       let subIds = [];
       try { subIds = JSON.parse(cb.dataset.subids || '[]'); } catch(e) { subIds = []; }
-      if (!subIds.length && cb.dataset.subid && cb.dataset.subid !== 'undefined') subIds = [cb.dataset.subid];
       if (!subIds.length) { console.warn('[PAGO] subIds vacíos para plat:', cb.dataset.plat); continue; }
 
       for (const subId of subIds) {
-      if (!subId || subId === 'undefined') { console.warn('[PAGO] subId vacío'); continue; }
-      const subActual = SUBS_FULL.find(s => String(s.id) === String(subId));
-      if (!subActual) { console.warn('[PAGO] sub no encontrada en memoria, id:', subId); continue; }
+        if (!subId || subId === 'undefined') continue;
+        const subActual = SUBS_FULL.find(s => String(s.id) === String(subId));
+        if (!subActual) { console.warn('[PAGO] sub no encontrada en memoria, id:', subId); continue; }
 
-      // Usar fecha vcto del campo si está definida, sino calcular
-      let nuevaFVcto = fechaVctoNueva;
-      if (!nuevaFVcto) {
-        const [dd,mm,yy] = (subActual.fVcto||'').split('/');
-        const base = new Date(+yy, +mm-1, +dd);
-        base.setMonth(base.getMonth() + meses);
-        nuevaFVcto = base.toISOString().split('T')[0];
+        let nuevaFVcto = fechaVctoNueva;
+        if (!nuevaFVcto) {
+          const [dd,mm,yy] = (subActual.fVcto||'').split('/');
+          const base = new Date(+yy, +mm-1, +dd);
+          base.setMonth(base.getMonth() + meses);
+          nuevaFVcto = base.toISOString().split('T')[0];
+        }
+
+        await supa.from('suscripciones')
+          .update({ fecha_vcto: nuevaFVcto, estado: 'activo', tipo_cliente: 'Renovación' })
+          .eq('id', subId);
+
+        const idx = SUBS_FULL.findIndex(s => s.id == subId);
+        if (idx !== -1) {
+          SUBS_FULL[idx].fVcto = nuevaFVcto.split('-').reverse().join('/');
+          SUBS_FULL[idx].est = 'activo';
+          SUBS_FULL[idx].tipoCliente = 'Renovación';
+          SUBS_FULL[idx].dias = meses * 30;
+        }
       }
-
-      await supa.from('suscripciones')
-        .update({ fecha_vcto: nuevaFVcto, estado: 'activo', tipo_cliente: 'Renovación' })
-        .eq('id', subId);
-
-      // Actualizar en memoria
-      const idx = SUBS_FULL.findIndex(s => s.id == subId);
-      if (idx !== -1) {
-        SUBS_FULL[idx].fVcto = nuevaFVcto.split('-').reverse().join('/');
-        SUBS_FULL[idx].est = 'activo';
-        SUBS_FULL[idx].tipoCliente = 'Renovación';
-        SUBS_FULL[idx].dias = meses * 30;
-      }
-      } // fin for subId
     }
 
     // Agregar a COBROS en memoria
@@ -4501,6 +4498,7 @@ function calcFechaVcto(fechaIni, meses) {
 }
 
 // ── FLUJO REGISTRAR PAGO ─────────────────────────────────────
+let pagoSubsActuales = []; // grupos de subs para el modal de pago activo
 let pagoData = {clienteId:'', clienteNombre:''};
 
 function buscarClientePago(q) {
@@ -4549,69 +4547,59 @@ function limpiarClientePago() {
 }
 
 function renderSubsPago(clienteId) {
-  // Solo suscripciones activas del cliente
-  const subsRaw = SUBS_FULL.filter(s => s.clienteId === clienteId && (s.est || '').toLowerCase() === 'activo');
+  // Solo suscripciones ACTIVAS del cliente
+  const subsRaw = SUBS_FULL.filter(s =>
+    s.clienteId === clienteId && (s.est || '').toLowerCase() === 'activo'
+  );
 
-  // Agrupar por combo (campo s.combo) o por perfil individual
-  // Para combos: una sola fila con todas las plataformas, monto del combo (no multiplicado), todos los subIds
+  // Agrupar: combos en una sola fila (clave = s.combo), individuales por perfil
+  // s.combo es el campo real en SUBS_FULL (ej: "NF+DS", "DS+HB", o "—" si individual)
   const grupoMap = new Map();
   subsRaw.forEach(s => {
-    const comboKey = s.combo && s.combo !== '—' ? ('combo_' + s.combo) : ('ind_' + (s.perfil || s.plat || s.id));
-    if (!grupoMap.has(comboKey)) {
-      grupoMap.set(comboKey, {
-        esCombo:  s.combo && s.combo !== '—',
-        comboId:  s.combo && s.combo !== '—' ? s.combo : null,
-        plat:     s.plat,
-        plats:    [s.plat],
-        perfil:   s.perfil || '—',
-        vcto:     s.fVcto  || '—',
-        precio:   s.monto  || 0,   // monto ya es el del combo completo, no multiplicar
-        dias:     s.dias   || 0,
-        subIds:   [s.id]           // todos los subId del combo para actualizar todos
+    const esCombo = s.combo && s.combo !== '—';
+    const key = esCombo ? ('combo_' + s.combo) : ('ind_' + s.id);
+    if (!grupoMap.has(key)) {
+      grupoMap.set(key, {
+        esCombo,
+        plats:   [s.plat],
+        perfil:  s.perfil || '—',
+        vcto:    s.fVcto  || '—',
+        precio:  s.monto  || 0,   // monto del combo completo — NO multiplicar
+        dias:    s.dias   || 0,
+        subIds:  [s.id]           // todos los IDs del combo para renovar ambos
       });
     } else {
-      const g = grupoMap.get(comboKey);
+      const g = grupoMap.get(key);
       if (!g.plats.includes(s.plat)) g.plats.push(s.plat);
-      if (!g.subIds.includes(s.id)) g.subIds.push(s.id);
-      // Mantener la vcto más reciente (mayor fecha)
-      if (s.fVcto && s.fVcto !== '—' && (g.vcto === '—' || s.fVcto > g.vcto)) g.vcto = s.fVcto;
-      if (typeof s.dias === 'number' && s.dias > g.dias) g.dias = s.dias;
+      if (s.id && !g.subIds.includes(s.id)) g.subIds.push(s.id);
     }
   });
 
-  const subs = Array.from(grupoMap.values()).map(g => ({
-    esCombo: g.esCombo,
-    plat:    g.esCombo ? g.plats.join('+') : g.plat,
-    plats:   g.plats,
-    perfil:  g.perfil,
-    vcto:    g.vcto,
-    precio:  g.precio,
-    dias:    g.dias,
-    subIds:  g.subIds,
-    // compatibilidad con calcTotalPago/updResumenPago
-    subId:   g.subIds[0]
-  }));
+  const subs = Array.from(grupoMap.values());
+
   const lista = document.getElementById('pago-subs-lista');
   const mesesLista = document.getElementById('pago-meses-lista');
   if (!lista) return;
-  
+
   if (!subs.length) {
     lista.innerHTML = '<div class="ab i"><i class="ti ti-info-circle"></i>Este cliente no tiene suscripciones activas.</div>';
+    if (mesesLista) mesesLista.innerHTML = '';
     return;
   }
 
-  lista.innerHTML = subs.map((s,i) => {
-    // Label: para combos mostrar todas las plataformas; para individuales solo la plataforma
+  lista.innerHTML = subs.map((s, i) => {
+    // Nombre a mostrar: "Netflix · NF00021" o "Disney+ + HBO Max"
     const label = s.esCombo
       ? s.plats.map(pl => PLATS[pl]?.nombre || pl).join(' + ')
-      : ((PLATS[s.plat]?.nombre || s.plat) + ' · ' + s.perfil);
-    // Color del dot: primer plat del grupo
-    const primerPlat = s.plats[0];
-    const dotColor = PLATS[primerPlat]?.color || '#ccc';
-    const vbadge = s.dias <= 0 ? '<span class="b br">Hoy</span>' : s.dias === 1 ? '<span class="b ba">Mañana</span>' : `<span class="b bi">${s.dias} días</span>`;
-    // Guardar todos los subIds como JSON en data-subids
+      : ((PLATS[s.plats[0]]?.nombre || s.plats[0]) + ' · ' + s.perfil);
+    const dotColor = PLATS[s.plats[0]]?.color || '#ccc';
+    const vbadge = s.dias <= 0 ? '<span class="b br">Hoy</span>'
+                 : s.dias === 1 ? '<span class="b ba">Mañana</span>'
+                 : `<span class="b bi">${s.dias} días</span>`;
+    // data-subids guarda JSON con todos los IDs (combo o individual)
+    const subIdsJson = JSON.stringify(s.subIds).replace(/'/g, '&#39;');
     return `<div class="pi" id="psub-${i}" style="padding:10px 12px;margin-bottom:5px" onclick="toggleSubPago(${i},${s.precio})">
-      <input type="checkbox" id="chk-sub-${i}" data-subid="${s.subId||''}" data-subids='${JSON.stringify(s.subIds)}' data-plat="${s.plat}" checked style="width:auto;margin:0;flex-shrink:0">
+      <input type="checkbox" id="chk-sub-${i}" data-subids='${subIdsJson}' data-plat="${s.plats[0]}" checked style="width:auto;margin:0;flex-shrink:0">
       <div style="flex:1;margin-left:8px">
         <div style="font-size:13px;font-weight:500"><span class="dot" style="background:${dotColor};width:8px;height:8px;margin-right:5px"></span>${label}</div>
         <div style="font-size:11px;color:var(--text3)">Vence ${s.vcto} · $${s.precio.toFixed(2)}</div>
@@ -4620,34 +4608,33 @@ function renderSubsPago(clienteId) {
   }).join('');
 
   // Campos de meses dinámicos
-  mesesLista.innerHTML = subs.map((s,i) => {
+  mesesLista.innerHTML = subs.map((s, i) => {
     const label = s.esCombo
       ? s.plats.map(pl => PLATS[pl]?.nombre || pl).join('+')
-      : (PLATS[s.plat]?.nombre || s.plat);
+      : ((PLATS[s.plats[0]]?.nombre || s.plats[0]) + ' ' + s.perfil);
     return `
     <div class="fg" id="meses-row-${i}">
-      <label>${label} ${s.esCombo ? '' : s.perfil}</label>
+      <label>${label}</label>
       <div style="display:flex;align-items:center;gap:8px">
-        <input type="number" id="meses-sub-${i}" name="meses_${s.plat}" value="1" min="1" max="12" style="max-width:65px" oninput="calcVctoPago(${i},'${s.vcto}')">
+        <input type="number" id="meses-sub-${i}" name="meses_${s.plats[0]}" value="1" min="1" max="12" style="max-width:65px" oninput="calcVctoPago(${i},'${s.vcto}')">
         <span style="font-size:12px;color:var(--text3)">→ vence <strong id="vcto-sub-${i}" style="color:var(--text)">${calcNuevoVcto(s.vcto,1)}</strong></span>
       </div>
     </div>`;
   }).join('');
 
+  pagoSubsActuales = subs;
   calcTotalPago(subs);
   updResumenPago(subs);
-  // Inicializar fecha de pago con hoy
   const hoy = new Date().toISOString().split('T')[0];
   const fp = document.getElementById('pago-fecha');
   if (fp && !fp.value) fp.value = hoy;
-  // Fecha vcto sugerida = vcto más próxima de las subs + 1 mes
+  // Fecha vcto sugerida = vcto de la primera sub + 1 mes
   if (subs.length) {
     const vctoSugerida = calcNuevoVcto(subs[0].vcto, 1);
     const fv = document.getElementById('pago-fecha-vcto');
-    // convertir dd/mm/yyyy a YYYY-MM-DD
     if (fv && vctoSugerida) {
       const [dd,mm,yy] = vctoSugerida.split('/');
-      if (dd && mm && yy) fv.value = `${yy}-${mm.zfill ? mm.zfill(2) : mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+      if (dd && mm && yy) fv.value = `${yy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
     }
   }
 }
@@ -4678,11 +4665,8 @@ function calcVctoPago(idx, vctoActual) {
   const nuevo = calcNuevoVcto(vctoActual, meses);
   const el = document.getElementById('vcto-sub-'+idx);
   if (el) el.textContent = nuevo;
-  const subs = SUBS_FULL.filter(s => s.clienteId === pagoData.clienteId).map(s => ({
-    plat: s.plat, perfil: s.perfil||'—', vcto: s.fVcto||'—', precio: s.monto||0, dias: s.dias||0
-  }));
-  calcTotalPago(subs);
-  updResumenPago(subs);
+  calcTotalPago(pagoSubsActuales);
+  updResumenPago(pagoSubsActuales);
 }
 
 function toggleSubPago(idx, precio) {
@@ -4693,11 +4677,8 @@ function toggleSubPago(idx, precio) {
   chk.checked = !chk.checked;
   row?.classList.toggle('on', chk.checked);
   if (mrow) mrow.style.display = chk.checked ? 'flex' : 'none';
-  const subs = SUBS_FULL.filter(s => s.clienteId === pagoData.clienteId).map(s => ({
-    plat: s.plat, perfil: s.perfil||'—', vcto: s.fVcto||'—', precio: s.monto||0, dias: s.dias||0
-  }));
-  calcTotalPago(subs);
-  updResumenPago(subs);
+  calcTotalPago(pagoSubsActuales);
+  updResumenPago(pagoSubsActuales);
 }
 
 function calcTotalPago(subs) {
@@ -4725,7 +4706,7 @@ function updResumenPago(subs) {
     const meses = parseInt(document.getElementById('meses-sub-'+i)?.value) || 1;
     const vctoNuevo = calcNuevoVcto(s.vcto, meses);
     total += s.precio;
-    rows += `<div class="sr"><span class="sl">${PLATS[s.plat].nombre} ${s.perfil}</span><span>${s.vcto} → ${vctoNuevo} · $${s.precio.toFixed(2)}</span></div>`;
+    rows += `<div class="sr"><span class="sl">${s.esCombo ? s.plats.map(pl=>PLATS[pl]?.nombre||pl).join('+') : ((PLATS[s.plats[0]]?.nombre||s.plats[0])+' '+s.perfil)}</span><span>${s.vcto} → ${vctoNuevo} · $${s.precio.toFixed(2)}</span></div>`;
   });
   if (rows) rows += `<div class="sr"><span>Total</span><span style="color:var(--green)">$${total.toFixed(2)}</span></div>`;
   cont.innerHTML = rows;
