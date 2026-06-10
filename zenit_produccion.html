@@ -1607,7 +1607,8 @@ async function intentarLogin() {
     <div id="vpaso4" style="display:none">
       <div class="fsec"><div class="fst">Precio y pago</div>
         <div class="fr c3">
-          <div class="fg"><label>Precio<span class="req">*</span></label><input type="text" id="v-precio" placeholder="$0.00"><div class="hint ok" id="v-precio-hint">Según plan seleccionado. Modificable.</div></div>
+          <div class="fg"><label>Precio del plan</label><input type="text" id="v-precio" placeholder="$0.00" readonly style="background:var(--bg2);color:var(--text3)"><div class="hint ok" id="v-precio-hint">Precio fijo del plan</div></div>
+          <div class="fg"><label>Monto recibido<span class="req">*</span></label><input type="text" id="v-monto" placeholder="$0.00"><div class="hint ok">Lo que pagó el cliente. Modificable.</div></div>
           <div class="fg"><label>Banco<span class="req">*</span></label><select id="v-banco"><option>Banco General</option><option>Banistmo</option><option>BAC</option><option>Caja de Ahorros</option></select></div>
           <div class="fg"><label>Forma de pago<span class="req">*</span></label><select id="v-forma" onchange="chkCrypto(this,'cx-venta')"><option value="Yappy">Yappy</option><option value="Transferencia / ACH">Transferencia / ACH</option><option value="bin">Binance Pay</option><option value="Efectivo">Efectivo</option></select></div>
         </div>
@@ -2498,11 +2499,13 @@ async function confirmarVenta(){
   const vcto    = fVctoVal; // YYYY-MM-DD para Supabase
 
   // Pago
-  const montoEl = document.getElementById('v-monto');
+  const montoEl  = document.getElementById('v-monto');
+  const precioEl = document.getElementById('v-precio');
   const bancoEl = document.getElementById('v-banco');
   const formaEl = document.getElementById('v-forma');
   const compEl  = document.getElementById('v-comp');
-  const monto   = parseFloat(montoEl?.value?.replace('$','').trim()) || ventaData.planPrecio || 0;
+  const montoCobrado = parseFloat((montoEl?.value||'').replace('$','').replace(',','.').trim()) || ventaData.planPrecio || 0;
+  const monto        = parseFloat((precioEl?.value||'').replace('$','').replace(',','.').trim()) || ventaData.planPrecio || 0;
   const banco   = bancoEl?.value || 'Banco General';
       const forma   = formaEl?.value || 'Yappy';
       const doc     = compEl?.value?.trim() || '';
@@ -2549,7 +2552,7 @@ async function confirmarVenta(){
       tipo: 'Venta nueva', clienteId: ventaData.clienteId,
       nombre: ventaData.clienteNombre, tel: normalizeTel(ventaData.clienteTel),
       plat: [...new Set(plats)].join('+'), correo: correo2, usuario: usuario2,
-      monto, banco, forma, doc,
+      monto: montoCobrado, banco, forma, doc,
       fechaIni: fIniVal,
       operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
       dupAutorizado: ventaData.dupAutorizado || false
@@ -3881,6 +3884,9 @@ function ventaPaso4() {
     return;
   }
   ['vpaso1','vpaso2','vpaso3','vpaso4','vpaso5'].forEach((id,i) => document.getElementById(id).style.display = i===3?'block':'none');
+  const vMontoEl = document.getElementById('v-monto');
+  const vPrecioEl = document.getElementById('v-precio');
+  if (vMontoEl && vPrecioEl && !vMontoEl.value) vMontoEl.value = vPrecioEl.value;
   // Precio según selección
   let total = 0;
   const tipo = ventaData.tipo;
@@ -4536,8 +4542,8 @@ function limpiarClientePago() {
 }
 
 function renderSubsPago(clienteId) {
-  // Usar SUBS_FULL — deduplicar por perfil (quedarse con la más reciente)
-  const subsRaw = SUBS_FULL.filter(s => s.clienteId === clienteId);
+  // Usar SUBS_FULL — solo suscripciones activas, deduplicar por perfil
+  const subsRaw = SUBS_FULL.filter(s => s.clienteId === clienteId && (s.est || '').toLowerCase() === 'activo');
   const subsSeen = new Map();
   subsRaw.forEach(s => {
     // 🚀 La solución recuperada: Agrupar por combo o por plataforma para proteger la cobranza
