@@ -4584,10 +4584,10 @@ function renderSubsPago(clienteId) {
   // por un grupo combo real (combo_id presente) con la misma fecha de vencimiento.
   // Esto ocurre cuando en la BD una sub del combo no tiene combo_id grabado.
   const realCombos = Array.from(grupoMap.entries())
-    .filter(([k]) => k.startsWith('combo_'))
+    .filter(([, g]) => g.esCombo)
     .map(([, g]) => g);
   for (const [key] of Array.from(grupoMap.entries())) {
-    if (key.startsWith('combo_')) continue;
+    if (grupoMap.get(key)?.esCombo) continue;
     const g = grupoMap.get(key);
     const cubierto = realCombos.find(cg =>
       g.plats.some(p => cg.plats.includes(p))
