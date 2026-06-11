@@ -4580,6 +4580,23 @@ function renderSubsPago(clienteId) {
       if (s.id   && !g.subIds.includes(s.id))  g.subIds.push(s.id);
     }
   });
+  // Segunda pasada: eliminar filas sueltas cuya plataforma ya está cubierta
+  // por un grupo combo real (combo_id presente) con la misma fecha de vencimiento.
+  // Esto ocurre cuando en la BD una sub del combo no tiene combo_id grabado.
+  const realCombos = Array.from(grupoMap.entries())
+    .filter(([k]) => k.startsWith('combo_'))
+    .map(([, g]) => g);
+  for (const [key] of Array.from(grupoMap.entries())) {
+    if (key.startsWith('combo_')) continue;
+    const g = grupoMap.get(key);
+    const cubierto = realCombos.find(cg =>
+      g.plats.some(p => cg.plats.includes(p)) && cg.vcto === g.vcto
+    );
+    if (cubierto) {
+      g.subIds.forEach(id => { if (!cubierto.subIds.includes(id)) cubierto.subIds.push(id); });
+      grupoMap.delete(key);
+    }
+  }
   const subs = Array.from(grupoMap.values());
   const lista = document.getElementById('pago-subs-lista');
   const mesesLista = document.getElementById('pago-meses-lista');
