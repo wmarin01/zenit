@@ -4590,7 +4590,7 @@ function renderSubsPago(clienteId) {
     if (key.startsWith('combo_')) continue;
     const g = grupoMap.get(key);
     const cubierto = realCombos.find(cg =>
-      g.plats.some(p => cg.plats.includes(p)) && cg.vcto === g.vcto
+      g.plats.some(p => cg.plats.includes(p))
     );
     if (cubierto) {
       g.subIds.forEach(id => { if (!cubierto.subIds.includes(id)) cubierto.subIds.push(id); });
