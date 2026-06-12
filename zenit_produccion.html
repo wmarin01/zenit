@@ -5583,16 +5583,16 @@ async function dbCargarHistorial() {
   const tbody = document.getElementById('tb-historial') || document.querySelector('#v-historial tbody');
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
-  const { data, error } = await supa.from('historial').select('*').order('created_at', { ascending: false }).limit(200);
+  const { data, error } = await supa.from('historial').select('*').order('fecha', { ascending: false }).limit(200);
   if (error) { tbody.innerHTML = '<tr><td colspan="4" style="color:var(--red);padding:20px;text-align:center">Error cargando historial</td></tr>'; return; }
   if (!data || !data.length) {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">Sin registros en el historial</td></tr>';
     return;
   }
   tbody.innerHTML = data.map(h => {
-    const fecha = h.created_at
-      ? new Date(h.created_at).toLocaleDateString('es-PA',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' +
-        new Date(h.created_at).toLocaleTimeString('es-PA',{hour:'2-digit',minute:'2-digit'})
+    const fecha = h.fecha
+      ? new Date(h.fecha).toLocaleDateString('es-PA',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' +
+        new Date(h.fecha).toLocaleTimeString('es-PA',{hour:'2-digit',minute:'2-digit'})
       : '—';
     const rolBadge = (h.operador||'').toLowerCase().includes('master')
       ? '<span class="b bg">Master</span>'
