@@ -3978,8 +3978,12 @@ function ventaPaso5Resumen() {
   const fmtD5    = v => { if(!v||!v.includes('-')) return v||'—'; const [yy,mm,dd]=v.split('-'); return `${dd}/${mm}/${yy}`; };
   const vcto     = fmtD5(document.getElementById('v-fecha-vcto')?.value || '');
   const fIniStr  = fmtD5(document.getElementById('v-fecha-ini')?.value || ventaData.fechaIni || '');
-  let total = ventaData.planPrecio || 0;
-  if (ventaData.tipo === 'combo' && comboSelIdx >= 0) total = COMBOS[comboSelIdx].precio;
+  const montoInput = document.getElementById('v-monto');
+  let total = parseFloat((montoInput?.value || '').replace(/[$,]/g, ''));
+  if (isNaN(total) || total === 0) {
+    total = ventaData.planPrecio || 0;
+    if (ventaData.tipo === 'combo' && comboSelIdx >= 0) total = COMBOS[comboSelIdx].precio;
+  }
 
   // Construir entradas indexadas usando helpers
   const entries = plats.map((p, i) => {
