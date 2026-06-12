@@ -4619,6 +4619,7 @@ function renderSubsPago(clienteId) {
           if (!platSet.includes(p)) { platSet.push(p); subForPlat[p] = g.subs.find(sub => sub.plat === p) || s; }
         });
       });
+      console.log('[renderSubsPago] combo key:', key, '| g.subs.length:', g.subs.length, '| ids:', g.subs.map(s => s.id), '| plats:', g.subs.map(s => s.plat));
       const comboSubIds = JSON.stringify(g.subs.map(s => s.id));
       const comboPlats  = JSON.stringify(platSet);
       const comboEntry  = COMBOS.find(c => c.plats.length === platSet.length && platSet.every(p => c.plats.includes(p)));
