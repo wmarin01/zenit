@@ -4784,7 +4784,11 @@ function updResumenPago(rows) {
     const lbl = (PLATS[r.plat]?.nombre || r.plat) + (r.esCombo ? ' (combo)' : ' ' + r.perfil);
     html += `<div class="sr"><span class="sl">${lbl}</span><span>${r.vcto} → ${vctoNuevo} · $${r.precio.toFixed(2)}</span></div>`;
   });
-  if (html) html += `<div class="sr"><span>Total</span><span style="color:var(--green)">$${total.toFixed(2)}</span></div>`;
+  if (html) {
+    const _montoStr = (document.getElementById('pago-monto')?.value || '').replace('$','').replace(',','.').trim();
+    const _montoFinal = parseFloat(_montoStr) || total;
+    html += `<div class="sr"><span>Total</span><span style="color:var(--green)">$${_montoFinal.toFixed(2)}</span></div>`;
+  }
   cont.innerHTML = html;
 }
 
