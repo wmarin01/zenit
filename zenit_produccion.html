@@ -108,6 +108,8 @@ async function dbGuardarEgreso(egr) {
     comision: egr.comision || 0,
     total: egr.total,
     banco: egr.banco,
+    documento: egr.documento || '',
+    notas: egr.notas || '',
     es_reembolso: egr.esReembolso || false
   });
   if (error) console.error('Error guardando egreso:', error);
@@ -1792,7 +1794,7 @@ async function intentarLogin() {
     </div>
     <div class="fsec"><div class="fst">Período, forma de pago y monto</div>
       <div class="fr c3"><div class="fg"><label>Fecha egreso<span class="req">*</span></label><input type="date" id="cuenta-fecha-compra" value="2026-05-26"></div><div class="fg"><label>Período desde</label><input type="date" value="2026-06-01"></div><div class="fg"><label>Período hasta</label><input type="date" value="2026-06-30"></div></div>
-      <div class="fr c3"><div class="fg"><label>Banco<span class="req">*</span></label><select><option>Banco General</option><option>Banistmo</option></select></div><div class="fg"><label>Forma de pago<span class="req">*</span></label><select onchange="chkCrypto(this,'cx-egreso')"><option value="">Yappy</option><option value="">Transferencia / ACH</option><option value="bin">Binance Pay</option><option value="">Efectivo</option></select></div><div class="fg"><label>Comprobante / Hash</label><input type="text" placeholder="Referencia o hash"></div></div>
+      <div class="fr c3"><div class="fg"><label>Banco<span class="req">*</span></label><select id="egreso-banco"><option>Banco General</option><option>Banistmo</option></select></div><div class="fg"><label>Forma de pago<span class="req">*</span></label><select id="egreso-forma" onchange="chkCrypto(this,'cx-egreso')"><option value="">Yappy</option><option value="">Transferencia / ACH</option><option value="bin">Binance Pay</option><option value="">Efectivo</option></select></div><div class="fg"><label>Comprobante / Hash</label><input type="text" id="egreso-doc" placeholder="Referencia o hash"></div></div>
       <div id="eg-std" class="fr c2"><div class="fg"><label>Monto<span class="req">*</span></label><input type="text" value="$12.00"><div class="hint ok">Pre-cargado. Modificable.</div></div><div class="fg"><label>Imagen comprobante</label><input type="file" accept="image/*"><div class="hint">Opcional</div></div></div>
       <div class="cx" id="cx-egreso">
         <div class="fr c3" style="margin-bottom:0"><div class="fg"><label>Moneda</label><select><option>USDT</option><option>BTC</option></select></div><div class="fg"><label>Monto neto<span class="req">*</span></label><input type="text" id="eneto" value="$12.00" oninput="calcEg()"><div class="hint ok">Costo real</div></div><div class="fg"><label>Comisión de red</label><input type="text" id="ecom" placeholder="0.00" oninput="calcEg()"><div class="hint w">Costo adicional</div></div></div>
@@ -1800,7 +1802,7 @@ async function intentarLogin() {
         <div class="fg"><label>Imagen comprobante</label><input type="file" accept="image/*"><div class="hint">Opcional</div></div>
       </div>
     </div>
-    <div class="fr c2"><div class="fg"><label>Descripción<span class="req">*</span></label><input type="text" id="egreso-desc" placeholder="Ej: Renovación cuenta NF001" value=""></div><div class="fg"><label>Notas</label><textarea rows="2" placeholder="Opcional..."></textarea></div></div>
+    <div class="fr c2"><div class="fg"><label>Descripción<span class="req">*</span></label><input type="text" id="egreso-desc" placeholder="Ej: Renovación cuenta NF001" value=""></div><div class="fg"><label>Notas</label><textarea id="egreso-notas" rows="2" placeholder="Opcional..."></textarea></div></div>
   </div>
   <div class="mf"><button class="btn" onclick="closeModal('m-egreso')">Cancelar</button><button class="btn btn-p" onclick="guardarEgreso()"><i class="ti ti-check"></i>Registrar egreso</button></div>
 </div></div>
@@ -2035,7 +2037,7 @@ const WA={
     msg += `\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span> 🎪`;
     return msg;
   },
-  cambio:(n,p,m,ctx)=>`Hola <span class="wav">${n}</span> 🔄\n\nActualizamos tu cuenta de <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Perfil: <span class="wav">${ctx?.perfil||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n\nTu vencimiento no cambia. 🙏`,
+  cambio:(n,p,m,ctx)=>`Hola <span class="wav">${n}</span> 🔄\n\nActualizamos tu cuenta de <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.usuario||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n\nTu vencimiento no cambia. 🙏`,
   clave:(n,p,m)=>`Hola <span class="wav">${n}</span> 🔐\n\nPor seguridad actualizamos la clave de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${correo||'—'}</span>\n🔑 Clave nueva: <span class="wav">${claveNueva||'—'}</span>\n👤 Perfil: <span class="wav">${perfil||'—'}</span>\n🔢 PIN: <span class="wav">${pin||'—'}</span>\n📅 Vence: <span class="wav">${vcto||'—'}</span>\n\nCualquier duda escríbenos. 🙏`,
 };
 // Fecha dinámica en el header
@@ -2621,13 +2623,13 @@ async function confirmarVenta(){
       '$' + monto.toFixed(2),
       'entrega',
       {
-        correo: firstEntry.perf?.correo,
-        clave:  firstEntry.perf?.clave,
-        usuario: usuarios[firstEntry.key],
-        pin:    pins[firstEntry.key],
-        vcto:   vctoStr,
+        correo:      firstEntry.perf?.correo,
+        clave:       firstEntry.perf?.clave,
+        vcto:        vctoStr,
         perfilesSel: ventaData.perfilesSel,
-        plats:  ventaData.plats
+        plats:       ventaData.plats,
+        usuarios:    usuarios,
+        pins:        pins
       }
     ), 400);
 
@@ -2826,6 +2828,12 @@ async function confirmarCambio(){
     }
 
     closeModal('m-cambio');
+    // Reset completo del formulario de cambio
+    ['cambio-pin-nuevo','cambio-correo-nuevo','cambio-pin-ant','cambio-vcto-ant'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const selMotivo = document.getElementById('sel-motivo'); if (selMotivo) selMotivo.selectedIndex = 0;
+    const txtNota = document.querySelector('#m-cambio textarea'); if (txtNota) txtNota.value = '';
+    document.querySelectorAll('#cambio-perfiles-lista .pi').forEach(p => p.classList.remove('on'));
+    cambioData = {};
     // Recargar suscripciones sin vaciar el array (evita bloqueo de otros modales)
     await dbCargarSuscripciones();
     sincronizarPlatsClientes();
@@ -2836,11 +2844,12 @@ async function confirmarCambio(){
     const monto = subActual.monto || 0;
     const platNom = PLATS[subPlat]?.nombre || subPlat;
     setTimeout(() => abrirWA(cambioData.clienteNombre, subPlat, '$'+monto.toFixed(2), 'cambio', {
-      correo: correoNuevo,
-      clave:  claveNueva,
-      perfil: perfilNuevoCod,
-      pin:    pinNuevo || subActual.pin,
-      vcto:   vcto
+      correo:  correoNuevo,
+      clave:   claveNueva,
+      perfil:  perfilNuevoCod,
+      usuario: subActual.usuario || '—',
+      pin:     pinNuevo || subActual.pin,
+      vcto:    vcto
     }), 400);
 
   } catch(e) {
@@ -5303,51 +5312,56 @@ async function dbCargarProveedores() {
 }
 
 // ── GUARDAR EGRESO ───────────────────────────────────────────
-function guardarEgreso() {
+async function guardarEgreso() {
   const modal = document.getElementById('m-egreso');
 
-  // Categoría seleccionada
   const catBtn = modal.querySelector('.cat-btn.on');
-  const catNombre = catBtn ? catBtn.textContent.trim() : '—';
-  const catBadge = {Cuentas:'bi', Publicidad:'bpu', Herramientas:'bp', Otros:'bp'}[catNombre] || 'bp';
+  const categoria = catBtn?.textContent.trim() || '—';
 
-  // Proveedor y descripción
-  const selects = modal.querySelectorAll('select');
-  const proveedorSel = selects[0]?.options[selects[0].selectedIndex]?.text || '—';
-  const proveedor = proveedorSel === '— Seleccionar —' ? '—' : proveedorSel;
+  const provEl = document.getElementById('egreso-sel-prov');
+  const proveedorTxt = provEl?.options[provEl.selectedIndex]?.text || '';
+  const proveedor = (proveedorTxt === '— Seleccionar —' || !proveedorTxt) ? '—' : proveedorTxt;
 
-  // Forma de pago
-  const formaPago = selects[2]?.value || '';
-  const isBin = formaPago === 'bin';
-  const metodoBadge = isBin ? '<span class="b bt">Binance</span>' : '<span class="b bp">Yappy/ACH</span>';
+  const fechaEl = document.getElementById('cuenta-fecha-compra') || modal.querySelector('input[type=date]');
+  const fecha = fechaEl?.value || new Date().toISOString().split('T')[0];
 
-  // Montos
-  let neto = '—', comision = '—', total = '—';
-  if (isBin) {
-    const netoVal = (document.getElementById('eneto')?.value || '0').replace(/[^0-9.]/g,'');
-    const comVal = (document.getElementById('ecom')?.value || '0').replace(/[^0-9.]/g,'');
-    const n = parseFloat(netoVal) || 0;
-    const c = parseFloat(comVal) || 0;
-    neto = '$' + n.toFixed(2);
-    comision = c > 0 ? '<span style="color:var(--amber)">$' + c.toFixed(2) + '</span>' : '—';
-    total = '<span style="color:var(--red);font-weight:500">$' + (n+c).toFixed(2) + '</span>';
+  const banco = document.getElementById('egreso-banco')?.value || 'Banco General';
+
+  const formaEl = document.getElementById('egreso-forma');
+  const formaVal = formaEl?.value || '';
+  const forma = formaEl?.options[formaEl.selectedIndex]?.text || 'Yappy';
+
+  const documento = document.getElementById('egreso-doc')?.value.trim() || '';
+  const descripcion = document.getElementById('egreso-desc')?.value.trim() || '';
+  const notas = document.getElementById('egreso-notas')?.value.trim() || '';
+
+  let neto = 0, comision = 0, total = 0;
+  if (formaVal === 'bin') {
+    neto = parseFloat((document.getElementById('eneto')?.value || '0').replace(/[^0-9.]/g,'')) || 0;
+    comision = parseFloat((document.getElementById('ecom')?.value || '0').replace(/[^0-9.]/g,'')) || 0;
+    total = neto + comision;
   } else {
-    const inputs = modal.querySelectorAll('input[type=text]');
-    // Buscar campo monto (eg-std visible)
-    const montoInput = modal.querySelector('#eg-std input[type=text]');
-    const montoVal = montoInput?.value?.trim() || '0';
-    neto = montoVal.startsWith('$') ? montoVal : '$' + montoVal;
-    total = '<span style="color:var(--red);font-weight:500">' + neto + '</span>';
+    neto = parseFloat((modal.querySelector('#eg-std input[type=text]')?.value || '0').replace(/[^0-9.$,]/g,'').replace(',','.')) || 0;
+    total = neto;
   }
 
-  // Descripción
-  const desc = document.getElementById('egreso-desc')?.value?.trim() || '—';
+  if (!fecha) { toast('Selecciona la fecha del egreso', 'warn'); return; }
+  if (!descripcion) { toast('Ingresa una descripción', 'warn'); return; }
+  if (!total) { toast('Ingresa el monto', 'warn'); return; }
 
-  // Fecha
-  const fechaInput = document.getElementById('egreso-fecha') || modal.querySelector('input[type=date]');
-  const fechaVal = fechaInput?.value || '';
-  let fechaStr = '—';
-  if (fechaVal) { const [yy,mm,dd] = fechaVal.split('-'); fechaStr = `${dd}/${mm}/${yy}`; }
+  const btn = modal.querySelector('.btn-p');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
+
+  const ok = await dbGuardarEgreso({ fecha, categoria, descripcion, proveedor, forma, neto, comision, total, banco, documento, notas });
+
+  btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Registrar egreso';
+
+  if (!ok) { toast('Error al registrar egreso', 'error'); return; }
+
+  closeModal('m-egreso');
+  await dbCargarEgresos();
+  toast('Egreso registrado correctamente', 'ok');
+}
 
 async function dbCargarEgresos() {
   const tbody = document.getElementById('tb-egresos');
@@ -5358,7 +5372,6 @@ async function dbCargarEgresos() {
   const anioActual = now.getFullYear();
   const { data, error } = await supa.from('egresos').select('*').order('fecha', { ascending: false }).limit(200);
   if (error) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:20px">Error cargando egresos</td></tr>'; return; }
-  // Métricas del mes
   const esteMes = (data||[]).filter(e => {
     if (!e.fecha) return false;
     const [y,m] = e.fecha.split('-');
@@ -5366,27 +5379,18 @@ async function dbCargarEgresos() {
   });
   const totalEgr = esteMes.reduce((s,e) => s + parseFloat(e.total||0), 0);
   const totalCom = esteMes.reduce((s,e) => s + parseFloat(e.comision||0), 0);
-  // Ingresos del mes desde COBROS
   const totalIng = COBROS.filter(c => {
     const parts = (c.fecha||'').split('/');
     return parts.length >= 2 && parseInt(parts[1]) === mesActual;
   }).reduce((s,c) => s + c.monto, 0);
   const ganancia = totalIng - totalEgr;
   const margen = totalIng > 0 ? Math.round((ganancia/totalIng)*100) : 0;
-  // Actualizar cards de métricas
   const mesNombre = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][mesActual-1];
-  const setCard = (selector, val, sub) => {
-    const el = document.querySelector(selector);
-    if (el) { const mv = el.querySelector('.mv'); const ms = el.querySelector('.ms'); if(mv) mv.textContent = val; if(ms&&sub) ms.textContent = sub; }
-  };
   const cards = document.querySelectorAll('#v-egresos .mc');
-  if (cards[0]) cards[0].querySelector('.mv').textContent = '$'+totalEgr.toFixed(2);
-  if (cards[0]) cards[0].querySelector('.ml').textContent = 'Egresos '+mesNombre;
-  if (cards[1]) cards[1].querySelector('.mv').textContent = '$'+totalIng.toFixed(2);
-  if (cards[1]) cards[1].querySelector('.ml').textContent = 'Ingresos '+mesNombre;
+  if (cards[0]) { cards[0].querySelector('.mv').textContent = '$'+totalEgr.toFixed(2); cards[0].querySelector('.ml').textContent = 'Egresos '+mesNombre; }
+  if (cards[1]) { cards[1].querySelector('.mv').textContent = '$'+totalIng.toFixed(2); cards[1].querySelector('.ml').textContent = 'Ingresos '+mesNombre; }
   if (cards[2]) { cards[2].querySelector('.mv').textContent = '$'+ganancia.toFixed(2); const ms=cards[2].querySelector('.ms'); if(ms) ms.textContent = 'Margen '+margen+'%'; }
   if (cards[3]) cards[3].querySelector('.mv').textContent = '$'+totalCom.toFixed(2);
-  // Tabla
   if (!data || !data.length) {
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">No hay egresos registrados</td></tr>';
     return;
@@ -5401,16 +5405,6 @@ async function dbCargarEgresos() {
     <td style="color:var(--amber)">$${parseFloat(e.comision||0).toFixed(2)}</td>
     <td style="font-weight:500">$${parseFloat(e.total||0).toFixed(2)}</td>
   </tr>`).join('');
-}
-
-  const tbody = document.getElementById('tb-egresos');
-  if (tbody) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${fechaStr}</td><td><span class="b ${catBadge}">${catNombre}</span></td><td>${desc}</td><td>${proveedor}</td><td>${metodoBadge}</td><td>${neto}</td><td>${comision}</td><td>${total}</td>`;
-    tbody.appendChild(tr);
-  }
-  closeModal('m-egreso');
-  toast('Egreso registrado correctamente','ok');
 }
 
 
@@ -5541,7 +5535,7 @@ function selClienteCambio(id, nombre, tel) {
   document.getElementById('cambio-busq').value = '';
   document.getElementById('cambio-sub').textContent = nombre + ' · ' + id;
   // Cargar suscripciones del cliente desde SUBS_FULL (incluye vencidas)
-  const subs = SUBS_FULL.filter(s => s.clienteId === id);
+  const subs = SUBS_FULL.filter(s => s.clienteId === id && s.est === 'activo');
   const subSel = document.getElementById('acceso-sub-sel');
   if (subSel) {
     if (subs.length) {
