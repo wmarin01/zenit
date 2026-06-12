@@ -2841,6 +2841,10 @@ async function confirmarCambio(){
       PERFILES_DISP[perfilNuevoPlat] = PERFILES_DISP[perfilNuevoPlat].filter(p => p.codigo !== perfilNuevoCod);
     }
 
+    // Capturar datos del cliente antes del reset de cambioData
+    const clienteNombreWA = cambioData.clienteNombre || '';
+    const clienteTelWA    = cambioData.clienteTel    || '';
+
     closeModal('m-cambio');
     // Reset completo del formulario de cambio
     ['cambio-pin-nuevo','cambio-correo-nuevo','cambio-pin-ant','cambio-vcto-ant'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -2854,10 +2858,10 @@ async function confirmarCambio(){
     renderSubs(SUBS_FULL);
     toast('Cambio registrado correctamente ✓', 'ok');
 
-    // 5. Abrir WA con datos reales
+    // 5. Abrir WA con datos reales (nombre capturado antes del reset; plataforma real del perfil nuevo)
     const monto = subActual.monto || 0;
-    const platNom = PLATS[subPlat]?.nombre || subPlat;
-    setTimeout(() => abrirWA(cambioData.clienteNombre, subPlat, '$'+monto.toFixed(2), 'cambio', {
+    const platNom = PLATS[perfilNuevoPlat]?.nombre || perfilNuevoPlat;
+    setTimeout(() => abrirWA(clienteNombreWA, perfilNuevoPlat, '$'+monto.toFixed(2), 'cambio', {
       correo:  correoNuevo,
       clave:   claveNueva,
       perfil:  perfilNuevoCod,
