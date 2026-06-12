@@ -2714,16 +2714,18 @@ async function confirmarPago() {
       const payload = { fecha_vcto: nuevaFVcto, estado: 'activo', tipo_cliente: 'Renovación' };
       if (tipoUpdate) payload.tipo = tipoUpdate;
       if (tipoUpdate === 'Individual') payload.monto = r.precioInd;
-      await supa.from('suscripciones').update(payload).eq('id', subId);
-
-      const memIdx = SUBS_FULL.findIndex(s => s.id == subId);
-      if (memIdx !== -1) {
-        if (nuevaFVcto) SUBS_FULL[memIdx].fVcto = nuevaFVcto.split('-').reverse().join('/');
-        SUBS_FULL[memIdx].est = 'activo';
-        SUBS_FULL[memIdx].tipoCliente = 'Renovación';
-        SUBS_FULL[memIdx].dias = meses * 30;
-        if (tipoUpdate) SUBS_FULL[memIdx].tipo = tipoUpdate;
-        if (tipoUpdate === 'Individual') SUBS_FULL[memIdx].monto = r.precioInd;
+      const _idsActualizar = cb.dataset.combosubids ? JSON.parse(cb.dataset.combosubids) : [subId];
+      for (const _sid of _idsActualizar) {
+        await supa.from('suscripciones').update(payload).eq('id', _sid);
+        const memIdx = SUBS_FULL.findIndex(s => s.id == _sid);
+        if (memIdx !== -1) {
+          if (nuevaFVcto) SUBS_FULL[memIdx].fVcto = nuevaFVcto.split('-').reverse().join('/');
+          SUBS_FULL[memIdx].est = 'activo';
+          SUBS_FULL[memIdx].tipoCliente = 'Renovación';
+          SUBS_FULL[memIdx].dias = meses * 30;
+          if (tipoUpdate) SUBS_FULL[memIdx].tipo = tipoUpdate;
+          if (tipoUpdate === 'Individual') SUBS_FULL[memIdx].monto = r.precioInd;
+        }
       }
     }
 
@@ -4659,6 +4661,7 @@ function renderSubsPago(clienteId) {
       : `${platNom} · ${r.perfil}`;
     const dot = PLATS[r.plat]?.color || '#ccc';
     const vbadge = r.dias <= 0 ? '<span class="b br">Hoy</span>' : r.dias === 1 ? '<span class="b ba">Mañana</span>' : `<span class="b bi">${r.dias} días</span>`;
+    console.log('[renderSubsPago] fila', i, '| subId:', r.subId, '| plat:', r.plat, '| comboSubIds:', r.comboSubIds);
     return `<div class="pi" id="psub-${i}" style="padding:10px 12px;margin-bottom:5px" onclick="toggleSubPago(${i})">
       <input type="checkbox" id="chk-sub-${i}"
         data-idx="${i}" data-subid="${r.subId}" data-plat="${r.plat}"
