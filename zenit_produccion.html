@@ -1676,7 +1676,7 @@ async function intentarLogin() {
       </div>
       <div class="fsec"><div class="fst">Datos del pago</div>
         <div class="fr c3">
-          <div class="fg"><label>Monto total<span class="req">*</span></label><input type="text" id="pago-monto" placeholder="$0.00"><div class="hint ok" id="pago-monto-hint">Se calcula según suscripciones seleccionadas</div></div>
+          <div class="fg"><label>Monto total<span class="req">*</span></label><input type="text" id="pago-monto" placeholder="$0.00" oninput="updResumenPago(pagoSubsActuales)"><div class="hint ok" id="pago-monto-hint">Se calcula según suscripciones seleccionadas</div></div>
           <div class="fg"><label>Banco<span class="req">*</span></label><select id="pago-banco"><option>Banco General</option><option>Banistmo</option><option>BAC</option><option>Caja de Ahorros</option></select></div>
           <div class="fg"><label>Forma de pago<span class="req">*</span></label><select id="pago-forma" onchange="chkCrypto(this,'cx-pago')"><option value="">Yappy</option><option value="">Transferencia / ACH</option><option value="bin">Binance Pay</option><option value="">Efectivo</option></select></div>
         </div>
