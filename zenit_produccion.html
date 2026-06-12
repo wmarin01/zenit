@@ -4608,11 +4608,15 @@ function renderSubsPago(clienteId) {
       });
       const comboSubIds = JSON.stringify(g.subs.map(s => s.id));
       const comboPlats  = JSON.stringify(platSet);
+      const comboEntry  = COMBOS.find(c => c.plats.length === platSet.length && platSet.every(p => c.plats.includes(p)));
+      const desgloseMap = parsearDesgloseCombo(comboEntry?.desglose || '');
       platSet.forEach(plat => {
-        const s = subForPlat[plat];
+        const s          = subForPlat[plat];
+        const precioCombo = desgloseMap[plat] ?? getPrecioInd(plat, 1);
+        const precioInd   = getPrecioInd(plat, 1);
         rows.push({
           subId: s.id, plat, perfil: s.perfil || '—',
-          vcto: s.fVcto || '—', precio: getPrecioInd(plat, 1),
+          vcto: s.fVcto || '—', precio: precioCombo, precioCombo, precioInd,
           dias: s.dias || 0, esCombo: true, comboKey: key,
           comboSubIds, comboPlats
         });
@@ -4652,7 +4656,7 @@ function renderSubsPago(clienteId) {
         checked style="width:auto;margin:0;flex-shrink:0">
       <div style="flex:1;margin-left:8px">
         <div style="font-size:13px;font-weight:500"><span class="dot" style="background:${dot};width:8px;height:8px;margin-right:5px"></span>${lbl}</div>
-        <div style="font-size:11px;color:var(--text3)">Vence ${r.vcto} · $${r.precio.toFixed(2)}</div>
+        <div id="precio-hint-${i}" style="font-size:11px;color:var(--text3)">Vence ${r.vcto} · $${r.precio.toFixed(2)}</div>
       </div>${vbadge}
     </div>`;
   }).join('');
@@ -4722,6 +4726,22 @@ function toggleSubPago(idx) {
   chk.checked = !chk.checked;
   row?.classList.toggle('on', chk.checked);
   if (mrow) mrow.style.display = chk.checked ? 'flex' : 'none';
+
+  // Si es fila de combo, recalcular precios según cuántas plataformas siguen marcadas
+  const r = pagoSubsActuales[idx];
+  if (r?.esCombo) {
+    const comboRows = pagoSubsActuales
+      .map((cr, i) => ({ cr, i }))
+      .filter(({ cr }) => cr.esCombo && cr.comboKey === r.comboKey);
+    const todosChecked = comboRows.every(({ i }) => document.getElementById('chk-sub-'+i)?.checked);
+    comboRows.forEach(({ cr, i }) => {
+      if (!document.getElementById('chk-sub-'+i)?.checked) return;
+      cr.precio = todosChecked ? cr.precioCombo : cr.precioInd;
+      const hint = document.getElementById('precio-hint-'+i);
+      if (hint) hint.textContent = `Vence ${cr.vcto} · $${cr.precio.toFixed(2)}`;
+    });
+  }
+
   calcTotalPago(pagoSubsActuales);
   updResumenPago(pagoSubsActuales);
 }
@@ -6329,6 +6349,14 @@ const PRECIOS_IND = {
   HB: [{perfiles:1, precio:9.00}],
   PV: [{perfiles:1, precio:7.00}],
 };
+
+function parsearDesgloseCombo(desglose) {
+  const map = {};
+  const re = /([A-Z]+)\s*\$([0-9.]+)/g;
+  let m;
+  while ((m = re.exec(desglose)) !== null) map[m[1]] = parseFloat(m[2]);
+  return map;
+}
 
 function getPrecioInd(plat, numPerfiles) {
   const lista = PRECIOS_IND[plat] || [];
