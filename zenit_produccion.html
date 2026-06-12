@@ -4600,12 +4600,19 @@ function renderSubsPago(clienteId) {
   const rows = [];
   for (const [key, g] of grupoMap) {
     if (g.esCombo) {
-      const comboSubIds = JSON.stringify(g.subs.map(s => s.id));
-      const comboPlats  = JSON.stringify(g.subs.map(s => s.plat));
+      const platSet = [], subForPlat = {};
       g.subs.forEach(s => {
+        (s.plat || '').split('+').map(p => p.trim()).filter(Boolean).forEach(p => {
+          if (!platSet.includes(p)) { platSet.push(p); subForPlat[p] = s; }
+        });
+      });
+      const comboSubIds = JSON.stringify(g.subs.map(s => s.id));
+      const comboPlats  = JSON.stringify(platSet);
+      platSet.forEach(plat => {
+        const s = subForPlat[plat];
         rows.push({
-          subId: s.id, plat: s.plat, perfil: s.perfil || '—',
-          vcto: s.fVcto || '—', precio: getPrecioInd(s.plat, 1),
+          subId: s.id, plat, perfil: s.perfil || '—',
+          vcto: s.fVcto || '—', precio: getPrecioInd(plat, 1),
           dias: s.dias || 0, esCombo: true, comboKey: key,
           comboSubIds, comboPlats
         });
@@ -6326,7 +6333,9 @@ const PRECIOS_IND = {
 function getPrecioInd(plat, numPerfiles) {
   const lista = PRECIOS_IND[plat] || [];
   const match = lista.find(p => p.perfiles === numPerfiles);
-  return match ? match.precio : (lista[0]?.precio || 0);
+  if (match) return match.precio;
+  if (lista[0]?.precio) return lista[0].precio;
+  return PLATS[plat]?.precio_ind || 0;
 }
 
 function renderCombosVenta() {
