@@ -3916,8 +3916,6 @@ function ventaPaso4() {
   }
   ['vpaso1','vpaso2','vpaso3','vpaso4','vpaso5'].forEach((id,i) => document.getElementById(id).style.display = i===3?'block':'none');
   const vMontoEl = document.getElementById('v-monto');
-  const vPrecioEl = document.getElementById('v-precio');
-  if (vMontoEl && vPrecioEl && !vMontoEl.value) vMontoEl.value = vPrecioEl.value;
   // Precio según selección
   let total = 0;
   const tipo = ventaData.tipo;
@@ -3935,6 +3933,8 @@ function ventaPaso4() {
   }
   const pinput = document.getElementById('v-precio');
   if (pinput) { pinput.value = '$' + total.toFixed(2); document.getElementById('v-precio-hint').textContent = 'Precio según plan. Modificable.'; }
+  // Auto-rellenar v-monto solo si está vacío (después de fijar v-precio para usar el total correcto)
+  if (vMontoEl && !vMontoEl.value) vMontoEl.value = '$' + total.toFixed(2);
   const neto = document.getElementById('v-neto');
   if (neto) neto.value = '$' + total.toFixed(2);
   updVentaSteps(4);
