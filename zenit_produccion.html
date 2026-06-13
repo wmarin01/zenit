@@ -2755,6 +2755,23 @@ async function confirmarPago() {
     renderDashboard();
     toast('Pago registrado correctamente ✓', 'ok');
 
+    // Reset completo del formulario
+    ['pago-monto','pago-fecha','pago-fecha-vcto','pago-comp','pago-neto',
+     'pago-doc','pago-comprobante','pago-notas'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const parcial = document.getElementById('pago-parcial');
+    if (parcial) parcial.checked = false;
+    const supsLista = document.getElementById('pago-subs-lista');
+    if (supsLista) supsLista.innerHTML = '';
+    const mesesLista = document.getElementById('pago-meses-lista');
+    if (mesesLista) mesesLista.innerHTML = '';
+    const resumen = document.getElementById('pago-resumen');
+    if (resumen) resumen.innerHTML = '';
+    pagoData = { clienteId: '', clienteNombre: '' };
+    pagoSubsActuales = [];
+
   } catch(e) {
     console.error('Error registrando pago:', e);
     toast('Error al registrar: ' + (e.message || e), 'error');
@@ -4590,7 +4607,7 @@ function renderSubsPago(clienteId) {
   subsRaw.forEach(s => {
     let key;
     if (s.combo && s.combo !== '—') key = 'combo_' + s.combo;
-    else if ((s.tipo || '').toLowerCase() === 'combo') key = 'combovcto_' + (s.fVcto || s.id);
+    else if ((s.tipo || '').toLowerCase() === 'combo') key = 'comboplat_' + (s.plat || s.id);
     else key = 'ind_' + s.id;
     if (!grupoMap.has(key)) {
       grupoMap.set(key, { esCombo: (s.combo && s.combo !== '—') || (s.tipo||'').toLowerCase()==='combo', subs: [s] });
