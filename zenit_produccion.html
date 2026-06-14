@@ -2513,7 +2513,7 @@ async function confirmarVenta(){
   const bancoEl = document.getElementById('v-banco');
   const formaEl = document.getElementById('v-forma');
   const compEl  = document.getElementById('v-comp');
-  const montoCobrado = parseFloat((montoEl?.value||'').replace('$','').replace(',','.').trim()) || ventaData.planPrecio || 0;
+  const montoCobrado = parseFloat((montoEl?.value||'').replace(/[$,]/g,'').trim()) || 0;
   const monto        = parseFloat((precioEl?.value||'').replace('$','').replace(',','.').trim()) || ventaData.planPrecio || 0;
   const banco   = bancoEl?.value || 'Banco General';
       const forma   = formaEl?.value || 'Yappy';
