@@ -92,8 +92,14 @@ async function dbGuardarSuscripcion(sub) {
     tipo_cliente: sub.tipoCliente,
     estado: 'activo'
   });
-  if (error) console.error('Error guardando suscripción:', error);
-  return !error;
+  if (error) { console.error('Error guardando suscripción:', error); return false; }
+  if (sub.perfilId) {
+    const { error: ep } = await supa.from('perfiles')
+      .update({ estado: 'ocupado' })
+      .eq('id', sub.perfilId);
+    if (ep) console.warn('[perfiles] Error actualizando estado:', ep.message);
+  }
+  return true;
 }
 
 // Guardar egreso
@@ -3053,7 +3059,7 @@ async function guardarCuenta(){
       id: codigo + (i+1),
       inventario_id: codigo,
       numero: i+1,
-      estado: 'activo'
+      estado: 'disponible'
     }));
     const {error: e3} = await supa.from('perfiles').insert(perfiles);
     if (e3) console.warn('perfiles insert:', e3.message);
@@ -3674,46 +3680,41 @@ const PERFILES_DISP = {
   NF: [], DS: [], HB: [], PV: []
 };
 
-// Carga perfiles disponibles desde Supabase (inventario + suscripciones activas)
+// Carga perfiles disponibles desde Supabase usando la tabla perfiles (estado='disponible')
 // y puebla PERFILES_DISP para el modal de Nueva Venta
 async function dbCargarPerfilesDisp() {
   try {
-    // 1. Traer todas las cuentas activas del inventario
-    const {data: cuentas, error} = await supa
+    // 1. Traer cuentas activas para obtener correo/clave/plataforma
+    const {data: cuentas, error: e1} = await supa
       .from('cuentas_inventario')
-      .select('codigo, plataforma, correo, clave, max_perfiles, estado')
+      .select('codigo, plataforma, correo, clave')
       .eq('estado', 'Activa');
-    if (error) throw error;
-    if (!cuentas || !cuentas.length) return;
+    if (e1) throw e1;
+    const cuentaMap = {};
+    (cuentas || []).forEach(c => { cuentaMap[c.codigo] = c; });
 
-    // 2. Traer perfiles ya ocupados (suscripciones activas)
-    const {data: subs} = await supa
-      .from('suscripciones')
-      .select('perfil_id')
-      .eq('estado', 'activo');
-    const ocupados = new Set((subs || []).map(s => (s.perfil_id || '').trim()).filter(Boolean));
+    // 2. Traer perfiles con estado='disponible'
+    const {data: perfs, error: e2} = await supa
+      .from('perfiles')
+      .select('id, inventario_id, numero')
+      .eq('estado', 'disponible');
+    if (e2) throw e2;
 
     // 3. Reconstruir PERFILES_DISP
     Object.keys(PERFILES_DISP).forEach(k => { PERFILES_DISP[k] = []; });
-
-    cuentas.forEach(inv => {
+    (perfs || []).forEach(p => {
+      const inv = cuentaMap[p.inventario_id];
+      if (!inv) return;
       const plat = inv.plataforma;
-      const cuentaId = inv.codigo || inv.id;
       if (!PERFILES_DISP[plat]) return;
-      const maxP = parseInt(inv.max_perfiles) || 5;
-      for (let n = 1; n <= maxP; n++) {
-        const codigo = cuentaId + n;
-        if (!ocupados.has(codigo)) {
-          PERFILES_DISP[plat].push({
-            codigo,
-            num: n,
-            cuenta: cuentaId,
-            correo: inv.correo || '—',
-            clave:  inv.clave  || '—',
-            origen: cuentaId + ' · perfil ' + n
-          });
-        }
-      }
+      PERFILES_DISP[plat].push({
+        codigo: p.id,
+        num: p.numero,
+        cuenta: p.inventario_id,
+        correo: inv.correo || '—',
+        clave:  inv.clave  || '—',
+        origen: p.inventario_id + ' · perfil ' + p.numero
+      });
     });
 
     console.log('[PERFILES_DISP] Cargados:', {
