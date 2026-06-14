@@ -2546,13 +2546,15 @@ async function confirmarVenta(){
 
     // 2. Guardar suscripción por cada entrada
     for (const {p, key, perf, idxEnPlat} of entries) {
-      await dbGuardarSuscripcion({
+      const subParams = {
         clienteId: ventaData.clienteId, plat: p, tipo: tipo==='combo'?'Combo':'Individual',
         combo: comboId, correo: perf?.correo||'—',
         usuario: usuarios[key]||'—', pin: pins[key]||'—',
         perfilId: perf?.codigo||null,
         fIni: fIniStr, fVcto: vctoStr, monto, tipoCliente: 'Nuevo'
-      });
+      };
+      console.log('[confirmarVenta] dbGuardarSuscripcion params:', JSON.stringify(subParams));
+      await dbGuardarSuscripcion(subParams);
     }
 
     // 3. Guardar cobro
