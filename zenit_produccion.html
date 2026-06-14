@@ -77,6 +77,7 @@ async function dbGuardarVenta(venta) {
 
 // Guardar suscripción
 async function dbGuardarSuscripcion(sub) {
+  const toISO = f => f && f.includes('/') ? f.split('/').reverse().join('-') : f;
   const { error } = await supa.from('suscripciones').insert({
     cliente_id: sub.clienteId,
     plataforma: sub.plat,
@@ -86,8 +87,8 @@ async function dbGuardarSuscripcion(sub) {
     usuario: sub.usuario,
     pin: sub.pin,
     perfil_id: sub.perfilId || null,
-    fecha_inicio: sub.fIni,
-    fecha_vcto: sub.fVcto,
+    fecha_inicio: toISO(sub.fIni),
+    fecha_vcto: toISO(sub.fVcto),
     monto: sub.monto,
     tipo_cliente: sub.tipoCliente,
     estado: 'activo'
