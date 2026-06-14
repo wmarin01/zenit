@@ -2615,23 +2615,35 @@ async function confirmarVenta(){
   cargarSelectoresProveedores();
     toast('Venta registrada correctamente ✓', 'ok');
 
-    // 6. Abrir WA con datos del primer perfil
+    // 6. Abrir WA con datos del primer perfil y luego resetear formulario
     const firstEntry = entries[0];
-    setTimeout(() => abrirWA(
-      ventaData.clienteNombre,
-      PLATS[firstEntry.p]?.nombre || firstEntry.p,
-      '$' + monto.toFixed(2),
-      'entrega',
-      {
-        correo:      firstEntry.perf?.correo,
-        clave:       firstEntry.perf?.clave,
-        vcto:        vctoStr,
-        perfilesSel: ventaData.perfilesSel,
-        plats:       ventaData.plats,
-        usuarios:    usuarios,
-        pins:        pins
-      }
-    ), 400);
+    setTimeout(() => {
+      abrirWA(
+        ventaData.clienteNombre,
+        PLATS[firstEntry.p]?.nombre || firstEntry.p,
+        '$' + monto.toFixed(2),
+        'entrega',
+        {
+          correo:      firstEntry.perf?.correo,
+          clave:       firstEntry.perf?.clave,
+          vcto:        vctoStr,
+          perfilesSel: ventaData.perfilesSel,
+          plats:       ventaData.plats,
+          usuarios:    usuarios,
+          pins:        pins
+        }
+      );
+      // Reset completo del modal para la siguiente venta
+      const hoy2 = new Date();
+      const pad2 = n => String(n).padStart(2,'0');
+      const fechaHoy2 = hoy2.getFullYear()+'-'+pad2(hoy2.getMonth()+1)+'-'+pad2(hoy2.getDate());
+      ventaData = {clienteId:'', clienteNombre:'', clienteTel:'', tipo:'individual', plats:[], perfilesSel:{}, pins:{}, meses:1, fechaIni:fechaHoy2, dupAutorizado:false};
+      ['v-monto','v-precio','v-comp'].forEach(id => { const el = document.getElementById(id); if (el) { el.value = ''; el.style.borderColor = ''; el.dataset.valid = ''; } });
+      document.querySelectorAll('#m-venta textarea').forEach(t => t.value = '');
+      document.querySelectorAll('#m-venta .hint[id^="hc"]').forEach(h => { h.textContent = 'Validación en tiempo real'; h.className = 'hint'; });
+      dbCargarPerfilesDisp();
+      ventaPaso1();
+    }, 400);
 
   } catch(e) {
     console.error('[VENTA] Error:', e);
