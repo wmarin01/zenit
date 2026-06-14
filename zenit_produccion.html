@@ -1616,8 +1616,8 @@ async function intentarLogin() {
     <div id="vpaso4" style="display:none">
       <div class="fsec"><div class="fst">Precio y pago</div>
         <div class="fr c3">
-          <div class="fg"><label>Precio del plan</label><input type="text" id="v-precio" placeholder="$0.00"><div class="hint ok" id="v-precio-hint">Sugerido por el plan. Modificable.</div></div>
-          <div class="fg"><label>Monto recibido<span class="req">*</span></label><input type="text" id="v-monto" placeholder="$0.00"><div class="hint ok">Lo que pagó el cliente. Modificable.</div></div>
+          <div class="fg"><label>Precio del plan</label><input type="text" id="v-precio" placeholder="0.00"><div class="hint ok" id="v-precio-hint">Sugerido por el plan. Modificable.</div></div>
+          <div class="fg"><label>Monto recibido<span class="req">*</span></label><input type="text" id="v-monto" placeholder="0.00"><div class="hint ok">Lo que pagó el cliente. Modificable.</div></div>
           <div class="fg"><label>Banco<span class="req">*</span></label><select id="v-banco"><option>Banco General</option><option>Banistmo</option><option>BAC</option><option>Caja de Ahorros</option></select></div>
           <div class="fg"><label>Forma de pago<span class="req">*</span></label><select id="v-forma" onchange="chkCrypto(this,'cx-venta')"><option value="Yappy">Yappy</option><option value="Transferencia / ACH">Transferencia / ACH</option><option value="bin">Binance Pay</option><option value="Efectivo">Efectivo</option></select></div>
         </div>
@@ -3988,6 +3988,15 @@ function ventaPaso4() {
   const neto = document.getElementById('v-neto');
   if (neto) neto.value = '$' + total.toFixed(2);
   updVentaSteps(4);
+  ['v-precio','v-monto'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.blurFmt) return;
+    el.dataset.blurFmt = '1';
+    el.addEventListener('blur', () => {
+      const v = parseFloat(el.value.replace(/[$,]/g, '').trim());
+      if (!isNaN(v)) el.value = v.toFixed(2);
+    });
+  });
 }
 function ventaPaso5() {
   // Validar comprobante antes de avanzar
