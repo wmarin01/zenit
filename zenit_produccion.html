@@ -3680,31 +3680,46 @@ const PERFILES_DISP = {
   NF: [], DS: [], HB: [], PV: []
 };
 
-// Carga perfiles disponibles desde Supabase usando la tabla perfiles (estado='disponible')
-// y puebla PERFILES_DISP para el modal de Nueva Venta
+// Carga perfiles disponibles desde Supabase y puebla PERFILES_DISP para el modal de Nueva Venta.
+// Disponible = perfil de cuenta activa sin suscripción activa asociada.
 async function dbCargarPerfilesDisp() {
   try {
-    // 1. Traer cuentas activas para obtener correo/clave/plataforma
+    const ESTADOS_EXCLUIDOS = ['bloqueada', 'suspendida', 'inactiva'];
+
+    // 1. Traer cuentas con estado='Activa' (excluye bloqueada/suspendida/inactiva)
     const {data: cuentas, error: e1} = await supa
       .from('cuentas_inventario')
-      .select('codigo, plataforma, correo, clave')
+      .select('codigo, plataforma, correo, clave, estado')
       .eq('estado', 'Activa');
     if (e1) throw e1;
     const cuentaMap = {};
-    (cuentas || []).forEach(c => { cuentaMap[c.codigo] = c; });
+    (cuentas || []).forEach(c => {
+      if (!ESTADOS_EXCLUIDOS.includes((c.estado || '').toLowerCase())) {
+        cuentaMap[c.codigo] = c;
+      }
+    });
 
-    // 2. Traer perfiles con estado='disponible'
-    const {data: perfs, error: e2} = await supa
+    // 2. Traer perfil_id de suscripciones activas para excluirlos
+    const {data: subs, error: e2} = await supa
+      .from('suscripciones')
+      .select('perfil_id')
+      .eq('estado', 'activo');
+    if (e2) throw e2;
+    const ocupados = new Set((subs || []).map(s => (s.perfil_id || '').trim()).filter(Boolean));
+
+    // 3. Traer todos los perfiles de cuentas activas
+    const {data: perfs, error: e3} = await supa
       .from('perfiles')
       .select('id, inventario_id, numero')
       .eq('estado', 'activo');
-    if (e2) throw e2;
+    if (e3) throw e3;
 
-    // 3. Reconstruir PERFILES_DISP
+    // 4. Reconstruir PERFILES_DISP: perfiles de cuentas activas sin suscripción activa
     Object.keys(PERFILES_DISP).forEach(k => { PERFILES_DISP[k] = []; });
     (perfs || []).forEach(p => {
       const inv = cuentaMap[p.inventario_id];
       if (!inv) return;
+      if (ocupados.has(p.id)) return;
       const plat = inv.plataforma;
       if (!PERFILES_DISP[plat]) return;
       PERFILES_DISP[plat].push({
