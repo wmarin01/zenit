@@ -96,7 +96,7 @@ async function dbGuardarSuscripcion(sub) {
   if (error) { console.error('Error guardando suscripción:', error); return false; }
   if (sub.perfilId) {
     const { error: ep } = await supa.from('perfiles')
-      .update({ estado: 'inactivo' })
+      .update({ estado: 'ocupado' })
       .eq('id', sub.perfilId);
     if (ep) console.warn('[perfiles] Error actualizando estado:', ep.message);
   }
@@ -2754,6 +2754,12 @@ async function confirmarPago() {
     for (const [, cg] of comboAnalysis) {
       for (const r of cg.unchecked) {
         await supa.from('suscripciones').update({ estado: 'sin_renovar' }).eq('id', r.subId);
+        if (r.perfil && r.perfil !== '—') {
+          const { error: ep } = await supa.from('perfiles')
+            .update({ estado: 'disponible' })
+            .eq('id', r.perfil);
+          if (ep) console.warn('[perfiles] Error liberando perfil combo:', ep.message);
+        }
         const memIdx = SUBS_FULL.findIndex(s => s.id == r.subId);
         if (memIdx !== -1) SUBS_FULL[memIdx].est = 'sin_renovar';
       }
@@ -3050,6 +3056,14 @@ async function guardarCuenta(){
           estado: estadoCta, notas
         }, { onConflict: 'codigo' });
         if (e1) throw e1;
+
+        // Si la cuenta se bloquea o inactiva, marcar todos sus perfiles como inactivos
+        if (['Bloqueada / Suspendida', 'Inactiva'].includes(estadoCta)) {
+          const { error: ep } = await supa.from('perfiles')
+            .update({ estado: 'inactivo' })
+            .eq('inventario_id', codigo);
+          if (ep) console.warn('[perfiles] Error propagando estado de cuenta:', ep.message);
+        }
 
         // 2. Guardar espejo en inventario (para FK de perfiles)
         const {error: e2} = await supa.from('inventario').upsert({
@@ -3531,11 +3545,13 @@ async function cargarUsuariosSistema() {
         sec.style.display = itemsVisibles.length === 0 ? 'none' : 'block';
       });
 
-      // 3. Ocultar finanzas en el Dashboard para Operadores
+      // 3. Ocultar finanzas en el Dashboard y módulo Cobros para Operadores
       const cardCobrado = document.getElementById('dash-cobrado')?.closest('.mc');
       const cardGanancia = document.getElementById('dash-ganancia')?.closest('.mc');
       if (cardCobrado) cardCobrado.style.display = esMaster ? 'block' : 'none';
       if (cardGanancia) cardGanancia.style.display = esMaster ? 'block' : 'none';
+      const cardCobrosTot = document.getElementById('cobros-total')?.closest('.mc');
+      if (cardCobrosTot) cardCobrosTot.style.display = esMaster ? 'block' : 'none';
     }
 
 function cerrarSesion() {
@@ -3710,11 +3726,11 @@ async function dbCargarPerfilesDisp() {
     if (e2) throw e2;
     const ocupados = new Set((subs || []).map(s => (s.perfil_id || '').trim()).filter(Boolean));
 
-    // 3. Traer todos los perfiles de cuentas activas
+    // 3. Traer perfiles disponibles (listos para asignar)
     const {data: perfs, error: e3} = await supa
       .from('perfiles')
       .select('id, inventario_id, numero')
-      .eq('estado', 'activo');
+      .eq('estado', 'disponible');
     if (e3) throw e3;
 
     // 4. Reconstruir PERFILES_DISP: perfiles de cuentas activas sin suscripción activa
@@ -5925,13 +5941,17 @@ async function guardarEdicionSub() {
 
     if (error) throw error;
 
-    // Si cambia estado → recargar perfiles disponibles (disponibilidad se calcula
-    // cruzando inventario con suscripciones activas, no hay campo ocupado/disponible)
     const subActual = SUBS_FULL.find(s => s.id == id);
     const estadoAnterior = subActual?.est || '';
     if (estado !== estadoAnterior) {
+      // Si la sub se libera, devolver el perfil al inventario disponible
+      if (['sin_renovar', 'inactivo'].includes(estado) && subActual?.perfil) {
+        const { error: ep } = await supa.from('perfiles')
+          .update({ estado: 'disponible' })
+          .eq('id', subActual.perfil);
+        if (ep) console.warn('[perfiles] Error liberando perfil:', ep.message);
+      }
       await dbCargarPerfilesDisp();
-      console.log('[PERFIL] Perfiles recargados por cambio de estado:', estadoAnterior, '→', estado);
     }
 
     // Registrar en historial
