@@ -790,6 +790,7 @@ async function intentarLogin() {
         <th>Nro. documento</th>
         <th>Operador</th>
         <th>Estado</th>
+        <th></th>
       </tr></thead>
       <tbody id="tb-cobros"></tbody>
     </table>
@@ -1680,6 +1681,38 @@ async function intentarLogin() {
     </div>
   </div>
   <div class="mf"><button class="btn" onclick="closeModal('m-edit-cli')">Cancelar</button><button class="btn btn-p" onclick="guardarEditarCliente()"><i class="ti ti-check"></i>Guardar cambios</button></div>
+</div></div>
+
+<!-- Editar cobro -->
+<div class="ov" id="m-edit-cobro"><div class="modal" style="max-width:480px">
+  <div class="mh"><div class="mico" style="background:var(--green2)"><i class="ti ti-edit"></i></div><div><div class="mtit">Editar cobro</div></div><button class="mcl" onclick="closeModal('m-edit-cobro')"><i class="ti ti-x"></i></button></div>
+  <div class="mb">
+    <input type="hidden" id="edit-cobro-idx">
+    <div class="fr c2">
+      <div class="fg"><label>Fecha</label><input type="date" id="edit-cobro-fecha"></div>
+      <div class="fg"><label>Monto ($)</label><input type="text" id="edit-cobro-monto" placeholder="0.00"></div>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Forma de pago</label>
+        <select id="edit-cobro-forma">
+          <option value="Yappy">Yappy</option>
+          <option value="Transferencia / ACH">Transferencia / ACH</option>
+          <option value="Binance Pay">Binance Pay</option>
+          <option value="Efectivo">Efectivo</option>
+        </select>
+      </div>
+      <div class="fg"><label>Banco</label>
+        <select id="edit-cobro-banco">
+          <option value="Banco General">Banco General</option>
+          <option value="Banistmo">Banistmo</option>
+          <option value="BAC">BAC</option>
+          <option value="Caja de Ahorros">Caja de Ahorros</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label>Operador</label><input type="text" id="edit-cobro-operador" placeholder="Nombre del operador"></div>
+  </div>
+  <div class="mf"><button class="btn" onclick="closeModal('m-edit-cobro')">Cancelar</button><button class="btn btn-p" onclick="guardarEditarCobro()"><i class="ti ti-check"></i>Guardar cambios</button></div>
 </div></div>
 
 <!-- Pago CORREGIDO -->
@@ -6602,7 +6635,7 @@ function renderCobros(data) {
       : c.forma === 'Efectivo'
       ? '<span class="b bp">Efectivo</span>'
       : '<span class="b bi">ACH</span>';
-    return `<tr>
+    return `<tr data-cobro-idx="${COBROS.indexOf(c)}">
       <td style="font-size:12px">${c.fecha}</td>
       <td>${tipoBadge}</td>
       <td style="font-family:var(--mono);font-size:11px">${c.clienteId}</td>
@@ -6619,6 +6652,56 @@ function renderCobros(data) {
       <td>${estBadge}</td>
     </tr>`;
   }).join('');
+}
+
+function abrirEditarCobro(btn) {
+  const tr = btn.closest('tr');
+  const idx = parseInt(tr.dataset.cobroIdx ?? (tr.rowIndex - 1));
+  const cobro = COBROS[idx];
+  if (!cobro) { toast('Cobro no encontrado', 'error'); return; }
+  document.getElementById('edit-cobro-idx').value      = idx;
+  document.getElementById('edit-cobro-fecha').value    = cobro.fecha
+    ? cobro.fecha.split('/').reverse().join('-') : '';
+  document.getElementById('edit-cobro-monto').value    = cobro.monto?.toFixed(2) || '';
+  document.getElementById('edit-cobro-forma').value    = cobro.forma    || '';
+  document.getElementById('edit-cobro-banco').value    = cobro.banco    || '';
+  document.getElementById('edit-cobro-operador').value = cobro.operador || '';
+  openModal('m-edit-cobro');
+}
+
+async function guardarEditarCobro() {
+  const idx    = parseInt(document.getElementById('edit-cobro-idx').value);
+  const cobro  = COBROS[idx];
+  if (!cobro) { toast('Cobro no encontrado', 'error'); return; }
+  const fechaISO = document.getElementById('edit-cobro-fecha').value;
+  const fecha    = fechaISO ? fechaISO.split('-').reverse().join('/') : cobro.fecha;
+  const monto    = parseFloat(document.getElementById('edit-cobro-monto').value) || cobro.monto;
+  const forma    = document.getElementById('edit-cobro-forma').value;
+  const banco    = document.getElementById('edit-cobro-banco').value;
+  const operador = document.getElementById('edit-cobro-operador').value.trim();
+
+  const btn = document.querySelector('#m-edit-cobro .btn-p');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
+
+  try {
+    const { error } = await supa.from('cobros')
+      .update({ fecha, monto, forma_pago: forma, banco, operador })
+      .eq('fecha', cobro.fecha)
+      .eq('cliente_id', cobro.clienteId)
+      .eq('documento', cobro.doc);
+    if (error) throw error;
+
+    COBROS[idx] = { ...cobro, fecha, monto, forma, banco, operador };
+    renderCobros(COBROS);
+    closeModal('m-edit-cobro');
+    toast('Cobro actualizado ✓', 'ok');
+    await dbGuardarHistorial('Edición cobro', cobro.clienteId + ' · $' + monto.toFixed(2), 'var(--green)');
+  } catch(e) {
+    console.error('[EDIT-COBRO]', e);
+    toast('Error al guardar: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Guardar cambios';
+  }
 }
 
 function filtCobros(q) {
