@@ -1853,7 +1853,7 @@ async function intentarLogin() {
       </div>
     </div>
     <div class="fsec"><div class="fst">Proveedor y cuenta</div>
-      <div class="fr c2"><div class="fg"><label>Proveedor</label><select id="egreso-sel-prov"><option value="">— Seleccionar —</option></select></div><div class="fg"><label>Cuenta específica</label><select><option>— Seleccionar —</option></select><div class="hint">Opcional</div></div></div>
+      <div class="fr c2"><div class="fg"><label>Proveedor</label><select id="egreso-sel-prov" onchange="filtrarCuentasEgreso(this.value)"><option value="">— Seleccionar —</option></select></div><div class="fg"><label>Cuenta específica</label><select id="egreso-sel-cuenta"><option value="">— Seleccionar —</option></select><div class="hint">Opcional</div></div></div>
     </div>
     <div class="fsec"><div class="fst">Período, forma de pago y monto</div>
       <div class="fr c3"><div class="fg"><label>Fecha egreso<span class="req">*</span></label><input type="date" id="cuenta-fecha-compra" value="2026-05-26"></div><div class="fg"><label>Período desde</label><input type="date" value="2026-06-01"></div><div class="fg"><label>Período hasta</label><input type="date" value="2026-06-30"></div></div>
@@ -5439,6 +5439,24 @@ async function cargarSelectoresProveedores() {
   // egreso-sel-prov (modal nuevo egreso)
   const ep = document.getElementById('egreso-sel-prov');
   if (ep) ep.innerHTML = optsConNoAplica;
+
+  // egreso-sel-cuenta (modal nuevo egreso) — poblar con todas las cuentas activas
+  filtrarCuentasEgreso('');
+}
+
+function filtrarCuentasEgreso(provId) {
+  const sel = document.getElementById('egreso-sel-cuenta');
+  if (!sel) return;
+  const cuentas = INV_CACHE.filter(c => {
+    const activa = (c.estado || '').toLowerCase() === 'activa';
+    if (!activa) return false;
+    if (!provId || provId === 'no_aplica') return true;
+    const prov = PROVEEDORES_CACHE.find(p => String(p.id) === String(provId));
+    if (!prov) return true;
+    return (prov.plataformas || []).includes(c.plataforma);
+  });
+  sel.innerHTML = '<option value="">— Seleccionar —</option>' +
+    cuentas.map(c => `<option value="${c.id}">${c.id} · ${c.plataforma} · ${c.correo}</option>`).join('');
 }
 
 async function guardarProveedor() {
