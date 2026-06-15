@@ -1659,6 +1659,29 @@ async function intentarLogin() {
     </div>
   </div>
 </div></div>
+<!-- Editar cliente -->
+<div class="ov" id="m-edit-cli"><div class="modal" style="max-width:480px">
+  <div class="mh"><div class="mico" style="background:var(--accent2)"><i class="ti ti-user-edit"></i></div><div><div class="mtit">Editar cliente</div><div class="msub" id="edit-cli-titulo">—</div></div><button class="mcl" onclick="closeModal('m-edit-cli')"><i class="ti ti-x"></i></button></div>
+  <div class="mb">
+    <input type="hidden" id="edit-cli-id">
+    <div class="fr c2">
+      <div class="fg"><label>Nombre<span class="req">*</span></label><input type="text" id="edit-cli-nombre" placeholder="Nombre"></div>
+      <div class="fg"><label>Apellido</label><input type="text" id="edit-cli-apellido" placeholder="Apellido"></div>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Teléfono<span class="req">*</span></label><input type="text" id="edit-cli-tel" placeholder="6000-0000"></div>
+      <div class="fg"><label>Estado</label>
+        <select id="edit-cli-estado">
+          <option value="activo">Activo</option>
+          <option value="sin_renovar">Sin renovar</option>
+          <option value="inactivo">Inactivo</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="mf"><button class="btn" onclick="closeModal('m-edit-cli')">Cancelar</button><button class="btn btn-p" onclick="guardarEditarCliente()"><i class="ti ti-check"></i>Guardar cambios</button></div>
+</div></div>
+
 <!-- Pago CORREGIDO -->
 <div class="ov" id="m-pago"><div class="modal" style="max-width:640px">
   <div class="mh"><div class="mico" style="background:var(--green2)"><i class="ti ti-cash"></i></div><div><div class="mtit">Registrar pago / renovación</div><div class="msub" id="pago-sub">Busca el cliente para continuar</div></div><button class="mcl" onclick="closeModal('m-pago')"><i class="ti ti-x"></i></button></div>
@@ -2232,7 +2255,7 @@ function renderC(data){
     const chips=c.contactos.map(ct=>`<span class="chip">${CI[ct.t]||'<i class="ti ti-dots"></i>'} ${ct.v}</span>`).join('');
     const vb=c.dias===0?`<span class="b br">Hoy</span>`:c.dias===1?`<span class="b ba">Mañana</span>`:c.dias<=3?`<span class="b" style="background:rgba(245,200,35,.15);color:#f5c842">${c.dias} días</span>`:`<span class="b bp">${c.dias} días</span>`;
     const eb=c.est==='activo'?'<span class="b bg">Activo</span>':c.est==='sin_renovar'?'<span class="b ba">Sin renovar</span>':'<span class="b bp">Inactivo</span>';
-    return `<tr><td style="font-family:var(--mono);font-size:11px">${c.id}</td><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${formatTel(c.tel)}</td><td><div class="chips" style="margin:0">${chips}</div></td><td>${plats}</td><td>${vb}</td><td>${eb}</td><td class="tda"><button class="btn btn-sm btn-ic" onclick="toast('Perfil próximamente','info')"><i class="ti ti-eye"></i></button><button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago')"><i class="ti ti-cash"></i></button><button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${c.n} ${c.a}','${c.plats.join('+')}','$${c.plats.length*9}.00','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i></button><button class="btn btn-sm btn-ic" onclick="openModal('m-cambio')"><i class="ti ti-arrows-exchange"></i></button></td></tr>`;
+    return `<tr><td style="font-family:var(--mono);font-size:11px">${c.id}</td><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${formatTel(c.tel)}</td><td><div class="chips" style="margin:0">${chips}</div></td><td>${plats}</td><td>${vb}</td><td>${eb}</td><td class="tda"><button class="btn btn-sm btn-ic" onclick="abrirEditarCliente('${c.id}')"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago')"><i class="ti ti-cash"></i></button><button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${c.n} ${c.a}','${c.plats.join('+')}','$${c.plats.length*9}.00','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i></button><button class="btn btn-sm btn-ic" onclick="openModal('m-cambio')"><i class="ti ti-arrows-exchange"></i></button></td></tr>`;
   }).join('');
 }
 function filtC(q){
@@ -2250,6 +2273,57 @@ function filtC(q){
            c.contactos.some(ct=>(ct.v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(r));
   }));
 }
+function abrirEditarCliente(id) {
+  const c = CLIENTES.find(x => x.id === id);
+  if (!c) { toast('Cliente no encontrado', 'error'); return; }
+  document.getElementById('edit-cli-id').value       = c.id;
+  document.getElementById('edit-cli-nombre').value   = c.n  || '';
+  document.getElementById('edit-cli-apellido').value = c.a  || '';
+  document.getElementById('edit-cli-tel').value      = c.tel || '';
+  document.getElementById('edit-cli-estado').value   = c.est || 'activo';
+  document.getElementById('edit-cli-titulo').textContent = c.n + ' ' + c.a;
+  openModal('m-edit-cli');
+}
+
+async function guardarEditarCliente() {
+  const id       = document.getElementById('edit-cli-id').value;
+  const nombre   = document.getElementById('edit-cli-nombre').value.trim();
+  const apellido = document.getElementById('edit-cli-apellido').value.trim();
+  const tel      = document.getElementById('edit-cli-tel').value.trim();
+  const estado   = document.getElementById('edit-cli-estado').value;
+
+  if (!nombre) { toast('El nombre es requerido', 'warn'); return; }
+  if (!tel)    { toast('El teléfono es requerido', 'warn'); return; }
+
+  const btn = document.querySelector('#m-edit-cli .btn-p');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
+
+  try {
+    const { error } = await supa.from('clientes')
+      .update({ nombre, apellido, telefono: tel, estado })
+      .eq('id', id);
+    if (error) throw error;
+
+    const idx = CLIENTES.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      CLIENTES[idx].n   = nombre;
+      CLIENTES[idx].a   = apellido;
+      CLIENTES[idx].tel = tel;
+      CLIENTES[idx].est = estado;
+    }
+
+    renderC(CLIENTES);
+    closeModal('m-edit-cli');
+    toast('Cliente actualizado ✓', 'ok');
+    await dbGuardarHistorial('Edición cliente', id + ' · ' + nombre + ' ' + apellido, 'var(--accent)');
+  } catch(e) {
+    console.error('[EDIT-CLI]', e);
+    toast('Error al guardar: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Guardar cambios';
+  }
+}
+
 function filtCEst(e){
   const q = document.querySelector('#v-clientes .sbox input')?.value || '';
   const r = q.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -6267,7 +6341,6 @@ async function registrarNuevoCliente() {
       <td>—</td>
       <td><span class="b bg">Activo</span></td>
       <td class="tda">
-        <button class="btn btn-sm btn-ic" onclick="toast('Perfil próximamente','info')"><i class="ti ti-eye"></i></button>
         <button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago')"><i class="ti ti-cash"></i></button>
         <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${nombre} ${apellido}','—','—','entrega')"><i class="ti ti-brand-whatsapp"></i></button>
       </td>`;
