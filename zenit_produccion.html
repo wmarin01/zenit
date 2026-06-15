@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <!-- Supabase SDK -->
@@ -6650,6 +6650,7 @@ function renderCobros(data) {
       <td style="font-family:var(--mono);font-size:12px">${c.doc}</td>
       <td style="font-size:11px;color:var(--text3)">${c.operador}</td>
       <td>${estBadge}</td>
+      <td class="tda"><button class="btn btn-sm btn-ic" onclick="abrirEditarCobro(this)"><i class="ti ti-edit"></i></button></td>
     </tr>`;
   }).join('');
 }
