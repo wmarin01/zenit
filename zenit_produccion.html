@@ -5733,7 +5733,7 @@ async function guardarEgreso() {
 
   if (categoria === 'Cuentas-recargas') {
     toast('Egreso registrado. Ahora asocia los pines de este lote.', 'ok');
-    abrirNuevoLotePines(egresoId);
+    abrirNuevoLotePines(egresoId, proveedor, fecha);
   } else {
     toast('Egreso registrado correctamente', 'ok');
   }
@@ -6883,14 +6883,14 @@ function renderPines() {
 
 let _loteEgresoId = null;
 
-function abrirNuevoLotePines(egresoId) {
+function abrirNuevoLotePines(egresoId, proveedorEgreso, fechaEgreso) {
   _loteEgresoId = egresoId || null;
   document.getElementById('lote-plat').value = 'NF';
-  document.getElementById('lote-proveedor').value = '';
+  document.getElementById('lote-proveedor').value = proveedorEgreso && proveedorEgreso !== '—' ? proveedorEgreso : '';
   document.getElementById('lote-codigos').value = '';
   document.getElementById('lote-hint').textContent = 'Ingresa un código por línea';
   const hoy = new Date().toISOString().split('T')[0];
-  document.getElementById('lote-fecha').value = hoy;
+  document.getElementById('lote-fecha').value = fechaEgreso || hoy;
   const titulo = document.querySelector('#m-lote-pines .mtit');
   if (titulo) titulo.textContent = egresoId ? `Nuevo lote de pines · Egreso #${egresoId}` : 'Nuevo lote de pines';
   updLoteTarifas();
