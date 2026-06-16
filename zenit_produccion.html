@@ -5847,7 +5847,7 @@ function selClienteCambio(id, nombre, tel) {
   document.getElementById('cambio-busq').value = '';
   document.getElementById('cambio-sub').textContent = nombre + ' · ' + id;
   // Cargar suscripciones del cliente desde SUBS_FULL (incluye vencidas)
-  const subs = SUBS_FULL.filter(s => s.clienteId === id && s.est === 'activo');
+  const subs = SUBS_FULL.filter(s => s.clienteId === id && (s.est === 'activo' || s.est === 'sin_renovar' || s.est === 'inactivo'));
   const subSel = document.getElementById('acceso-sub-sel');
   if (subSel) {
     if (subs.length) {
