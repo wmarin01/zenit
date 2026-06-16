@@ -8023,7 +8023,7 @@ function renderInventario(lista) {
 let _renovarCuentaId = null;
 let _renovarFechaVcto = null;
 
-function abrirRenovarPin(cuentaId, fechaVcto) {
+async function abrirRenovarPin(cuentaId, fechaVcto) {
   _renovarCuentaId = cuentaId;
   // Normalizar a YYYY-MM-DD para el input date
   let vctoIso = '';
@@ -8039,6 +8039,8 @@ function abrirRenovarPin(cuentaId, fechaVcto) {
   document.getElementById('renovar-pin-sub').textContent = 'Cuenta: ' + cuentaId;
   document.getElementById('renovar-vcto-actual').value = vctoIso;
   document.getElementById('renovar-vcto-nuevo').value = '';
+  // Cargar pines si aún no están en memoria
+  if (!PINES.length) await cargarPines();
   // Mostrar todos los pines NF disponibles, con o sin tarifa
   const pinesNF = PINES.filter(p => p.plataforma === 'NF' && p.estado === 'disponible');
   const sel = document.getElementById('renovar-pin-sel');
