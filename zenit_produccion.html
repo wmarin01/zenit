@@ -6810,6 +6810,22 @@ function renderPines() {
   const tbody = document.getElementById('tb-pines');
   if (!tbody) return;
   if (!lista.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No hay pines registrados</td></tr>'; return; }
+  const fmt = d => d ? d.split('-').reverse().join('/') : '—';
+  tbody.innerHTML = lista.map(p => {
+    const t = p.tarifas_pin;
+    const tarifa = t ? `${Number(t.monto_nominal).toLocaleString()} ${t.moneda} · ${t.dias_vigencia}d` : '—';
+    const estClass = p.estado === 'disponible' ? 'bg' : 'ba';
+    return `<tr>
+      <td style="font-family:var(--mono);font-weight:600">${p.codigo}</td>
+      <td><strong>${p.plataforma}</strong></td>
+      <td style="font-size:12px">${tarifa}</td>
+      <td style="font-size:12px">${p.proveedor||'—'}</td>
+      <td style="font-size:12px">${fmt(p.fecha_compra)}</td>
+      <td><span class="b ${estClass}">${p.estado}</span></td>
+      <td style="font-size:12px;color:var(--text3)">${p.cuenta_id||'—'}</td>
+    </tr>`;
+  }).join('');
+}
 
 let TARIFAS_PIN = [];
 
