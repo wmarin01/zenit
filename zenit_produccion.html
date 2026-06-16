@@ -8025,9 +8025,22 @@ let _renovarFechaVcto = null;
 
 function abrirRenovarPin(cuentaId, fechaVcto) {
   _renovarCuentaId = cuentaId;
-  _renovarFechaVcto = fechaVcto;
+  // Normalizar a YYYY-MM-DD para cálculos, y a DD/MM/YYYY para mostrar
+  let vctoIso = '', vctoDisplay = '—';
+  if (fechaVcto) {
+    if (fechaVcto.includes('/')) {
+      // Viene como DD/MM/YYYY → convertir a YYYY-MM-DD
+      const [dd, mm, yy] = fechaVcto.split('/');
+      vctoIso = `${yy}-${mm}-${dd}`;
+    } else {
+      vctoIso = fechaVcto; // Ya es YYYY-MM-DD
+    }
+    const [y, m, d] = vctoIso.split('-');
+    vctoDisplay = `${d}/${m}/${y}`;
+  }
+  _renovarFechaVcto = vctoIso;
   document.getElementById('renovar-pin-sub').textContent = 'Cuenta: ' + cuentaId;
-  document.getElementById('renovar-vcto-actual').value = fechaVcto ? fechaVcto.split('-').reverse().join('/') : '—';
+  document.getElementById('renovar-vcto-actual').value = vctoDisplay;
   document.getElementById('renovar-vcto-nuevo').value = '—';
   const pinesNF = PINES.filter(p => p.plataforma === 'NF' && p.estado === 'disponible');
   const sel = document.getElementById('renovar-pin-sel');
@@ -8047,11 +8060,15 @@ function abrirRenovarPin(cuentaId, fechaVcto) {
 function updRenovarFecha() {
   const sel = document.getElementById('renovar-pin-sel');
   const opt = sel.options[sel.selectedIndex];
-  const dias = parseInt(opt?.dataset?.dias || 0);
+  const dias = parseInt(opt?.dataset?.dias || '0');
   if (!dias || !_renovarFechaVcto) { document.getElementById('renovar-vcto-nuevo').value = '—'; return; }
   const base = new Date(_renovarFechaVcto + 'T00:00:00');
+  if (isNaN(base.getTime())) { document.getElementById('renovar-vcto-nuevo').value = '—'; return; }
   base.setDate(base.getDate() + dias);
-  document.getElementById('renovar-vcto-nuevo').value = base.toLocaleDateString('es-PA', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const d = String(base.getDate()).padStart(2,'0');
+  const m = String(base.getMonth()+1).padStart(2,'0');
+  const y = base.getFullYear();
+  document.getElementById('renovar-vcto-nuevo').value = `${d}/${m}/${y}`;
 }
 
 async function guardarRenovarPin() {
