@@ -7315,6 +7315,15 @@ async function cargarParametros() {
           <td><span class="b bg">Activa</span></td>
           <td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'categoria')"><i class="ti ti-edit"></i></button></td>
         </tr>`).join('');
+      const cont = document.getElementById('egreso-cats');
+      if (cont) {
+        cont.innerHTML = data.map(c =>
+          `<div class="cat-btn" onclick="selCat(this)"><i class="ti ti-tag" style="font-size:18px;display:block;margin-bottom:3px"></i>${c.nombre}</div>`
+        ).join('');
+        cont.style.gridTemplateColumns = 'repeat(auto-fit,minmax(100px,1fr))';
+        const first = cont.querySelector('.cat-btn');
+        if (first) first.classList.add('on');
+      }
     }
   } catch(e) {}
 
