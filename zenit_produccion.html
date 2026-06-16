@@ -1267,7 +1267,7 @@ async function intentarLogin() {
       <div class="fr c2"><div class="fg"><label>Correo de acceso<span class="req">*</span></label><input type="text" id="cuenta-correo" placeholder="cuenta@gmail.com"></div><div class="fg"><label>Clave de acceso<span class="req">*</span></label><input type="text" id="cuenta-clave" placeholder="Contraseña de la cuenta"></div></div>
     </div>
     <div class="fsec"><div class="fst">Fechas y costo</div>
-      <div class="fr c3"><div class="fg"><label>Fecha de compra<span class="req">*</span></label><input type="date" id="cuenta-fecha-compra" value="2026-05-26"></div><div class="fg"><label>Vencimiento proveedor<span class="req">*</span></label><input type="date" id="cuenta-vcto-prov"></div><div class="fg"><label>Días para alerta</label><input type="number" value="7" min="1" max="30"></div></div>
+      <div class="fr c3"><div class="fg"><label>Fecha de compra<span class="req">*</span></label><input type="date" id="cuenta-fecha-compra2"></div><div class="fg"><label>Vencimiento proveedor<span class="req">*</span></label><input type="date" id="cuenta-vcto-prov"></div><div class="fg"><label>Días para alerta</label><input type="number" value="7" min="1" max="30"></div></div>
       <div class="fr c2"><div class="fg"><label>Costo de compra<span class="req">*</span></label><input type="text" id="cuenta-costo" placeholder="$0.00"></div><div class="fg"><label>Notas</label><input type="text" id="cuenta-notas" placeholder="Opcional"></div></div>
           <div class="fg" id="grp-cuenta-estado" style="display:none;margin-top:11px"><label>Estado de la cuenta</label><select id="cuenta-estado"><option value="Activa">Activa</option><option value="Bloqueada">Bloqueada / Suspendida</option><option value="Inactiva">Inactiva</option></select><div class="hint w">Si la suspendes, dejará de aparecer disponible en ventas.</div></div>
         </div>
@@ -1335,7 +1335,7 @@ async function intentarLogin() {
           </select>
         </div>
         <div class="fg"><label>Vigente desde<span class="req">*</span></label>
-          <input type="date" id="precio-desde" value="2026-05-26">
+          <input type="date" id="precio-desde">
         </div>
       </div>
     </div>
@@ -1957,11 +1957,11 @@ async function intentarLogin() {
       <div class="fr c2"><div class="fg"><label>Proveedor</label><select id="egreso-sel-prov" onchange="filtrarCuentasEgreso(this.value)"><option value="">— Seleccionar —</option></select></div><div class="fg"><label>Cuenta específica</label><select id="egreso-sel-cuenta"><option value="">— Seleccionar —</option></select><div class="hint">Opcional</div></div></div>
     </div>
     <div class="fsec"><div class="fst">Período, forma de pago y monto</div>
-      <div class="fr c3"><div class="fg"><label>Fecha egreso<span class="req">*</span></label><input type="date" id="cuenta-fecha-compra" value="2026-05-26"></div><div class="fg"><label>Período desde</label><input type="date" value="2026-06-01"></div><div class="fg"><label>Período hasta</label><input type="date" value="2026-06-30"></div></div>
+      <div class="fr c3"><div class="fg"><label>Fecha egreso<span class="req">*</span></label><input type="date" id="cuenta-fecha-compra"></div><div class="fg"><label>Período desde</label><input type="date" id="egreso-periodo-desde"></div><div class="fg"><label>Período hasta</label><input type="date" id="egreso-periodo-hasta"></div></div>
       <div class="fr c3"><div class="fg"><label>Banco<span class="req">*</span></label><select id="egreso-banco"><option>Banco General</option><option>Banistmo</option></select></div><div class="fg"><label>Forma de pago<span class="req">*</span></label><select id="egreso-forma" onchange="chkCrypto(this,'cx-egreso')"><option value="">Yappy</option><option value="">Transferencia / ACH</option><option value="bin">Binance Pay</option><option value="">Efectivo</option></select></div><div class="fg"><label>Comprobante / Hash</label><input type="text" id="egreso-doc" placeholder="Referencia o hash"></div></div>
-      <div id="eg-std" class="fr c2"><div class="fg"><label>Monto<span class="req">*</span></label><input type="text" value="$12.00"><div class="hint ok">Pre-cargado. Modificable.</div></div><div class="fg"><label>Imagen comprobante</label><input type="file" accept="image/*"><div class="hint">Opcional</div></div></div>
+      <div id="eg-std" class="fr c2"><div class="fg"><label>Monto<span class="req">*</span></label><input type="text" value=""><div class="hint ok">Ingresa el monto</div></div><div class="fg"><label>Imagen comprobante</label><input type="file" accept="image/*"><div class="hint">Opcional</div></div></div>
       <div class="cx" id="cx-egreso">
-        <div class="fr c3" style="margin-bottom:0"><div class="fg"><label>Moneda</label><select><option>USDT</option><option>BTC</option></select></div><div class="fg"><label>Monto neto<span class="req">*</span></label><input type="text" id="eneto" value="$12.00" oninput="calcEg()"><div class="hint ok">Costo real</div></div><div class="fg"><label>Comisión de red</label><input type="text" id="ecom" placeholder="0.00" oninput="calcEg()"><div class="hint w">Costo adicional</div></div></div>
+        <div class="fr c3" style="margin-bottom:0"><div class="fg"><label>Moneda</label><select><option>USDT</option><option>BTC</option></select></div><div class="fg"><label>Monto neto<span class="req">*</span></label><input type="text" id="eneto" value="" oninput="calcEg()"><div class="hint ok">Costo real</div></div><div class="fg"><label>Comisión de red</label><input type="text" id="ecom" placeholder="0.00" oninput="calcEg()"><div class="hint w">Costo adicional</div></div></div>
         <div class="sum" style="margin-top:10px;margin-bottom:10px"><div class="sr"><span class="sl">Monto neto</span><span id="sn">$12.00</span></div><div class="sr"><span class="sl">Comisión Binance</span><span style="color:var(--amber)" id="sc">$0.00</span></div><div class="sr"><span>Total egresado</span><span style="color:var(--red)" id="st">$12.00</span></div></div>
         <div class="fg"><label>Imagen comprobante</label><input type="file" accept="image/*"><div class="hint">Opcional</div></div>
       </div>
@@ -3241,7 +3241,7 @@ async function guardarCuenta(){
   const codigo   = document.getElementById('cuenta-codigo')?.value?.trim().toUpperCase();
   const correo   = document.getElementById('cuenta-correo')?.value?.trim();
   const clave    = document.getElementById('cuenta-clave')?.value?.trim();
-  const fechaC   = document.getElementById('cuenta-fecha-compra')?.value || null;
+  const fechaC   = document.getElementById('cuenta-fecha-compra2')?.value || null;
   const fechaV   = document.getElementById('cuenta-vcto-prov')?.value || null;
   const costoRaw = document.getElementById('cuenta-costo')?.value?.trim() || '';
   const costo    = parseFloat(costoRaw.replace('$','').replace(',','.')) || null;
@@ -5663,6 +5663,16 @@ function abrirNuevaCuenta() {
 }
 function abrirNuevoEgreso() {
   cargarSelectoresProveedores();
+  const _a = new Date();
+  const _hoy = _a.getFullYear()+'-'+String(_a.getMonth()+1).padStart(2,'0')+'-'+String(_a.getDate()).padStart(2,'0');
+  const _ini = new Date(_a.getFullYear(), _a.getMonth(), 1);
+  const _fin = new Date(_a.getFullYear(), _a.getMonth()+1, 0);
+  const _fmt = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const fechaEl = document.getElementById('cuenta-fecha-compra'); if(fechaEl) fechaEl.value = _hoy;
+  const desdeEl = document.getElementById('egreso-periodo-desde'); if(desdeEl) desdeEl.value = _fmt(_ini);
+  const hastaEl = document.getElementById('egreso-periodo-hasta'); if(hastaEl) hastaEl.value = _fmt(_fin);
+  const bancoEl = document.getElementById('egreso-banco'); if(bancoEl) bancoEl.value = 'Binance';
+  const formaEl2 = document.getElementById('egreso-forma'); if(formaEl2){ formaEl2.value = 'bin'; formaEl2.dispatchEvent(new Event('change')); }
   openModal('m-egreso');
 }
 
@@ -6932,7 +6942,7 @@ function renderPines() {
 
 let _loteEgresoId = null;
 
-function abrirNuevoLotePines(egresoId, proveedorEgreso, fechaEgreso) {
+async function abrirNuevoLotePines(egresoId, proveedorEgreso, fechaEgreso) {
   _loteEgresoId = egresoId || null;
   document.getElementById('lote-plat').value = 'NF';
   document.getElementById('lote-proveedor').value = proveedorEgreso && proveedorEgreso !== '—' ? proveedorEgreso : '';
@@ -6942,6 +6952,7 @@ function abrirNuevoLotePines(egresoId, proveedorEgreso, fechaEgreso) {
   document.getElementById('lote-fecha').value = fechaEgreso || hoy;
   const titulo = document.querySelector('#m-lote-pines .mtit');
   if (titulo) titulo.textContent = egresoId ? `Nuevo lote de pines · Egreso #${egresoId}` : 'Nuevo lote de pines';
+  if (!TARIFAS_PIN.length) await cargarTarifasPin();
   updLoteTarifas();
   openModal('m-lote-pines');
 }
