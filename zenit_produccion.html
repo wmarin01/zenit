@@ -1703,6 +1703,35 @@ async function intentarLogin() {
   <div class="mf"><button class="btn" onclick="closeModal('m-edit-cli')">Cancelar</button><button class="btn btn-p" onclick="guardarEditarCliente()"><i class="ti ti-check"></i>Guardar cambios</button></div>
 </div></div>
 
+<!-- Modal Nuevo Lote Pines -->
+<div class="ov" id="m-lote-pines"><div class="modal" style="max-width:560px">
+  <div class="mh"><div class="mico" style="background:var(--accent)"><i class="ti ti-ticket"></i></div><div><div class="mtit">Nuevo lote de pines</div></div><button class="mcl" onclick="closeModal('m-lote-pines')"><i class="ti ti-x"></i></button></div>
+  <div class="mb">
+    <div class="fr c2">
+      <div class="fg"><label>Plataforma<span class="req">*</span></label>
+        <select id="lote-plat" onchange="updLoteTarifas()">
+          <option value="NF">Netflix</option>
+          <option value="DS">Disney+</option>
+          <option value="HB">HBO Max</option>
+          <option value="PV">Prime Video</option>
+        </select>
+      </div>
+      <div class="fg"><label>Tarifa<span class="req">*</span></label>
+        <select id="lote-tarifa"><option value="">— Selecciona plataforma —</option></select>
+      </div>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Proveedor</label><input type="text" id="lote-proveedor" placeholder="Ej: Streaming JM"></div>
+      <div class="fg"><label>Fecha compra</label><input type="date" id="lote-fecha"></div>
+    </div>
+    <div class="fg"><label>Códigos de pines<span class="req">*</span></label>
+      <textarea id="lote-codigos" rows="5" placeholder="Un código por línea&#10;Ej:&#10;ABC123&#10;DEF456&#10;GHI789"></textarea>
+      <div class="hint ok" id="lote-hint">Ingresa un código por línea</div>
+    </div>
+  </div>
+  <div class="mf"><button class="btn" onclick="closeModal('m-lote-pines')">Cancelar</button><button class="btn btn-p" onclick="guardarLotePines()"><i class="ti ti-check"></i>Guardar lote</button></div>
+</div></div>
+
 <!-- Tarifa Pin -->
 <div class="ov" id="m-tarifa-pin"><div class="modal" style="max-width:520px">
   <div class="mh"><div class="mico" style="background:var(--accent2)"><i class="ti ti-ticket"></i></div><div><div class="mtit" id="m-tarifa-pin-titulo">Nueva tarifa Pin</div></div><button class="mcl" onclick="closeModal('m-tarifa-pin')"><i class="ti ti-x"></i></button></div>
@@ -6825,6 +6854,68 @@ function renderPines() {
       <td style="font-size:12px;color:var(--text3)">${p.cuenta_id||'—'}</td>
     </tr>`;
   }).join('');
+}
+
+function abrirNuevoLotePines() {
+  document.getElementById('lote-plat').value = 'NF';
+  document.getElementById('lote-proveedor').value = '';
+  document.getElementById('lote-codigos').value = '';
+  document.getElementById('lote-hint').textContent = 'Ingresa un código por línea';
+  const hoy = new Date().toISOString().split('T')[0];
+  document.getElementById('lote-fecha').value = hoy;
+  updLoteTarifas();
+  openModal('m-lote-pines');
+}
+
+function updLoteTarifas() {
+  const plat = document.getElementById('lote-plat').value;
+  const sel = document.getElementById('lote-tarifa');
+  const opciones = TARIFAS_PIN.filter(t => t.plataforma === plat && t.estado === 'activo');
+  if (!opciones.length) {
+    sel.innerHTML = '<option value="">— Sin tarifas para esta plataforma —</option>';
+    return;
+  }
+  sel.innerHTML = opciones.map(t =>
+    `<option value="${t.id}">${Number(t.monto_nominal).toLocaleString()} ${t.moneda} · ${t.dias_vigencia} días (${t.pais})</option>`
+  ).join('');
+}
+
+document.getElementById('lote-codigos')?.addEventListener('input', function() {
+  const lineas = this.value.split('\n').map(l => l.trim()).filter(Boolean);
+  document.getElementById('lote-hint').textContent = lineas.length > 0 ? `${lineas.length} código(s) detectado(s)` : 'Ingresa un código por línea';
+});
+
+async function guardarLotePines() {
+  const plat     = document.getElementById('lote-plat').value;
+  const tarifaId = document.getElementById('lote-tarifa').value;
+  const proveedor = document.getElementById('lote-proveedor').value.trim();
+  const fecha    = document.getElementById('lote-fecha').value;
+  const rawCodigos = document.getElementById('lote-codigos').value;
+  const codigos  = rawCodigos.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!tarifaId) return toast('Selecciona una tarifa', 'err');
+  if (!codigos.length) return toast('Ingresa al menos un código', 'err');
+  const btn = document.querySelector('#m-lote-pines .btn-p');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
+  try {
+    const rows = codigos.map(c => ({
+      codigo: c,
+      plataforma: plat,
+      tarifa_id: tarifaId,
+      proveedor: proveedor || null,
+      fecha_compra: fecha || null,
+      estado: 'disponible'
+    }));
+    const { error } = await supa.from('pines').insert(rows);
+    if (error) throw error;
+    await cargarPines();
+    closeModal('m-lote-pines');
+    toast(`${codigos.length} pin(es) guardado(s) ✓`, 'ok');
+    await dbGuardarHistorial('Nuevo lote pines', `${plat} · ${codigos.length} pines · ${proveedor||'sin proveedor'}`, 'var(--accent)');
+  } catch(e) {
+    toast('Error: ' + (e.message || e), 'err');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Guardar lote';
+  }
 }
 
 let TARIFAS_PIN = [];
