@@ -689,6 +689,7 @@ async function intentarLogin() {
   <div class="sb-sec"><div class="sb-lbl">Administración</div>
     <div class="ni" onclick="goTo('proveedores',this)"><i class="ti ti-building-store"></i>Proveedores</div>
     <div class="ni" onclick="goTo('egresos',this)"><i class="ti ti-trending-down"></i>Egresos</div>
+    <div class="ni" onclick="goTo('pines',this)"><i class="ti ti-ticket"></i>Pines</div>
     <div class="ni" onclick="goTo('reportes',this)"><i class="ti ti-chart-bar"></i>Reportes</div>
     <div class="ni" onclick="goTo('tablas',this)"><i class="ti ti-table"></i>Tablas</div>
   </div>
@@ -906,6 +907,16 @@ async function intentarLogin() {
       <table id="rpt-table"><thead id="rpt-thead"></thead><tbody id="rpt-tbody"><tr><td style="text-align:center;padding:30px;color:var(--text3)">Selecciona una tabla arriba</td></tr></tbody></table>
     </div>
   </div>
+</div>
+
+<!-- PINES -->
+<div class="view" id="v-pines">
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <select id="pines-filtro-plat" onchange="renderPines()" style="min-width:130px"><option value="">Todas las plataformas</option><option value="NF">Netflix</option><option value="DS">Disney+</option><option value="HB">HBO Max</option><option value="PV">Prime Video</option></select>
+    <select id="pines-filtro-est" onchange="renderPines()" style="min-width:130px"><option value="">Todos los estados</option><option value="disponible">Disponible</option><option value="usado">Usado</option></select>
+  </div>
+  <div id="pines-contadores" style="display:flex;gap:12px;margin-bottom:14px;font-size:13px"></div>
+  <div class="card"><div class="tw"><table><thead><tr><th>Código</th><th>Plataforma</th><th>Tarifa</th><th>Proveedor</th><th>F. Compra</th><th>Estado</th><th>Cuenta asignada</th></tr></thead><tbody id="tb-pines"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr></tbody></table></div></div>
 </div>
 
 <!-- PARAMETROS -->
@@ -2156,7 +2167,7 @@ function actualizarFechaHeader() {
 }
 actualizarFechaHeader();
 
-const TITLES={dashboard:'Dashboard',clientes:'Clientes',ventas:'Ventas',cobranza:'Cobranza',inventario:'Inventario',proveedores:'Proveedores',egresos:'Egresos',reportes:'Reportes',tablas:'Tablas',parametros:'Parámetros',historial:'Historial',usuarios:'Usuarios y permisos'};
+const TITLES={dashboard:'Dashboard',clientes:'Clientes',ventas:'Ventas',cobranza:'Cobranza',inventario:'Inventario',proveedores:'Proveedores',egresos:'Egresos',pines:'Pines',reportes:'Reportes',tablas:'Tablas',parametros:'Parámetros',historial:'Historial',usuarios:'Usuarios y permisos'};
 
 // ── DASHBOARD DINÁMICO ──────────────────────────────────────────
 function renderDashboard() {
@@ -2320,6 +2331,7 @@ function goTo(v,el){
       else if (v==='egresos')       { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoEgreso()"><i class="ti ti-plus"></i>Nuevo egreso</button>`; dbCargarEgresos(); }
       else if (v==='reportes')      ha.innerHTML='';
       else if (v==='tablas')        { ha.innerHTML=''; setTimeout(()=>{ cargarTablaMotivos(); cargarMotivosCambio(); },100); }
+      else if (v==='pines')         { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoLotePines()"><i class="ti ti-plus"></i>Nuevo lote</button>`; cargarPines(); }
       else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); cargarTarifasPin(); }
       else if (v==='accesos')       { 
         ha.innerHTML = (!USUARIO_ACTIVO || USUARIO_ACTIVO.rol === 'Master') 
@@ -6777,6 +6789,27 @@ async function guardarEditarCobro() {
     btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Guardar cambios';
   }
 }
+
+let PINES = [];
+
+async function cargarPines() {
+  const { data, error } = await supa.from('pines').select('*, tarifas_pin(plataforma, pais, moneda, monto_nominal, dias_vigencia)').order('created_at', { ascending: false });
+  if (error) { console.error('Error cargando pines:', error); return; }
+  PINES = data || [];
+  renderPines();
+}
+
+function renderPines() {
+  const plat = document.getElementById('pines-filtro-plat')?.value || '';
+  const est  = document.getElementById('pines-filtro-est')?.value  || '';
+  const lista = PINES.filter(p => (!plat || p.plataforma === plat) && (!est || p.estado === est));
+  const disp  = PINES.filter(p => p.estado === 'disponible').length;
+  const usado = PINES.filter(p => p.estado === 'usado').length;
+  const cont  = document.getElementById('pines-contadores');
+  if (cont) cont.innerHTML = `<span class="b bg">Disponibles: ${disp}</span><span class="b ba">Usados: ${usado}</span><span class="b bi">Total: ${PINES.length}</span>`;
+  const tbody = document.getElementById('tb-pines');
+  if (!tbody) return;
+  if (!lista.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No hay pines registrados</td></tr>'; return; }
 
 let TARIFAS_PIN = [];
 
