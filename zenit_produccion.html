@@ -1325,6 +1325,7 @@ async function intentarLogin() {
 <div class="ov" id="m-precio"><div class="modal" style="max-width:560px">
   <div class="mh"><div class="mico" style="background:var(--green2)"><i class="ti ti-tag"></i></div><div><div class="mtit" id="precio-title">Nuevo precio</div><div class="msub">Define el precio para un plan específico</div></div><button class="mcl" onclick="closeModal('m-precio')"><i class="ti ti-x"></i></button></div>
   <div class="mb">
+    <input type="hidden" id="precio-id" value="">
     <div class="fsec"><div class="fst">Tipo de plan</div>
       <div class="fr c2">
         <div class="fg"><label>Tipo<span class="req">*</span></label>
@@ -5344,6 +5345,40 @@ function openModal(id, title) {
 }
 
 // ── FUNCIONES PRECIO ────────────────────────────────────────
+let PLANES_PRECIOS = [];
+
+function abrirEditarPrecio(id) {
+  const p = PLANES_PRECIOS.find(x => x.id === id);
+  if (!p) { toast('Plan no encontrado', 'warn'); return; }
+  const tipoNorm = (p.tipo||'').toLowerCase();
+  // Convertir DD/MM/YYYY → YYYY-MM-DD para el date input
+  const fechaIso = (p.vigente_desde||'').includes('/') ? p.vigente_desde.split('/').reverse().join('-') : (p.vigente_desde||'');
+  document.getElementById('precio-id').value = id;
+  document.getElementById('precio-title').textContent = 'Editar precio';
+  document.getElementById('precio-tipo').value = tipoNorm;
+  document.getElementById('precio-desde').value = fechaIso;
+  updPrecioTipo(tipoNorm);
+  if (tipoNorm === 'individual') {
+    document.getElementById('precio-plat').value = (p.plataformas||'').trim();
+    document.getElementById('precio-perfiles').value = p.perfiles || '1';
+    document.getElementById('precio-val-ind').value = parseFloat(p.precio||0).toFixed(2);
+  } else {
+    document.querySelectorAll('#precio-combo-rows input[type=checkbox]').forEach(c => c.checked = false);
+    document.querySelectorAll('#precio-combo-rows .combo-precio').forEach(i => i.value = '');
+    if (p.desglose && p.desglose !== '—') {
+      p.desglose.split('+').map(s => s.trim()).forEach(part => {
+        const m = part.match(/^([A-Z]{2,})\s*\$?([\d.]+)/);
+        if (m) {
+          const chk = document.querySelector(`#precio-combo-rows input[type=checkbox][value="${m[1]}"]`);
+          if (chk) { chk.checked = true; chk.closest('.precio-combo-row').querySelector('.combo-precio').value = m[2]; }
+        }
+      });
+    }
+    updPrecioCombo();
+  }
+  openModal('m-precio');
+}
+
 function updPrecioTipo(v) {
   document.getElementById('precio-ind-sec').style.display = v === 'individual' ? 'block' : 'none';
   document.getElementById('precio-combo-sec').style.display = v === 'combo' ? 'block' : 'none';
@@ -5369,7 +5404,7 @@ function guardarPrecio() {
   if (!tbody) { closeModal('m-precio'); toast('Precio guardado','ok'); return; }
 
   let platsHtml = '', tipoHtml = '', perfilesStr = '', precioStr = '', desglose = '—';
-  let selected = []; // Declarar aquí para que esté disponible en todo el scope
+  let selected = [], desgParts = [];
 
   if (tipo === 'individual') {
     const platVal = document.getElementById('precio-plat')?.value;
@@ -5384,11 +5419,9 @@ function guardarPrecio() {
     precioStr = precio.startsWith('$') ? precio : '$'+precio;
   } else {
     const rows = document.querySelectorAll('#precio-combo-rows .precio-combo-row');
-    const selected = [];
     const dotColors = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
     const nombres = {NF:'NF',DS:'DS',HB:'HB',PV:'PV'};
     let total = 0;
-    let desgParts = [];
     rows.forEach(row => {
       const chk = row.querySelector('input[type=checkbox]');
       const inp = row.querySelector('.combo-precio');
@@ -5426,7 +5459,23 @@ function guardarPrecio() {
       COMBOS.push({id:comboId, plats:selected, precio:totalCombo, desglose:desgloseCombo, perfiles:selected.map(()=>'1').join('+')});
     }
   }
+  // Persistir en Supabase si es edición
+  const precioId = document.getElementById('precio-id')?.value;
+  if (precioId) {
+    const payload = { vigente_desde: fechaStr, precio: parseFloat(precioStr.replace('$','')) || 0 };
+    if (tipo === 'combo') {
+      payload.desglose = desgParts.join(' + ');
+    }
+    supa.from('planes_precios').update(payload).eq('id', precioId).then(({error}) => {
+      if (error) { toast('Error al guardar en base de datos: ' + error.message, 'err'); return; }
+      const idx = PLANES_PRECIOS.findIndex(x => x.id == precioId);
+      if (idx >= 0) Object.assign(PLANES_PRECIOS[idx], payload);
+    });
+  }
+
   // Limpiar formulario para evitar duplicados
+  document.getElementById('precio-id') && (document.getElementById('precio-id').value = '');
+  document.getElementById('precio-title') && (document.getElementById('precio-title').textContent = 'Nuevo precio');
   document.getElementById('precio-val-ind') && (document.getElementById('precio-val-ind').value = '');
   document.querySelectorAll('#precio-combo-rows input[type=checkbox]').forEach(c => c.checked = false);
   document.querySelectorAll('#precio-combo-rows .combo-precio').forEach(i => i.value = '');
@@ -6889,7 +6938,7 @@ function abrirNuevoLotePines(egresoId, proveedorEgreso, fechaEgreso) {
   document.getElementById('lote-proveedor').value = proveedorEgreso && proveedorEgreso !== '—' ? proveedorEgreso : '';
   document.getElementById('lote-codigos').value = '';
   document.getElementById('lote-hint').textContent = 'Ingresa un código por línea';
-  const hoy = new Date().toISOString().split('T')[0];
+  const ahora = new Date(); const hoy = ahora.getFullYear()+'-'+String(ahora.getMonth()+1).padStart(2,'0')+'-'+String(ahora.getDate()).padStart(2,'0');
   document.getElementById('lote-fecha').value = fechaEgreso || hoy;
   const titulo = document.querySelector('#m-lote-pines .mtit');
   if (titulo) titulo.textContent = egresoId ? `Nuevo lote de pines · Egreso #${egresoId}` : 'Nuevo lote de pines';
@@ -7658,6 +7707,7 @@ async function cargarParametros() {
   try {
     const {data} = await supa.from('planes_precios').select('*').eq('estado','Vigente').order('plataformas');
     if (data && data.length) {
+      PLANES_PRECIOS = data;
       document.getElementById('tb-planes').innerHTML = data.map(p=>`
         <tr>
           <td>${p.plataformas||''}</td>
@@ -7667,7 +7717,7 @@ async function cargarParametros() {
           <td style="font-size:11px;color:var(--text3)">${p.desglose||'—'}</td>
           <td>${p.vigente_desde||''}</td>
           <td><span class="b bg">Vigente</span></td>
-          <td class="tda"><button class="btn btn-sm btn-ic" onclick="openModal('m-precio')"><i class="ti ti-edit"></i></button></td>
+          <td class="tda"><button class="btn btn-sm btn-ic" onclick="abrirEditarPrecio(${p.id})"><i class="ti ti-edit"></i></button></td>
         </tr>`).join('');
     }
   } catch(e) {}
