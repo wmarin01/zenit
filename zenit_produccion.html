@@ -2360,7 +2360,7 @@ function goTo(v,el){
       else if (v==='egresos')       { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoEgreso()"><i class="ti ti-plus"></i>Nuevo egreso</button>`; dbCargarEgresos(); }
       else if (v==='reportes')      ha.innerHTML='';
       else if (v==='tablas')        { ha.innerHTML=''; setTimeout(()=>{ cargarTablaMotivos(); cargarMotivosCambio(); },100); }
-      else if (v==='pines')         { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoLotePines()"><i class="ti ti-plus"></i>Nuevo lote</button>`; cargarPines(); }
+      else if (v==='pines')         { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoLotePines()"><i class="ti ti-plus"></i>Nuevo lote</button>`; cargarPines(); cargarTarifasPin(); }
       else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); cargarTarifasPin(); }
       else if (v==='accesos')       { 
         ha.innerHTML = (!USUARIO_ACTIVO || USUARIO_ACTIVO.rol === 'Master') 
