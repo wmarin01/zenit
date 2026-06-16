@@ -8089,7 +8089,7 @@ async function guardarRenovarPin() {
     const { data: pinData, error: e2 } = await supa.from('pines').update({ estado: 'usado', cuenta_id: _renovarCuentaId, fecha_uso: hoy }).eq('id', pinId).select('costo').single();
     if (e2) throw e2;
     if (pinData?.costo != null) {
-      await supa.from('inventario').update({ costo_proveedor: pinData.costo }).eq('id', _renovarCuentaId);
+      await supa.from('inventario').update({ costo: pinData.costo }).eq('id', _renovarCuentaId);
     }
     await cargarPines();
     await cargarInventario();
