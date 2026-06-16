@@ -1714,8 +1714,8 @@ async function intentarLogin() {
       </select>
     </div>
     <div class="fr c2">
-      <div class="fg"><label>Vcto. actual</label><input type="text" id="renovar-vcto-actual" readonly style="background:var(--bg3)"></div>
-      <div class="fg"><label>Nuevo vcto.</label><input type="text" id="renovar-vcto-nuevo" readonly style="background:var(--bg3);color:var(--green);font-weight:600"></div>
+      <div class="fg"><label>Vcto. actual</label><input type="date" id="renovar-vcto-actual" onchange="updRenovarFecha()"></div>
+      <div class="fg"><label>Nuevo vcto.</label><input type="date" id="renovar-vcto-nuevo" style="color:var(--green);font-weight:600"></div>
     </div>
   </div>
   <div class="mf"><button class="btn" onclick="closeModal('m-renovar-pin')">Cancelar</button><button class="btn btn-p" id="btn-guardar-renovar" onclick="guardarRenovarPin()"><i class="ti ti-check"></i>Confirmar renovación</button></div>
@@ -8025,23 +8025,21 @@ let _renovarFechaVcto = null;
 
 function abrirRenovarPin(cuentaId, fechaVcto) {
   _renovarCuentaId = cuentaId;
-  // Normalizar a YYYY-MM-DD para cálculos, y a DD/MM/YYYY para mostrar
-  let vctoIso = '', vctoDisplay = '—';
+  // Normalizar a YYYY-MM-DD para el input date
+  let vctoIso = '';
   if (fechaVcto) {
     if (fechaVcto.includes('/')) {
-      // Viene como DD/MM/YYYY → convertir a YYYY-MM-DD
       const [dd, mm, yy] = fechaVcto.split('/');
       vctoIso = `${yy}-${mm}-${dd}`;
     } else {
-      vctoIso = fechaVcto; // Ya es YYYY-MM-DD
+      vctoIso = fechaVcto;
     }
-    const [y, m, d] = vctoIso.split('-');
-    vctoDisplay = `${d}/${m}/${y}`;
   }
   _renovarFechaVcto = vctoIso;
   document.getElementById('renovar-pin-sub').textContent = 'Cuenta: ' + cuentaId;
-  document.getElementById('renovar-vcto-actual').value = vctoDisplay;
-  document.getElementById('renovar-vcto-nuevo').value = '—';
+  document.getElementById('renovar-vcto-actual').value = vctoIso;
+  document.getElementById('renovar-vcto-nuevo').value = '';
+  // Mostrar todos los pines NF disponibles, con o sin tarifa
   const pinesNF = PINES.filter(p => p.plataforma === 'NF' && p.estado === 'disponible');
   const sel = document.getElementById('renovar-pin-sel');
   if (!pinesNF.length) {
@@ -8050,7 +8048,7 @@ function abrirRenovarPin(cuentaId, fechaVcto) {
     sel.innerHTML = pinesNF.map(p => {
       const t = p.tarifas_pin;
       const label = t ? `${p.codigo} · ${Number(t.monto_nominal).toLocaleString()} ${t.moneda} · ${t.dias_vigencia}d` : p.codigo;
-      return `<option value="${p.id}" data-dias="${t ? t.dias_vigencia : 0}">${label}</option>`;
+      return `<option value="${p.id}" data-dias="${t ? t.dias_vigencia : ''}">${label}</option>`;
     }).join('');
   }
   updRenovarFecha();
@@ -8061,27 +8059,22 @@ function updRenovarFecha() {
   const sel = document.getElementById('renovar-pin-sel');
   const opt = sel.options[sel.selectedIndex];
   const dias = parseInt(opt?.dataset?.dias || '0');
-  if (!dias || !_renovarFechaVcto) { document.getElementById('renovar-vcto-nuevo').value = '—'; return; }
-  const base = new Date(_renovarFechaVcto + 'T00:00:00');
-  if (isNaN(base.getTime())) { document.getElementById('renovar-vcto-nuevo').value = '—'; return; }
+  const vctoActual = document.getElementById('renovar-vcto-actual').value;
+  if (!dias || !vctoActual) return; // Sin datos suficientes: deja nuevo vcto editable y vacío
+  const base = new Date(vctoActual + 'T00:00:00');
+  if (isNaN(base.getTime())) return;
   base.setDate(base.getDate() + dias);
-  const d = String(base.getDate()).padStart(2,'0');
-  const m = String(base.getMonth()+1).padStart(2,'0');
-  const y = base.getFullYear();
-  document.getElementById('renovar-vcto-nuevo').value = `${d}/${m}/${y}`;
+  document.getElementById('renovar-vcto-nuevo').value = base.toISOString().split('T')[0];
 }
 
 async function guardarRenovarPin() {
   const pinId = document.getElementById('renovar-pin-sel').value;
   if (!pinId) return toast('Selecciona un pin disponible', 'err');
+  const nuevaFecha = document.getElementById('renovar-vcto-nuevo').value;
+  if (!nuevaFecha) return toast('Ingresa el nuevo vencimiento', 'err');
   const sel = document.getElementById('renovar-pin-sel');
   const opt = sel.options[sel.selectedIndex];
-  const dias = parseInt(opt?.dataset?.dias || 0);
-  if (!dias) return toast('El pin seleccionado no tiene días de vigencia', 'err');
-  const base = new Date(_renovarFechaVcto + 'T00:00:00');
-  base.setDate(base.getDate() + dias);
-  const nuevaFecha = base.toISOString().split('T')[0];
-  const hoy = new Date().toISOString().split('T')[0];
+  const _a = new Date(); const hoy = _a.getFullYear()+'-'+String(_a.getMonth()+1).padStart(2,'0')+'-'+String(_a.getDate()).padStart(2,'0');
   const btn = document.getElementById('btn-guardar-renovar');
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
   try {
