@@ -5795,6 +5795,7 @@ function poblarPerfilesDisponiblesCambio(plat) {
     return;
   }
   const grupos = {};
+  perfs.sort((a, b) => a.codigo.localeCompare(b.codigo));
   perfs.forEach(p => {
     if (!grupos[p.cuenta]) grupos[p.cuenta] = {correo: p.correo, items: []};
     grupos[p.cuenta].items.push(p);
