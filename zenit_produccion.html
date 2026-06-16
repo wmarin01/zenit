@@ -105,7 +105,7 @@ async function dbGuardarSuscripcion(sub) {
 
 // Guardar egreso
 async function dbGuardarEgreso(egr) {
-  const { error } = await supa.from('egresos').insert({
+  const { data, error } = await supa.from('egresos').insert({
     fecha: egr.fecha || new Date().toISOString().split('T')[0],
     categoria: egr.categoria,
     descripcion: egr.descripcion,
@@ -118,9 +118,9 @@ async function dbGuardarEgreso(egr) {
     documento: egr.documento || '',
     notas: egr.notas || '',
     es_reembolso: egr.esReembolso || false
-  });
+  }).select('id').single();
   if (error) console.error('Error guardando egreso:', error);
-  return !error;
+  return error ? null : data.id;
 }
 
 // Guardar historial
@@ -916,7 +916,7 @@ async function intentarLogin() {
     <select id="pines-filtro-est" onchange="renderPines()" style="min-width:130px"><option value="">Todos los estados</option><option value="disponible">Disponible</option><option value="usado">Usado</option></select>
   </div>
   <div id="pines-contadores" style="display:flex;gap:12px;margin-bottom:14px;font-size:13px"></div>
-  <div class="card"><div class="tw"><table><thead><tr><th>Código</th><th>Plataforma</th><th>Tarifa</th><th>Proveedor</th><th>F. Compra</th><th>Estado</th><th>Cuenta asignada</th></tr></thead><tbody id="tb-pines"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr></tbody></table></div></div>
+  <div class="card"><div class="tw"><table><thead><tr><th>Código</th><th>Plataforma</th><th>Tarifa</th><th>Proveedor</th><th>F. Compra</th><th>Estado</th><th>Cuenta asignada</th><th>Egreso</th><th>F. Uso</th></tr></thead><tbody id="tb-pines"><tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr></tbody></table></div></div>
 </div>
 
 <!-- PARAMETROS -->
@@ -1701,6 +1701,23 @@ async function intentarLogin() {
     </div>
   </div>
   <div class="mf"><button class="btn" onclick="closeModal('m-edit-cli')">Cancelar</button><button class="btn btn-p" onclick="guardarEditarCliente()"><i class="ti ti-check"></i>Guardar cambios</button></div>
+</div></div>
+
+<!-- Modal Renovar con Pin -->
+<div class="ov" id="m-renovar-pin"><div class="modal" style="max-width:480px">
+  <div class="mh"><div class="mico" style="background:var(--accent)"><i class="ti ti-rotate-clockwise"></i></div><div><div class="mtit">Renovar cuenta con pin</div><div class="msub" id="renovar-pin-sub"></div></div><button class="mcl" onclick="closeModal('m-renovar-pin')"><i class="ti ti-x"></i></button></div>
+  <div class="mb">
+    <div class="fg"><label>Pin disponible<span class="req">*</span></label>
+      <select id="renovar-pin-sel" onchange="updRenovarFecha()">
+        <option value="">— Sin pines disponibles —</option>
+      </select>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Vcto. actual</label><input type="text" id="renovar-vcto-actual" readonly style="background:var(--bg3)"></div>
+      <div class="fg"><label>Nuevo vcto.</label><input type="text" id="renovar-vcto-nuevo" readonly style="background:var(--bg3);color:var(--green);font-weight:600"></div>
+    </div>
+  </div>
+  <div class="mf"><button class="btn" onclick="closeModal('m-renovar-pin')">Cancelar</button><button class="btn btn-p" id="btn-guardar-renovar" onclick="guardarRenovarPin()"><i class="ti ti-check"></i>Confirmar renovación</button></div>
 </div></div>
 
 <!-- Modal Nuevo Lote Pines -->
@@ -5705,15 +5722,21 @@ async function guardarEgreso() {
   const btn = modal.querySelector('.btn-p');
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
 
-  const ok = await dbGuardarEgreso({ fecha, categoria, descripcion, proveedor, forma, neto, comision, total, banco, documento, notas });
+  const egresoId = await dbGuardarEgreso({ fecha, categoria, descripcion, proveedor, forma, neto, comision, total, banco, documento, notas });
 
   btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Registrar egreso';
 
-  if (!ok) { toast('Error al registrar egreso', 'error'); return; }
+  if (!egresoId) { toast('Error al registrar egreso', 'error'); return; }
 
   closeModal('m-egreso');
   await dbCargarEgresos();
-  toast('Egreso registrado correctamente', 'ok');
+
+  if (categoria === 'Cuentas-recargas') {
+    toast('Egreso registrado. Ahora asocia los pines de este lote.', 'ok');
+    abrirNuevoLotePines(egresoId);
+  } else {
+    toast('Egreso registrado correctamente', 'ok');
+  }
 }
 
 async function dbCargarEgresos() {
@@ -6838,7 +6861,7 @@ function renderPines() {
   if (cont) cont.innerHTML = `<span class="b bg">Disponibles: ${disp}</span><span class="b ba">Usados: ${usado}</span><span class="b bi">Total: ${PINES.length}</span>`;
   const tbody = document.getElementById('tb-pines');
   if (!tbody) return;
-  if (!lista.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No hay pines registrados</td></tr>'; return; }
+  if (!lista.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">No hay pines registrados</td></tr>'; return; }
   const fmt = d => d ? d.split('-').reverse().join('/') : '—';
   tbody.innerHTML = lista.map(p => {
     const t = p.tarifas_pin;
@@ -6852,17 +6875,24 @@ function renderPines() {
       <td style="font-size:12px">${fmt(p.fecha_compra)}</td>
       <td><span class="b ${estClass}">${p.estado}</span></td>
       <td style="font-size:12px;color:var(--text3)">${p.cuenta_id||'—'}</td>
+      <td style="font-size:12px;color:var(--text3)">${p.egreso_id||'—'}</td>
+      <td style="font-size:12px;color:var(--text3)">${fmt(p.fecha_uso)}</td>
     </tr>`;
   }).join('');
 }
 
-function abrirNuevoLotePines() {
+let _loteEgresoId = null;
+
+function abrirNuevoLotePines(egresoId) {
+  _loteEgresoId = egresoId || null;
   document.getElementById('lote-plat').value = 'NF';
   document.getElementById('lote-proveedor').value = '';
   document.getElementById('lote-codigos').value = '';
   document.getElementById('lote-hint').textContent = 'Ingresa un código por línea';
   const hoy = new Date().toISOString().split('T')[0];
   document.getElementById('lote-fecha').value = hoy;
+  const titulo = document.querySelector('#m-lote-pines .mtit');
+  if (titulo) titulo.textContent = egresoId ? `Nuevo lote de pines · Egreso #${egresoId}` : 'Nuevo lote de pines';
   updLoteTarifas();
   openModal('m-lote-pines');
 }
@@ -6903,7 +6933,8 @@ async function guardarLotePines() {
       tarifa_id: tarifaId,
       proveedor: proveedor || null,
       fecha_compra: fecha || null,
-      estado: 'disponible'
+      estado: 'disponible',
+      egreso_id: _loteEgresoId || null
     }));
     const { error } = await supa.from('pines').insert(rows);
     if (error) throw error;
@@ -7920,12 +7951,77 @@ function renderInventario(lista) {
           <td><span class="b ${estadoClass}">${inv.estado||'—'}</span></td>
           <td class="tda">
             <button class="btn btn-sm btn-ic" onclick="abrirEditarCuenta(this)"><i class="ti ti-edit"></i></button>
+            ${inv.plataforma === 'NF' ? `<button class="btn btn-sm btn-ic" title="Renovar con pin" onclick="abrirRenovarPin('${inv.id}','${inv.fecha_vcto_prov||''}')"><i class="ti ti-rotate-clockwise"></i></button>` : ''}
           </td>`;
         tbody.appendChild(tr2);
       });
     });
 }
 
+
+let _renovarCuentaId = null;
+let _renovarFechaVcto = null;
+
+function abrirRenovarPin(cuentaId, fechaVcto) {
+  _renovarCuentaId = cuentaId;
+  _renovarFechaVcto = fechaVcto;
+  document.getElementById('renovar-pin-sub').textContent = 'Cuenta: ' + cuentaId;
+  document.getElementById('renovar-vcto-actual').value = fechaVcto ? fechaVcto.split('-').reverse().join('/') : '—';
+  document.getElementById('renovar-vcto-nuevo').value = '—';
+  const pinesNF = PINES.filter(p => p.plataforma === 'NF' && p.estado === 'disponible');
+  const sel = document.getElementById('renovar-pin-sel');
+  if (!pinesNF.length) {
+    sel.innerHTML = '<option value="">— Sin pines Netflix disponibles —</option>';
+  } else {
+    sel.innerHTML = pinesNF.map(p => {
+      const t = p.tarifas_pin;
+      const label = t ? `${p.codigo} · ${Number(t.monto_nominal).toLocaleString()} ${t.moneda} · ${t.dias_vigencia}d` : p.codigo;
+      return `<option value="${p.id}" data-dias="${t ? t.dias_vigencia : 0}">${label}</option>`;
+    }).join('');
+  }
+  updRenovarFecha();
+  openModal('m-renovar-pin');
+}
+
+function updRenovarFecha() {
+  const sel = document.getElementById('renovar-pin-sel');
+  const opt = sel.options[sel.selectedIndex];
+  const dias = parseInt(opt?.dataset?.dias || 0);
+  if (!dias || !_renovarFechaVcto) { document.getElementById('renovar-vcto-nuevo').value = '—'; return; }
+  const base = new Date(_renovarFechaVcto + 'T00:00:00');
+  base.setDate(base.getDate() + dias);
+  document.getElementById('renovar-vcto-nuevo').value = base.toLocaleDateString('es-PA', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+async function guardarRenovarPin() {
+  const pinId = document.getElementById('renovar-pin-sel').value;
+  if (!pinId) return toast('Selecciona un pin disponible', 'err');
+  const sel = document.getElementById('renovar-pin-sel');
+  const opt = sel.options[sel.selectedIndex];
+  const dias = parseInt(opt?.dataset?.dias || 0);
+  if (!dias) return toast('El pin seleccionado no tiene días de vigencia', 'err');
+  const base = new Date(_renovarFechaVcto + 'T00:00:00');
+  base.setDate(base.getDate() + dias);
+  const nuevaFecha = base.toISOString().split('T')[0];
+  const hoy = new Date().toISOString().split('T')[0];
+  const btn = document.getElementById('btn-guardar-renovar');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
+  try {
+    const { error: e1 } = await supa.from('inventario').update({ fecha_vcto_prov: nuevaFecha }).eq('id', _renovarCuentaId);
+    if (e1) throw e1;
+    const { error: e2 } = await supa.from('pines').update({ estado: 'usado', cuenta_id: _renovarCuentaId, fecha_uso: hoy }).eq('id', pinId);
+    if (e2) throw e2;
+    await cargarPines();
+    await cargarInventario();
+    closeModal('m-renovar-pin');
+    toast(`Cuenta ${_renovarCuentaId} renovada hasta ${nuevaFecha.split('-').reverse().join('/')} ✓`, 'ok');
+    await dbGuardarHistorial('Renovación con pin', `${_renovarCuentaId} · pin ${opt.text.split(' · ')[0]} · vcto ${nuevaFecha}`, 'var(--accent)');
+  } catch(e) {
+    toast('Error: ' + (e.message || e), 'err');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Confirmar renovación';
+  }
+}
 </script>
 </body>
 </html>
