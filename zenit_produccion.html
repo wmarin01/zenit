@@ -3085,6 +3085,15 @@ async function confirmarCambio(){
       .eq('id', subActual.id);
     if (subErr) throw subErr;
 
+    // 1b. Actualizar estados en tabla perfiles
+    const perfilOrigen = subActual.perfil;
+    if (perfilNuevoCod) {
+      await supa.from('perfiles').update({ estado: 'ocupado' }).eq('id', perfilNuevoCod);
+    }
+    if (perfilOrigen && perfilOrigen !== perfilNuevoCod) {
+      await supa.from('perfiles').update({ estado: 'disponible' }).eq('id', perfilOrigen);
+    }
+
     // 2. Registrar en historial
     await dbGuardarHistorial(
       'Cambio de cuenta',
@@ -3970,6 +3979,9 @@ async function dbCargarPerfilesDisp() {
         origen: p.inventario_id + ' · perfil ' + p.numero
       });
     });
+    Object.keys(PERFILES_DISP).forEach(k => {
+      PERFILES_DISP[k].sort((a, b) => a.codigo.localeCompare(b.codigo));
+    });
 
     console.log('[PERFILES_DISP] Cargados:', {
       NF: PERFILES_DISP.NF.length,
@@ -4577,7 +4589,7 @@ function renderPerfilesVenta() {
   const platsAgotadas = [];
 
   ventaData.plats.forEach(p => {
-    const perfs = PERFILES_DISP[p] || [];
+    const perfs = (PERFILES_DISP[p] || []).slice().sort((a, b) => a.codigo.localeCompare(b.codigo));
     const grupos = {};
     perfs.forEach(perf => {
       if (!grupos[perf.cuenta]) grupos[perf.cuenta] = {correo: perf.correo, items:[]};
@@ -8046,7 +8058,8 @@ async function abrirRenovarPin(cuentaId, fechaVcto) {
   // Cargar pines si aún no están en memoria
   if (!PINES.length) await cargarPines();
   // Mostrar todos los pines NF disponibles, con o sin tarifa
-  const pinesNF = PINES.filter(p => p.plataforma === 'NF' && p.estado === 'disponible');
+  const pinesNF = PINES.filter(p => p.plataforma === 'NF' && p.estado === 'disponible')
+    .sort((a, b) => (a.codigo || '').localeCompare(b.codigo || ''));
   const sel = document.getElementById('renovar-pin-sel');
   if (!pinesNF.length) {
     sel.innerHTML = '<option value="">— Sin pines Netflix disponibles —</option>';
