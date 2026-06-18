@@ -3939,10 +3939,8 @@ function updPlanesDePlat(plat) {
   updPerfilesVenta();
 }
 
-// Perfiles disponibles por plataforma (simulados)
-const PERFILES_DISP = {
-  NF: [], DS: [], HB: [], PV: []
-};
+// Perfiles disponibles por plataforma — se puebla dinámicamente desde Supabase
+let PERFILES_DISP = {};
 
 // Carga perfiles disponibles desde Supabase y puebla PERFILES_DISP para el modal de Nueva Venta.
 // Disponible = perfil de cuenta activa sin suscripción activa asociada.
@@ -3979,13 +3977,13 @@ async function dbCargarPerfilesDisp() {
     if (e3) throw e3;
 
     // 4. Reconstruir PERFILES_DISP: perfiles de cuentas activas sin suscripción activa
-    Object.keys(PERFILES_DISP).forEach(k => { PERFILES_DISP[k] = []; });
+    PLATAFORMAS.forEach(p => { PERFILES_DISP[p.codigo] = []; });
     (perfs || []).forEach(p => {
       const inv = cuentaMap[p.inventario_id];
       if (!inv) return;
       if (ocupados.has(p.id)) return;
       const plat = inv.plataforma;
-      if (!PERFILES_DISP[plat]) return;
+      if (!PERFILES_DISP[plat]) PERFILES_DISP[plat] = [];
       PERFILES_DISP[plat].push({
         codigo: p.id,
         num: p.numero,
