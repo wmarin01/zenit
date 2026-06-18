@@ -5152,7 +5152,7 @@ async function validarCodigoCuenta(inp) {
 const PF_FORMS = {
   plataforma: {ico:'<i class="ti ti-device-tv"></i>', color:'var(--accent2)', body:`
     <div class="fr c2"><div class="fg"><label>Código<span class="req">*</span></label><input type="text" placeholder="Ej: NF, DS, HB"></div><div class="fg"><label>Nombre<span class="req">*</span></label><input type="text" placeholder="Ej: Netflix"></div></div>
-    <div class="fr c2"><div class="fg"><label>Máx. perfiles<span class="req">*</span></label><input type="number" value="5" min="1" max="20"></div><div class="fg"><label>Dígitos PIN<span class="req">*</span></label><select><option value="4">4 dígitos</option><option value="5">5 dígitos</option></select></div></div>
+    <div class="fr c2"><div class="fg"><label>Máx. perfiles<span class="req">*</span></label><input type="number" value="5" min="1" max="20"></div><div class="fg"><label>Dígitos PIN</label><input type="number" id="plat-digitos-pin" value="4" min="0" max="10" placeholder="0 = sin PIN"></div></div>
     <div class="fg"><label>Link (opcional)</label><input type="text" id="plat-link" placeholder="https://..."></div>
     <div class="fg"><label>Estado</label><select><option>Activa</option><option>Inactiva</option></select></div>`},
   precio: {ico:'<i class="ti ti-tag"></i>', color:'var(--green2)', body:`
@@ -7704,9 +7704,11 @@ function editarPlataforma(codigo) {
     if (inputs[0])  inputs[0].value  = p.codigo || '';
     if (inputs[1])  inputs[1].value  = p.nombre || '';
     if (inputs[2])  inputs[2].value  = p.max_perfiles ?? 5;
-    if (inputs[3])  inputs[3].value  = p.link || '';
-    if (selects[0]) selects[0].value = p.digitos_pin ?? 4;
-    if (selects[1]) selects[1].value = p.estado || 'Activa';
+    const pinEl  = body.querySelector('#plat-digitos-pin');
+    const linkEl = body.querySelector('#plat-link');
+    if (pinEl)      pinEl.value      = p.digitos_pin ?? 4;
+    if (linkEl)     linkEl.value     = p.link || '';
+    if (selects[0]) selects[0].value = p.estado || 'Activa';
   }, 50);
 }
 
@@ -7715,12 +7717,12 @@ async function guardarPlataforma() {
   if (!body) return;
   const inputs  = body.querySelectorAll('input');
   const selects = body.querySelectorAll('select');
-  const codigo     = (inputs[0]?.value || '').trim().toUpperCase();
-  const nombre     = (inputs[1]?.value || '').trim();
+  const codigo      = (inputs[0]?.value || '').trim().toUpperCase();
+  const nombre      = (inputs[1]?.value || '').trim();
   const maxPerfiles = parseInt(inputs[2]?.value) || 5;
-  const link       = (inputs[3]?.value || '').trim();
-  const digitosPIN  = parseInt(selects[0]?.value) || 4;
-  const estado     = selects[1]?.value || 'Activa';
+  const digitosPIN  = parseInt(body.querySelector('#plat-digitos-pin')?.value ?? 4);
+  const link        = (body.querySelector('#plat-link')?.value || '').trim();
+  const estado      = selects[0]?.value || 'Activa';
 
   if (!codigo || !nombre) { toast('Código y nombre son requeridos', 'warn'); return; }
 
