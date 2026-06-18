@@ -1729,7 +1729,7 @@ async function intentarLogin() {
       </div>
     </div>
     <div class="fr c2">
-      <div class="fg"><label>Proveedor</label><input type="text" id="lote-proveedor" placeholder="Ej: Streaming JM"></div>
+      <div class="fg"><label>Proveedor</label><select id="lote-proveedor"><option value="">— Seleccionar —</option></select></div>
       <div class="fg"><label>Fecha compra</label><input type="date" id="lote-fecha"></div>
     </div>
     <div class="fg"><label>Códigos de pines<span class="req">*</span></label>
@@ -5650,6 +5650,11 @@ async function cargarSelectoresProveedores() {
   const ep = document.getElementById('egreso-sel-prov');
   if (ep) ep.innerHTML = optsConNoAplica;
 
+  // lote-proveedor (modal nuevo lote de pines) — guarda nombre como texto
+  const lp = document.getElementById('lote-proveedor');
+  if (lp) lp.innerHTML = '<option value="">— Seleccionar —</option>' +
+    data.map(p => `<option value="${p.nombre}">${p.nombre}</option>`).join('');
+
   // egreso-sel-cuenta (modal nuevo egreso) — poblar con todas las cuentas activas
   filtrarCuentasEgreso('');
 }
@@ -6990,8 +6995,10 @@ let _loteMontoEgreso = null;
 async function abrirNuevoLotePines(egresoId, proveedorEgreso, fechaEgreso, montoEgreso) {
   _loteEgresoId = egresoId || null;
   _loteMontoEgreso = montoEgreso ? parseFloat(montoEgreso) : null;
+  await cargarSelectoresProveedores();
   document.getElementById('lote-plat').value = 'NF';
-  document.getElementById('lote-proveedor').value = proveedorEgreso && proveedorEgreso !== '—' ? proveedorEgreso : '';
+  const provSel = document.getElementById('lote-proveedor');
+  if (provSel) provSel.value = proveedorEgreso && proveedorEgreso !== '—' ? proveedorEgreso : '';
   document.getElementById('lote-codigos').value = '';
   document.getElementById('lote-hint').textContent = 'Ingresa un código por línea';
   const ahora = new Date(); const hoy = ahora.getFullYear()+'-'+String(ahora.getMonth()+1).padStart(2,'0')+'-'+String(ahora.getDate()).padStart(2,'0');
