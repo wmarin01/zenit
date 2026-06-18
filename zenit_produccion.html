@@ -3836,6 +3836,8 @@ async function cargarPlanesPrecios() {
     // ── 2. Reconstruir PRECIOS_IND desde Supabase ──
     // Inicializar claves desde PLATAFORMAS y limpiar
     PLATAFORMAS.forEach(p => { PRECIOS_IND[p.codigo] = []; });
+    // Garantizar entrada para cualquier plataforma nueva (IP, etc.)
+    PLATAFORMAS.forEach(p => { if (!PRECIOS_IND[p.codigo]) PRECIOS_IND[p.codigo] = []; });
     data.forEach(p => {
       if (p.tipo !== 'Individual') return;
       const plats = (p.plataformas || '').split('+').map(s => s.trim());
