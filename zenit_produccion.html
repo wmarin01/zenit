@@ -1030,15 +1030,8 @@ async function intentarLogin() {
   </div>
 
   <div class="pp" id="pp-plantillas">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:11px"><button class="btn btn-p btn-sm" onclick="openModal('m-plantilla-form')"><i class="ti ti-plus"></i>Nueva plantilla</button></div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden"><div style="padding:8px 13px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:500">Entrega de cuenta nueva</span><span class="b bi" style="margin-left:auto">Venta</span><button class="btn btn-sm btn-ic" onclick="openModal('m-plantilla-form')"><i class="ti ti-edit"></i></button></div><div style="padding:12px 14px;font-size:12px;line-height:1.7;color:var(--text2)">Hola <span class="wav">{nombre}</span> 🎉 Tu <span class="wav">{plataforma}</span> ya está activa. Correo: <span class="wav">{correo}</span> · Clave: <span class="wav">{clave}</span> · Perfil: <span class="wav">{perfil}</span> · PIN: <span class="wav">{pin}</span> · Vence: <span class="wav">{fecha_vcto}</span> · Próx. pago: <span class="wav">{monto}</span> 🍿</div></div>
-      <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden"><div style="padding:8px 13px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:500">Recordatorio 3 días</span><span class="b ba" style="margin-left:auto">Cobranza</span><button class="btn btn-sm btn-ic" onclick="openModal('m-plantilla-form')"><i class="ti ti-edit"></i></button></div><div style="padding:12px 14px;font-size:12px;line-height:1.7;color:var(--text2)">Hola <span class="wav">{nombre}</span> 👋 Tu <span class="wav">{plataforma}</span> vence en 3 días. Monto: <span class="wav">{monto}</span>. Datos: <span class="wav">{datos_pago}</span> 🙏</div></div>
-      <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden"><div style="padding:8px 13px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:500">Recordatorio 1 día</span><span class="b ba" style="margin-left:auto">Cobranza</span><button class="btn btn-sm btn-ic" onclick="openModal('m-plantilla-form')"><i class="ti ti-edit"></i></button></div><div style="padding:12px 14px;font-size:12px;line-height:1.7;color:var(--text2)">Hola <span class="wav">{nombre}</span>, tu <span class="wav">{plataforma}</span> vence mañana. Envía tu pago de <span class="wav">{monto}</span> para no perder el servicio. 🙏</div></div>
-      <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden"><div style="padding:8px 13px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:500">Confirmación de pago</span><span class="b bg" style="margin-left:auto">Post pago</span><button class="btn btn-sm btn-ic" onclick="openModal('m-plantilla-form')"><i class="ti ti-edit"></i></button></div><div style="padding:12px 14px;font-size:12px;line-height:1.7;color:var(--text2)">Hola <span class="wav">{nombre}</span> ✅ Recibimos tu pago de <span class="wav">{monto}</span> por <span class="wav">{plataforma}</span>. Renovado hasta <span class="wav">{fecha_vcto}</span>. ¡Gracias! 🎉</div></div>
-      <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden"><div style="padding:8px 13px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:500">Cambio de contraseña</span><span class="b bpu" style="margin-left:auto">Seguridad</span><button class="btn btn-sm btn-ic" onclick="openModal('m-plantilla-form')"><i class="ti ti-edit"></i></button></div><div style="padding:12px 14px;font-size:12px;line-height:1.7;color:var(--text2)">Hola <span class="wav">{nombre}</span> 🔐 Por seguridad actualizamos la clave de tu <span class="wav">{plataforma}</span>. Correo: <span class="wav">{correo}</span> · Clave nueva: <span class="wav">{clave_nueva}</span> · Perfil: <span class="wav">{perfil}</span> · PIN: <span class="wav">{pin}</span>. Cualquier duda escríbenos. 🙏</div></div>
-      <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden"><div style="padding:8px 13px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:500">Cambio de cuenta / plataforma</span><span class="b bpu" style="margin-left:auto">Cambio</span><button class="btn btn-sm btn-ic" onclick="openModal('m-plantilla-form')"><i class="ti ti-edit"></i></button></div><div style="padding:12px 14px;font-size:12px;line-height:1.7;color:var(--text2)">Hola <span class="wav">{nombre}</span> 🔄 Actualizamos tu cuenta de <span class="wav">{plataforma}</span>. Correo: <span class="wav">{correo}</span> · Clave: <span class="wav">{clave}</span> · Perfil: <span class="wav">{perfil}</span> · PIN: <span class="wav">{pin}</span>. Tu vencimiento no cambia. 🙏</div></div>
-    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:11px"><button class="btn btn-p btn-sm" onclick="abrirNuevaPlantillaWA()"><i class="ti ti-plus"></i>Nueva plantilla</button></div>
+    <div id="plantillas-wa-lista" style="display:flex;flex-direction:column;gap:10px"></div>
   </div>
   <div class="pp" id="pp-cats">
     <div style="display:flex;justify-content:flex-end;margin-bottom:11px"><button class="btn btn-p btn-sm" onclick="openModal('m-param-form','Nueva categoría')"><i class="ti ti-plus"></i>Nueva categoría</button></div>
@@ -1193,9 +1186,9 @@ async function intentarLogin() {
 <div class="ov" id="m-plantilla-form"><div class="modal" style="max-width:560px">
   <div class="mh"><div class="mico" style="background:#128C7E"><i class="ti ti-brand-whatsapp"></i></div><div><div class="mtit">Plantilla de mensaje</div><div class="msub">Usa {variables} para datos dinámicos</div></div><button class="mcl" onclick="closeModal('m-plantilla-form')"><i class="ti ti-x"></i></button></div>
   <div class="mb">
-    <div class="fr c2"><div class="fg"><label>Nombre<span class="req">*</span></label><input type="text" placeholder="Ej: Recordatorio 3 días"></div><div class="fg"><label>Tipo<span class="req">*</span></label><select><option>Venta</option><option>Cobranza</option><option>Post pago</option><option>Cambio</option><option>Seguridad</option></select></div></div>
-    <div class="fg" style="margin-bottom:10px"><label>Contenido<span class="req">*</span></label><textarea rows="6" placeholder="Usa {nombre}, {plataforma}, {monto}, {fecha_vcto}, {correo}, {clave}, {perfil}, {pin}..."></textarea></div>
-    <div class="ab i" style="margin-bottom:0"><i class="ti ti-info-circle"></i>Variables: <span class="wav">{nombre}</span> <span class="wav">{plataforma}</span> <span class="wav">{monto}</span> <span class="wav">{fecha_vcto}</span> <span class="wav">{correo}</span> <span class="wav">{clave}</span> <span class="wav">{perfil}</span> <span class="wav">{pin}</span></div>
+    <div class="fr c2"><div class="fg"><label>Nombre<span class="req">*</span></label><input type="text" id="plantilla-nombre" placeholder="Ej: Recordatorio 3 días"></div><div class="fg"><label>Tipo<span class="req">*</span></label><select id="plantilla-tipo"><option>Venta</option><option>Cobranza</option><option>Post pago</option><option>Cambio</option><option>Seguridad</option></select></div></div>
+    <div class="fg" style="margin-bottom:10px"><label>Contenido<span class="req">*</span></label><textarea id="plantilla-contenido" rows="6" placeholder="Usa {nombre}, {plataforma}, {monto}, {fecha_vcto}, {correo}, {clave}, {perfil}, {pin}, {link}..."></textarea></div>
+    <div class="ab i" style="margin-bottom:0"><i class="ti ti-info-circle"></i>Variables (click para insertar): <span class="wav" onclick="insertarVarPlantilla('{nombre}')" style="cursor:pointer">{nombre}</span> <span class="wav" onclick="insertarVarPlantilla('{plataforma}')" style="cursor:pointer">{plataforma}</span> <span class="wav" onclick="insertarVarPlantilla('{monto}')" style="cursor:pointer">{monto}</span> <span class="wav" onclick="insertarVarPlantilla('{fecha_vcto}')" style="cursor:pointer">{fecha_vcto}</span> <span class="wav" onclick="insertarVarPlantilla('{correo}')" style="cursor:pointer">{correo}</span> <span class="wav" onclick="insertarVarPlantilla('{clave}')" style="cursor:pointer">{clave}</span> <span class="wav" onclick="insertarVarPlantilla('{perfil}')" style="cursor:pointer">{perfil}</span> <span class="wav" onclick="insertarVarPlantilla('{pin}')" style="cursor:pointer">{pin}</span> <span class="wav" onclick="insertarVarPlantilla('{link}')" style="cursor:pointer">{link}</span></div>
   </div>
   <div class="mf"><button class="btn" onclick="closeModal('m-plantilla-form')">Cancelar</button><button class="btn btn-p" onclick="guardarParam()"><i class="ti ti-check"></i>Guardar plantilla</button></div>
 </div></div>
@@ -3196,6 +3189,23 @@ function guardarParam(){
     }
     closeModal(modalId);
     toast('Guardado correctamente','ok');
+    return;
+  }
+
+  // ── PLANTILLA WA ──────────────────────────────────────────
+  if (modalId === 'm-plantilla-form') {
+    const nombre   = document.getElementById('plantilla-nombre')?.value?.trim();
+    const tipo     = document.getElementById('plantilla-tipo')?.value || 'Venta';
+    const contenido = document.getElementById('plantilla-contenido')?.value?.trim();
+    if (!nombre || !contenido) { toast('Nombre y contenido son requeridos', 'warn'); return; }
+    if (_plantillaEditIdx >= 0) {
+      PLANTILLAS_WA[_plantillaEditIdx] = {nombre, tipo, contenido};
+    } else {
+      PLANTILLAS_WA.push({nombre, tipo, contenido});
+    }
+    closeModal(modalId);
+    renderPlantillasWA();
+    toast('Plantilla guardada correctamente ✓', 'ok');
     return;
   }
 
@@ -7624,6 +7634,80 @@ const _origGoTo = typeof goTo === 'function' ? goTo : null;
 
 
 // ═══════════════════════════════════════════════════════════
+// PLANTILLAS WA
+// ═══════════════════════════════════════════════════════════
+let PLANTILLAS_WA = [
+  {nombre:'Entrega de cuenta nueva',   tipo:'Venta',     contenido:'Hola {nombre} 🎉 Tu {plataforma} ya está activa. Correo: {correo} · Clave: {clave} · Perfil: {perfil} · PIN: {pin} · Vence: {fecha_vcto} · Próx. pago: {monto} 🍿'},
+  {nombre:'Recordatorio 3 días',       tipo:'Cobranza',  contenido:'Hola {nombre} 👋 Tu {plataforma} vence en 3 días. Monto: {monto}. Datos: {datos_pago} 🙏'},
+  {nombre:'Recordatorio 1 día',        tipo:'Cobranza',  contenido:'Hola {nombre}, tu {plataforma} vence mañana. Envía tu pago de {monto} para no perder el servicio. 🙏'},
+  {nombre:'Confirmación de pago',      tipo:'Post pago', contenido:'Hola {nombre} ✅ Recibimos tu pago de {monto} por {plataforma}. Renovado hasta {fecha_vcto}. ¡Gracias! 🎉'},
+  {nombre:'Cambio de contraseña',      tipo:'Seguridad', contenido:'Hola {nombre} 🔐 Por seguridad actualizamos la clave de tu {plataforma}. Correo: {correo} · Clave nueva: {clave_nueva} · Perfil: {perfil} · PIN: {pin}. Cualquier duda escríbenos. 🙏'},
+  {nombre:'Cambio de cuenta / plataforma', tipo:'Cambio', contenido:'Hola {nombre} 🔄 Actualizamos tu cuenta de {plataforma}. Correo: {correo} · Clave: {clave} · Perfil: {perfil} · PIN: {pin}. Tu vencimiento no cambia. 🙏'}
+];
+let _plantillaEditIdx = -1;
+
+const _TIPO_BADGE = {Venta:'bi', Cobranza:'ba', 'Post pago':'bg', Cambio:'bpu', Seguridad:'bpu'};
+
+function renderPlantillasWA() {
+  const lista = document.getElementById('plantillas-wa-lista');
+  if (!lista) return;
+  if (!PLANTILLAS_WA.length) {
+    lista.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0">Sin plantillas. Crea la primera con el botón de arriba.</div>';
+    return;
+  }
+  lista.innerHTML = PLANTILLAS_WA.map((p, i) => {
+    const badge = _TIPO_BADGE[p.tipo] || 'bi';
+    const preview = p.contenido.replace(/\{(\w+)\}/g, '<span class="wav">{$1}</span>');
+    return `<div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+      <div style="padding:8px 13px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;font-weight:500">${p.nombre}</span>
+        <span class="b ${badge}" style="margin-left:auto">${p.tipo}</span>
+        <button class="btn btn-sm btn-ic" onclick="editarPlantillaWA(${i})"><i class="ti ti-edit"></i></button>
+      </div>
+      <div style="padding:12px 14px;font-size:12px;line-height:1.7;color:var(--text2)">${preview}</div>
+    </div>`;
+  }).join('');
+}
+
+function abrirNuevaPlantillaWA() {
+  _plantillaEditIdx = -1;
+  const nom = document.getElementById('plantilla-nombre');
+  const tip = document.getElementById('plantilla-tipo');
+  const cnt = document.getElementById('plantilla-contenido');
+  if (nom) nom.value = '';
+  if (tip) tip.selectedIndex = 0;
+  if (cnt) cnt.value = '';
+  const tit = document.querySelector('#m-plantilla-form .mtit');
+  if (tit) tit.textContent = 'Nueva plantilla';
+  openModal('m-plantilla-form');
+}
+
+function editarPlantillaWA(idx) {
+  const p = PLANTILLAS_WA[idx];
+  if (!p) return;
+  _plantillaEditIdx = idx;
+  const nom = document.getElementById('plantilla-nombre');
+  const tip = document.getElementById('plantilla-tipo');
+  const cnt = document.getElementById('plantilla-contenido');
+  if (nom) nom.value = p.nombre;
+  if (tip) tip.value = p.tipo;
+  if (cnt) cnt.value = p.contenido;
+  const tit = document.querySelector('#m-plantilla-form .mtit');
+  if (tit) tit.textContent = 'Editar plantilla';
+  openModal('m-plantilla-form');
+}
+
+function insertarVarPlantilla(v) {
+  const ta = document.getElementById('plantilla-contenido');
+  if (!ta) return;
+  const ini = ta.selectionStart;
+  const fin = ta.selectionEnd;
+  ta.value = ta.value.substring(0, ini) + v + ta.value.substring(fin);
+  ta.selectionStart = ta.selectionEnd = ini + v.length;
+  ta.focus();
+}
+
+// ═══════════════════════════════════════════════════════════
 // PLATAFORMAS — SUPABASE
 // ═══════════════════════════════════════════════════════════
 let PLATAFORMAS = [];
@@ -7847,6 +7931,8 @@ async function cargarParametros() {
         </tr>`).join('');
     }
   } catch(e) {}
+
+  renderPlantillasWA();
 }
 
 // ═══════════════════════════════════════════════════════════
