@@ -4456,9 +4456,10 @@ function poblarPlanesPorTipo(tipo) {
   selPlan.innerHTML = '<option value="">— Selecciona plan —</option>';
 
   if (tipo === 'individual') {
-    // Planes individuales: todos los planes de PRECIOS_IND agrupados por plataforma
+    // Planes individuales: todos los planes de PRECIOS_IND agrupados por plataforma activa
+    const codsActivos = (PLATAFORMAS||[]).filter(p => p.estado === 'Activa').map(p => p.codigo);
     let hayPlanes = false;
-    ['NF','DS','HB','PV'].forEach(cod => {
+    codsActivos.forEach(cod => {
       const planes = PRECIOS_IND[cod] || [];
       if (!planes.length) return;
       const grp = document.createElement('optgroup');
