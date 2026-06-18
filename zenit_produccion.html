@@ -5489,10 +5489,11 @@ function guardarPrecio() {
       COMBOS.push({id:comboId, plats:selected, precio:totalCombo, desglose:desgloseCombo, perfiles:selected.map(()=>'1').join('+')});
     }
   }
-  // Persistir en Supabase si es edición
+  // Persistir en Supabase
   const precioId = document.getElementById('precio-id')?.value;
+  const precioNum = parseFloat(precioStr.replace('$','')) || 0;
   if (precioId) {
-    const payload = { vigente_desde: fechaStr, precio: parseFloat(precioStr.replace('$','')) || 0 };
+    const payload = { vigente_desde: fechaStr, precio: precioNum };
     if (tipo === 'individual') {
       payload.plataformas = platVal;
       payload.perfiles = perfsVal;
@@ -5504,6 +5505,13 @@ function guardarPrecio() {
       if (error) { toast('Error al guardar en base de datos: ' + error.message, 'err'); return; }
       const idx = PLANES_PRECIOS.findIndex(x => x.id == precioId);
       if (idx >= 0) Object.assign(PLANES_PRECIOS[idx], payload);
+    });
+  } else {
+    const payload = { plataformas: platVal, tipo, perfiles: perfsVal, precio: precioNum, vigente_desde: fechaStr, estado: 'Vigente' };
+    if (tipo === 'combo') payload.desglose = desgParts.join(' + ');
+    supa.from('planes_precios').insert(payload).then(({error}) => {
+      if (error) { toast('Error al guardar en base de datos: ' + error.message, 'err'); return; }
+      cargarPlanesPrecios();
     });
   }
 
