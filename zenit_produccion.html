@@ -828,7 +828,7 @@ async function intentarLogin() {
   </div>
   <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap">
     <div class="sbox" style="flex:1;max-width:280px"><i class="ti ti-search"></i><input type="text" id="inv-busca" placeholder="Buscar cuenta..." oninput="filtrarInventario()"></div>
-    <select id="inv-plat" onchange="filtrarInventario()"><option value="">Todas las plataformas</option><option value="NF">Netflix</option><option value="DS">Disney+</option><option value="HB">HBO Max</option><option value="PV">Prime Video</option></select>
+    <select id="inv-plat" onchange="filtrarInventario()"><option value="">Todas las plataformas</option></select>
     <select id="inv-estado" onchange="filtrarInventario()"><option value="">Todos los estados</option><option value="Activa">Disponible</option><option value="Ocupada">Ocupado</option><option value="Vencida">Vencido</option><option value="Bloqueada">Bloqueado</option></select>
 
   </div>
@@ -912,7 +912,7 @@ async function intentarLogin() {
 <!-- PINES -->
 <div class="view" id="v-pines">
   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-    <select id="pines-filtro-plat" onchange="renderPines()" style="min-width:130px"><option value="">Todas las plataformas</option><option value="NF">Netflix</option><option value="DS">Disney+</option><option value="HB">HBO Max</option><option value="PV">Prime Video</option></select>
+    <select id="pines-filtro-plat" onchange="renderPines()" style="min-width:130px"><option value="">Todas las plataformas</option></select>
     <select id="pines-filtro-est" onchange="renderPines()" style="min-width:130px"><option value="">Todos los estados</option><option value="disponible">Disponible</option><option value="usado">Usado</option></select>
   </div>
   <div id="pines-contadores" style="display:flex;gap:12px;margin-bottom:14px;font-size:13px"></div>
@@ -935,11 +935,8 @@ async function intentarLogin() {
   </div>
   <div class="pp on" id="pp-plat">
     <div style="display:flex;justify-content:flex-end;margin-bottom:11px"><button class="btn btn-p btn-sm" onclick="openModal('m-param-form','Nueva plataforma')"><i class="ti ti-plus"></i>Nueva plataforma</button></div>
-    <div class="card"><div class="tw"><table><thead><tr><th>Código</th><th>Nombre</th><th>Máx. perfiles</th><th>Dígitos PIN</th><th>Estado</th><th></th></tr></thead><tbody id="tb-plat">
-      <tr><td style="font-family:var(--mono)"><strong>NF</strong></td><td>Netflix</td><td>5</td><td>4</td><td><span class="b bg">Activa</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="openModal('m-param-form','Editar plataforma')"><i class="ti ti-edit"></i></button></td></tr>
-      <tr><td style="font-family:var(--mono)"><strong>DS</strong></td><td>Disney+</td><td>7</td><td>4</td><td><span class="b bg">Activa</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="openModal('m-param-form','Editar plataforma')"><i class="ti ti-edit"></i></button></td></tr>
-      <tr><td style="font-family:var(--mono)"><strong>HB</strong></td><td>HBO Max</td><td>5</td><td>4</td><td><span class="b bg">Activa</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="openModal('m-param-form','Editar plataforma')"><i class="ti ti-edit"></i></button></td></tr>
-      <tr><td style="font-family:var(--mono)"><strong>PV</strong></td><td>Prime Video</td><td>6</td><td>5</td><td><span class="b bg">Activa</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="openModal('m-param-form','Editar plataforma')"><i class="ti ti-edit"></i></button></td></tr>
+    <div class="card"><div class="tw"><table><thead><tr><th>Código</th><th>Nombre</th><th>Máx. perfiles</th><th>Dígitos PIN</th><th>Link</th><th>Estado</th><th></th></tr></thead><tbody id="tb-plat">
+      <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Cargando plataformas...</td></tr>
     </tbody></table></div></div>
   </div>
   <div class="pp" id="pp-planes">
@@ -1076,14 +1073,6 @@ async function intentarLogin() {
     <div class="sbox" style="flex:1;max-width:320px"><i class="ti ti-search"></i><input type="text" id="subs-busq" placeholder="Cliente, perfil, teléfono..." oninput="filtSubs(this.value)"></div>
     <select id="subs-filtro-plat" onchange="filtSubsPlat(this.value)">
       <option value="">Todas las plataformas</option>
-      <option value="NF">Netflix</option>
-      <option value="DS">Disney+</option>
-      <option value="HB">HBO Max</option>
-      <option value="PV">Prime Video</option>
-      <option value="NF_SOLO">Netflix (solo)</option>
-      <option value="DS_SOLO">Disney+ (solo)</option>
-      <option value="HB_SOLO">HBO Max (solo)</option>
-      <option value="PV_SOLO">Prime Video (solo)</option>
     </select>
     <select id="subs-filtro-est" onchange="filtSubsEst(this.value)"><option value="">Todos los estados</option><option value="activo">Activos</option><option value="vencido">Vencidos</option><option value="sin_renovar">Sin renovar</option><option value="inactivo">Inactivos</option></select>
     <select id="subs-filtro-dias" onchange="filtSubsDias(this.value)"><option value="">Todos los vencimientos</option><option value="hoy">Vencen hoy</option><option value="3d">En 3 días</option><option value="7d">En 7 días</option></select>
@@ -1120,12 +1109,8 @@ async function intentarLogin() {
   <div class="ab i" style="margin-bottom:14px"><i class="ti ti-info-circle"></i>Credenciales de acceso a los bots de proveedores. <strong>Master:</strong> puede crear y editar. <strong>Operador:</strong> solo consulta para obtener códigos.</div>
   <div style="display:flex;gap:9px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
     <div class="sbox" style="flex:1;max-width:320px"><i class="ti ti-search"></i><input type="text" placeholder="Proveedor, plataforma..." oninput="filtAccesos(this.value)"></div>
-    <select onchange="filtAccesosPlat(this.value)">
+    <select id="accesos-filtro-plat" onchange="filtAccesosPlat(this.value)">
       <option value="">Todas las plataformas</option>
-      <option value="NF">Netflix</option>
-      <option value="DS">Disney+</option>
-      <option value="HB">HBO Max</option>
-      <option value="PV">Prime Video</option>
     </select>
   </div>
   <div class="card" style="padding:0">
@@ -1263,7 +1248,7 @@ async function intentarLogin() {
   <div class="mh"><div class="mico" style="background:var(--green2)"><i class="ti ti-server"></i></div><div><div class="mtit">Nueva cuenta de plataforma</div><div class="msub">Registro de cuenta comprada a proveedor</div></div><button class="mcl" onclick="closeModal('m-cuenta')"><i class="ti ti-x"></i></button></div>
   <div class="mb">
     <div class="fsec"><div class="fst">Datos de la cuenta</div>
-      <div class="fr c3"><div class="fg"><label>Plataforma<span class="req">*</span></label><select id="cuenta-plat" onchange="updCuentaCodigo()"><option value="NF">Netflix (NF)</option><option value="DS">Disney+ (DS)</option><option value="HB">HBO Max (HB)</option><option value="PV">Prime Video (PV)</option></select></div><div class="fg"><label>Proveedor<span class="req">*</span></label><select id="cuenta-prov"><option value="">— Cargando... —</option></select></div><div class="fg"><label>Código<span class="req">*</span></label><input type="text" id="cuenta-codigo" placeholder="NF0001" oninput="validarCodigoCuenta(this)" style="text-transform:uppercase"><div class="hint ok" id="cuenta-codigo-hint">Selecciona plataforma para ver el siguiente disponible</div></div></div>
+      <div class="fr c3"><div class="fg"><label>Plataforma<span class="req">*</span></label><select id="cuenta-plat" onchange="updCuentaCodigo()"></select></div><div class="fg"><label>Proveedor<span class="req">*</span></label><select id="cuenta-prov"><option value="">— Cargando... —</option></select></div><div class="fg"><label>Código<span class="req">*</span></label><input type="text" id="cuenta-codigo" placeholder="NF0001" oninput="validarCodigoCuenta(this)" style="text-transform:uppercase"><div class="hint ok" id="cuenta-codigo-hint">Selecciona plataforma para ver el siguiente disponible</div></div></div>
       <div class="fr c2"><div class="fg"><label>Correo de acceso<span class="req">*</span></label><input type="text" id="cuenta-correo" placeholder="cuenta@gmail.com"></div><div class="fg"><label>Clave de acceso<span class="req">*</span></label><input type="text" id="cuenta-clave" placeholder="Contraseña de la cuenta"></div></div>
     </div>
     <div class="fsec"><div class="fst">Fechas y costo</div>
@@ -1346,10 +1331,6 @@ async function intentarLogin() {
       <div class="fr c3">
         <div class="fg"><label>Plataforma<span class="req">*</span></label>
           <select id="precio-plat">
-            <option value="NF">Netflix (NF)</option>
-            <option value="DS">Disney+ (DS)</option>
-            <option value="HB">HBO Max (HB)</option>
-            <option value="PV">Prime Video (PV)</option>
           </select>
         </div>
         <div class="fg"><label>Cantidad de perfiles<span class="req">*</span></label>
@@ -1728,10 +1709,6 @@ async function intentarLogin() {
     <div class="fr c2">
       <div class="fg"><label>Plataforma<span class="req">*</span></label>
         <select id="lote-plat" onchange="updLoteTarifas()">
-          <option value="NF">Netflix</option>
-          <option value="DS">Disney+</option>
-          <option value="HB">HBO Max</option>
-          <option value="PV">Prime Video</option>
         </select>
       </div>
       <div class="fg"><label>Tarifa<span class="req">*</span></label>
@@ -1758,10 +1735,6 @@ async function intentarLogin() {
     <div class="fr c2">
       <div class="fg"><label>Plataforma<span class="req">*</span></label>
         <select id="tarifa-pin-plat">
-          <option value="NF">Netflix</option>
-          <option value="DS">Disney+</option>
-          <option value="HB">HBO Max</option>
-          <option value="PV">Prime Video</option>
         </select>
       </div>
       <div class="fg"><label>Estado</label>
@@ -1897,7 +1870,7 @@ async function intentarLogin() {
       </div>
       <div><div class="fst" style="color:var(--green);margin-bottom:8px">Cuenta nueva — se asigna</div>
         <div style="background:rgba(62,207,142,.05);border:1px solid rgba(62,207,142,.2);border-radius:var(--r);padding:12px 14px">
-          <div class="fg" id="plat-nueva-grp" style="display:none;margin-bottom:8px"><label>Nueva plataforma<span class="req">*</span></label><select><option>Disney+ (DS)</option><option>HBO Max (HB)</option><option>Prime Video (PV)</option></select></div>
+          <div class="fg" id="plat-nueva-grp" style="display:none;margin-bottom:8px"><label>Nueva plataforma<span class="req">*</span></label><select id="plat-nueva-sel"></select></div>
           <div class="fg" style="margin-bottom:8px"><label>Seleccionar perfil disponible<span class="req">*</span></label>
             <div style="margin-top:5px">
               <input type="text" id="cambio-perfil-busq" placeholder="Buscar perfil o cuenta..." style="margin-bottom:6px;font-size:12px" oninput="filtrarPerfilesCambio(this.value)">
@@ -1985,10 +1958,6 @@ async function intentarLogin() {
         </div>
         <div class="fg"><label>Plataforma<span class="req">*</span></label>
           <select id="acceso-plat">
-            <option value="NF">Netflix (NF)</option>
-            <option value="DS">Disney+ (DS)</option>
-            <option value="HB">HBO Max (HB)</option>
-            <option value="PV">Prime Video (PV)</option>
           </select>
         </div>
       </div>
@@ -2379,7 +2348,7 @@ function goTo(v,el){
       else if (v==='reportes')      ha.innerHTML='';
       else if (v==='tablas')        { ha.innerHTML=''; setTimeout(()=>{ cargarTablaMotivos(); cargarMotivosCambio(); },100); }
       else if (v==='pines')         { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoLotePines()"><i class="ti ti-plus"></i>Nuevo lote</button>`; cargarPines(); cargarTarifasPin(); }
-      else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); cargarTarifasPin(); }
+      else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); cargarPlataformas(); cargarTarifasPin(); }
       else if (v==='accesos')       { 
         ha.innerHTML = (!USUARIO_ACTIVO || USUARIO_ACTIVO.rol === 'Master') 
           ? `<button class="hbtn p" onclick="openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>` : ''; 
@@ -3188,7 +3157,13 @@ function guardarParam(){
     return;
   }
 
-  // ── NUEVO PARÁMETRO (plataforma, banco, forma pago, etc) ──
+  // ── PLATAFORMA: guardar en Supabase ──────────────────────────
+  if (modalId === 'm-param-form' && (_currentParamTitle === 'Nueva plataforma' || _currentParamTitle === 'Editar plataforma')) {
+    guardarPlataforma();
+    return;
+  }
+
+  // ── NUEVO PARÁMETRO (banco, forma pago, etc) ──────────────────
   if (modalId === 'm-param-form') {
     const title = _currentParamTitle;
     const entry = PARAM_MAP[title];
@@ -5178,6 +5153,7 @@ const PF_FORMS = {
   plataforma: {ico:'<i class="ti ti-device-tv"></i>', color:'var(--accent2)', body:`
     <div class="fr c2"><div class="fg"><label>Código<span class="req">*</span></label><input type="text" placeholder="Ej: NF, DS, HB"></div><div class="fg"><label>Nombre<span class="req">*</span></label><input type="text" placeholder="Ej: Netflix"></div></div>
     <div class="fr c2"><div class="fg"><label>Máx. perfiles<span class="req">*</span></label><input type="number" value="5" min="1" max="20"></div><div class="fg"><label>Dígitos PIN<span class="req">*</span></label><select><option value="4">4 dígitos</option><option value="5">5 dígitos</option></select></div></div>
+    <div class="fg"><label>Link (opcional)</label><input type="text" id="plat-link" placeholder="https://..."></div>
     <div class="fg"><label>Estado</label><select><option>Activa</option><option>Inactiva</option></select></div>`},
   precio: {ico:'<i class="ti ti-tag"></i>', color:'var(--green2)', body:`
     <div class="fr c2"><div class="fg"><label>Plataforma<span class="req">*</span></label><select><option>Netflix (NF)</option><option>Disney+ (DS)</option><option>HBO Max (HB)</option><option>Prime Video (PV)</option></select></div><div class="fg"><label>Tipo<span class="req">*</span></label><select><option>Individual</option><option>Combo</option></select></div></div>
@@ -7449,6 +7425,7 @@ async function iniciarApp() {
     await verificarConexion();
     await cargarPlanesPrecios();
     await cargarParametros(); // 🚀 Inyectamos los Bancos y Formas de pago reales a los formularios
+    await cargarPlataformas();
     await dbCargarClientes();
     await dbCargarCobros();
     await dbCargarVentas();
@@ -7645,6 +7622,126 @@ function hoy() {
 // Auto-cargar cuando se entra a reportes
 const _origGoTo = typeof goTo === 'function' ? goTo : null;
 
+
+// ═══════════════════════════════════════════════════════════
+// PLATAFORMAS — SUPABASE
+// ═══════════════════════════════════════════════════════════
+let PLATAFORMAS = [];
+
+async function cargarPlataformas() {
+  try {
+    const {data, error} = await supa.from('plataformas').select('*').order('codigo');
+    if (error) throw error;
+    PLATAFORMAS = data || [];
+    renderPlataformas();
+    poblarSelectsPlataforma();
+  } catch(e) {
+    console.warn('[PLATAFORMAS] Error:', e.message);
+  }
+}
+
+function renderPlataformas() {
+  const tbody = document.getElementById('tb-plat');
+  if (!tbody) return;
+  if (!PLATAFORMAS.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Sin plataformas registradas</td></tr>';
+    return;
+  }
+  tbody.innerHTML = PLATAFORMAS.map(p => `
+    <tr>
+      <td style="font-family:var(--mono)"><strong>${p.codigo}</strong></td>
+      <td>${p.nombre}</td>
+      <td>${p.max_perfiles ?? 5}</td>
+      <td>${p.digitos_pin ?? 4}</td>
+      <td>${p.link ? `<a href="${p.link}" target="_blank" rel="noopener" style="font-size:12px;color:var(--accent)">Abrir</a>` : '—'}</td>
+      <td><span class="b ${p.estado === 'Activa' ? 'bg' : 'ba'}">${p.estado}</span></td>
+      <td class="tda">
+        <button class="btn btn-sm btn-ic" onclick="editarPlataforma('${p.codigo}')"><i class="ti ti-edit"></i></button>
+      </td>
+    </tr>`).join('');
+}
+
+function poblarSelectsPlataforma() {
+  const activas = PLATAFORMAS.filter(p => p.estado === 'Activa');
+  const optsBase  = activas.map(p => `<option value="${p.codigo}">${p.nombre} (${p.codigo})</option>`).join('');
+  const optsPlain = activas.map(p => `<option value="${p.codigo}">${p.nombre}</option>`).join('');
+
+  // Filtros — encabezado "Todas"
+  const filtroOpts = '<option value="">Todas las plataformas</option>' + optsPlain;
+  ['inv-plat', 'pines-filtro-plat', 'accesos-filtro-plat'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = filtroOpts;
+  });
+
+  // subs-filtro-plat — opciones normales + _SOLO
+  const subsSel = document.getElementById('subs-filtro-plat');
+  if (subsSel) {
+    subsSel.innerHTML = '<option value="">Todas las plataformas</option>' +
+      activas.map(p => `<option value="${p.codigo}">${p.nombre}</option>`).join('') +
+      activas.map(p => `<option value="${p.codigo}_SOLO">${p.nombre} (solo)</option>`).join('');
+  }
+
+  // Modales — sin "todas"
+  ['precio-plat', 'cuenta-plat', 'lote-plat', 'tarifa-pin-plat', 'acceso-plat'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = optsBase;
+  });
+
+  // Select de nueva plataforma en modal cambio
+  const platNuevaSel = document.getElementById('plat-nueva-sel');
+  if (platNuevaSel) platNuevaSel.innerHTML = optsBase;
+}
+
+function editarPlataforma(codigo) {
+  const p = PLATAFORMAS.find(x => x.codigo === codigo);
+  if (!p) return;
+  openModal('m-param-form', 'Editar plataforma');
+  setTimeout(() => {
+    const body = document.getElementById('pf-body');
+    if (!body) return;
+    const inputs  = body.querySelectorAll('input');
+    const selects = body.querySelectorAll('select');
+    if (inputs[0])  inputs[0].value  = p.codigo || '';
+    if (inputs[1])  inputs[1].value  = p.nombre || '';
+    if (inputs[2])  inputs[2].value  = p.max_perfiles ?? 5;
+    if (inputs[3])  inputs[3].value  = p.link || '';
+    if (selects[0]) selects[0].value = p.digitos_pin ?? 4;
+    if (selects[1]) selects[1].value = p.estado || 'Activa';
+  }, 50);
+}
+
+async function guardarPlataforma() {
+  const body = document.getElementById('pf-body');
+  if (!body) return;
+  const inputs  = body.querySelectorAll('input');
+  const selects = body.querySelectorAll('select');
+  const codigo     = (inputs[0]?.value || '').trim().toUpperCase();
+  const nombre     = (inputs[1]?.value || '').trim();
+  const maxPerfiles = parseInt(inputs[2]?.value) || 5;
+  const link       = (inputs[3]?.value || '').trim();
+  const digitosPIN  = parseInt(selects[0]?.value) || 4;
+  const estado     = selects[1]?.value || 'Activa';
+
+  if (!codigo || !nombre) { toast('Código y nombre son requeridos', 'warn'); return; }
+
+  const btn = document.querySelector('#m-param-form .btn-p');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...'; }
+
+  try {
+    const {error} = await supa.from('plataformas').upsert(
+      {codigo, nombre, max_perfiles: maxPerfiles, digitos_pin: digitosPIN, link: link || null, estado},
+      {onConflict: 'codigo'}
+    );
+    if (error) throw error;
+    closeModal('m-param-form');
+    await cargarPlataformas();
+    toast('Plataforma guardada correctamente ✓', 'ok');
+  } catch(e) {
+    toast('Error al guardar: ' + (e.message || e), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Guardar'; }
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 // PARÁMETROS — CARGAR DESDE SUPABASE
