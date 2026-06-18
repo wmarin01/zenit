@@ -5432,17 +5432,20 @@ function guardarPrecio() {
 
   let platsHtml = '', tipoHtml = '', perfilesStr = '', precioStr = '', desglose = '—';
   let selected = [], desgParts = [];
+  let platVal = '', perfsVal = '1';
 
   if (tipo === 'individual') {
-    const platVal = document.getElementById('precio-plat')?.value;
-    const perfs = document.getElementById('precio-perfiles')?.value || '1';
+    const platSel = document.getElementById('precio-plat');
+    platVal = platSel?.options[platSel?.selectedIndex]?.value || '';
+    perfsVal = document.getElementById('precio-perfiles')?.value || '1';
     const precio = document.getElementById('precio-val-ind')?.value?.trim();
     if (!platVal || !precio) { toast('Completa plataforma y precio','warn'); return; }
-    const dotColor = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'}[platVal];
-    const platNombre = {NF:'Netflix',DS:'Disney+',HB:'HBO Max',PV:'Prime Video'}[platVal];
+    const platObj = (PLATAFORMAS||[]).find(x => x.codigo === platVal);
+    const dotColor = PC[platVal] || 'var(--accent)';
+    const platNombre = platObj?.nombre || platVal;
     platsHtml = `<span class="pd"><span class="dot" style="background:${dotColor}"></span>${platNombre}</span>`;
     tipoHtml = '<span class="b bi">Individual</span>';
-    perfilesStr = perfs + (perfs==='1'?' perfil':' perfiles');
+    perfilesStr = perfsVal + (perfsVal==='1'?' perfil':' perfiles');
     precioStr = precio.startsWith('$') ? precio : '$'+precio;
   } else {
     const rows = document.querySelectorAll('#precio-combo-rows .precio-combo-row');
@@ -5490,6 +5493,10 @@ function guardarPrecio() {
   const precioId = document.getElementById('precio-id')?.value;
   if (precioId) {
     const payload = { vigente_desde: fechaStr, precio: parseFloat(precioStr.replace('$','')) || 0 };
+    if (tipo === 'individual') {
+      payload.plataformas = platVal;
+      payload.perfiles = perfsVal;
+    }
     if (tipo === 'combo') {
       payload.desglose = desgParts.join(' + ');
     }
