@@ -4463,7 +4463,7 @@ function poblarPlanesPorTipo(tipo) {
       const planes = PRECIOS_IND[cod] || [];
       if (!planes.length) return;
       const grp = document.createElement('optgroup');
-      grp.label = PLATS[cod]?.nombre || cod;
+      grp.label = (PLATAFORMAS||[]).find(p => p.codigo === cod)?.nombre || cod;
       planes.forEach(plan => {
         const opt = document.createElement('option');
         opt.value = cod + '|' + plan.precio.toFixed(2);
