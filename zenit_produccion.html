@@ -2153,7 +2153,7 @@ const WA={
   entrega:(n,p,m,ctx)=>{
     // ctx = {plats, perfilesSel, pins, vcto} — usa getPerfKey para claves indexadas
     const plats = ctx?.plats || [];
-    const PNOM = {NF:'Netflix',DS:'Disney+',HB:'HBO Max',PV:'Prime Video'};
+    const getPNom = cod => (PLATAFORMAS||[]).find(x => x.codigo === cod)?.nombre || {NF:'Netflix',DS:'Disney+',HB:'HBO Max',PV:'Prime Video'}[cod] || cod;
     const PICO = {NF:'🔴',DS:'🔵',HB:'🟣',PV:'🔷'};
 
     // Construir entradas indexadas
@@ -2172,13 +2172,13 @@ const WA={
       // Individual
       const {pl, perf, pin, usr} = entries[0] || {pl:p,perf:{},pin:'—',usr:'—'};
       const link = getLink(pl);
-      return `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu <span class="wav">${PNOM[pl]||pl}</span> ya está activa:\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👁️ Usuario: <span class="wav">${usr}</span>\n🔢 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''} 🍿`;
+      return `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu <span class="wav">${getPNom(pl)}</span> ya está activa:\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👁️ Usuario: <span class="wav">${usr}</span>\n🔢 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''} 🍿`;
     }
     // Multi-perfil o combo
     let msg = `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu combo ya está activo:\n`;
     entries.forEach(({pl, perf, pin, usr}) => {
       const link = getLink(pl);
-      msg += `\n${PICO[pl]||'▶️'} <span class="wav">${PNOM[pl]||pl}</span>\n`;
+      msg += `\n${PICO[pl]||'▶️'} <span class="wav">${getPNom(pl)}</span>\n`;
       msg += `📧 Correo: <span class="wav">${perf?.correo||'—'}</span>\n`;
       msg += `🔑 Clave: <span class="wav">${perf?.clave||'—'}</span>\n`;
       msg += `👁️ Usuario: <span class="wav">${usr}</span>\n`;
