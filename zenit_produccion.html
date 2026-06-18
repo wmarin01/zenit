@@ -4665,6 +4665,8 @@ function renderPerfilesVenta() {
 }
 
 function generarPIN(clienteId, plat, num) {
+  const digitosPIN = (PLATAFORMAS||[]).find(x => x.codigo === plat)?.digitos_pin ?? PLATS[plat]?.pin_dig ?? 4;
+  if (digitosPIN === 0) return '';
   // Buscar cliente en array, o usar nombre del ventaData como fallback
   let cliente = CLIENTES.find(c => c.id === clienteId);
   if (!cliente && ventaData.clienteNombre) {
@@ -4682,7 +4684,7 @@ function generarPIN(clienteId, plat, num) {
   const d1 = getDigit(cliente.n[0]);
   const d2 = getDigit(cliente.a ? cliente.a[0] : 'A');
   const day = new Date().getDate().toString().padStart(2,'0');
-  return PLATS[plat]?.pin_dig === 4 ? d1 + num + day : d1 + d2 + num + day;
+  return digitosPIN === 4 ? d1 + num + day : d1 + d2 + num + day;
 }
 
 function renderPinsVenta() {
