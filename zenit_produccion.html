@@ -4611,18 +4611,21 @@ function renderPerfilesVenta() {
       grupos[perf.cuenta].items.push(perf);
     });
 
+    const platObj = (PLATAFORMAS||[]).find(x => x.codigo === p);
+    const platNom = platObj?.nombre || PLATS[p]?.nombre || p;
+    const platColor = PLATS[p]?.color || 'var(--accent)';
     html += `<div style="margin-bottom:10px">
       <div style="font-size:11px;color:var(--text3);padding:3px 0 6px;border-bottom:1px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:6px">
-        <span class="dot" style="background:${PLATS[p].color};width:8px;height:8px;border-radius:50%"></span>${PLATS[p].nombre}
+        <span class="dot" style="background:${platColor};width:8px;height:8px;border-radius:50%"></span>${platNom}
       </div>`;
 
     if (perfs.length === 0) {
       // Sin perfiles disponibles para esta plataforma
-      platsAgotadas.push(PLATS[p].nombre);
+      platsAgotadas.push(platNom);
       html += `<div class="ab w" style="margin-bottom:6px">
         <i class="ti ti-alert-triangle"></i>
         <div>
-          <div style="font-size:13px;font-weight:500">Sin perfiles disponibles — ${PLATS[p].nombre}</div>
+          <div style="font-size:13px;font-weight:500">Sin perfiles disponibles — ${platNom}</div>
           <div style="font-size:12px;margin-top:3px">No hay perfiles libres para esta plataforma. Agrega cuentas nuevas en Inventario antes de continuar.</div>
         </div>
       </div>`;
