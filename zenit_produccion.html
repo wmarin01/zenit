@@ -1188,7 +1188,14 @@ async function intentarLogin() {
   <div class="mb">
     <div class="fr c2"><div class="fg"><label>Nombre<span class="req">*</span></label><input type="text" id="plantilla-nombre" placeholder="Ej: Recordatorio 3 días"></div><div class="fg"><label>Tipo<span class="req">*</span></label><select id="plantilla-tipo"><option>Venta</option><option>Cobranza</option><option>Post pago</option><option>Cambio</option><option>Seguridad</option></select></div></div>
     <div class="fg" style="margin-bottom:10px"><label>Contenido<span class="req">*</span></label><textarea id="plantilla-contenido" rows="6" placeholder="Usa {nombre}, {plataforma}, {monto}, {fecha_vcto}, {correo}, {clave}, {perfil}, {pin}, {link}..."></textarea></div>
-    <div class="ab i" style="margin-bottom:0"><i class="ti ti-info-circle"></i>Variables (click para insertar): <span class="wav" onclick="insertarVarPlantilla('{nombre}')" style="cursor:pointer">{nombre}</span> <span class="wav" onclick="insertarVarPlantilla('{plataforma}')" style="cursor:pointer">{plataforma}</span> <span class="wav" onclick="insertarVarPlantilla('{monto}')" style="cursor:pointer">{monto}</span> <span class="wav" onclick="insertarVarPlantilla('{fecha_vcto}')" style="cursor:pointer">{fecha_vcto}</span> <span class="wav" onclick="insertarVarPlantilla('{correo}')" style="cursor:pointer">{correo}</span> <span class="wav" onclick="insertarVarPlantilla('{clave}')" style="cursor:pointer">{clave}</span> <span class="wav" onclick="insertarVarPlantilla('{perfil}')" style="cursor:pointer">{perfil}</span> <span class="wav" onclick="insertarVarPlantilla('{pin}')" style="cursor:pointer">{pin}</span> <span class="wav" onclick="insertarVarPlantilla('{link}')" style="cursor:pointer">{link}</span></div>
+    <div class="ab i" style="margin-bottom:10px"><i class="ti ti-info-circle"></i>Variables (click para insertar): <span class="wav" onclick="insertarVarPlantilla('{nombre}')" style="cursor:pointer">{nombre}</span> <span class="wav" onclick="insertarVarPlantilla('{plataforma}')" style="cursor:pointer">{plataforma}</span> <span class="wav" onclick="insertarVarPlantilla('{monto}')" style="cursor:pointer">{monto}</span> <span class="wav" onclick="insertarVarPlantilla('{fecha_vcto}')" style="cursor:pointer">{fecha_vcto}</span> <span class="wav" onclick="insertarVarPlantilla('{correo}')" style="cursor:pointer">{correo}</span> <span class="wav" onclick="insertarVarPlantilla('{clave}')" style="cursor:pointer">{clave}</span> <span class="wav" onclick="insertarVarPlantilla('{perfil}')" style="cursor:pointer">{perfil}</span> <span class="wav" onclick="insertarVarPlantilla('{pin}')" style="cursor:pointer">{pin}</span> <span class="wav" onclick="insertarVarPlantilla('{link}')" style="cursor:pointer">{link}</span></div>
+    <div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:5px;font-weight:500;letter-spacing:.03em">Vista previa</div>
+      <div style="background:#075E54;border-radius:12px 12px 12px 0;padding:12px 14px;max-width:90%;position:relative">
+        <div id="plantilla-preview" style="font-size:13px;color:#fff;line-height:1.65;white-space:pre-wrap;word-break:break-word;min-height:18px"></div>
+        <div style="font-size:10px;color:rgba(255,255,255,.55);text-align:right;margin-top:5px">● WhatsApp</div>
+      </div>
+    </div>
   </div>
   <div class="mf"><button class="btn" onclick="closeModal('m-plantilla-form')">Cancelar</button><button class="btn btn-p" onclick="guardarParam()"><i class="ti ti-check"></i>Guardar plantilla</button></div>
 </div></div>
@@ -7680,6 +7687,7 @@ function abrirNuevaPlantillaWA() {
   const tit = document.querySelector('#m-plantilla-form .mtit');
   if (tit) tit.textContent = 'Nueva plantilla';
   openModal('m-plantilla-form');
+  actualizarPreviewPlantilla();
 }
 
 function editarPlantillaWA(idx) {
@@ -7695,6 +7703,7 @@ function editarPlantillaWA(idx) {
   const tit = document.querySelector('#m-plantilla-form .mtit');
   if (tit) tit.textContent = 'Editar plantilla';
   openModal('m-plantilla-form');
+  actualizarPreviewPlantilla();
 }
 
 function insertarVarPlantilla(v) {
@@ -7705,7 +7714,35 @@ function insertarVarPlantilla(v) {
   ta.value = ta.value.substring(0, ini) + v + ta.value.substring(fin);
   ta.selectionStart = ta.selectionEnd = ini + v.length;
   ta.focus();
+  actualizarPreviewPlantilla();
 }
+
+const _PREVIEW_VARS = {
+  nombre:    'Juan Pérez',
+  plataforma:'Netflix',
+  correo:    'correo@ejemplo.com',
+  clave:     '123456',
+  perfil:    '3',
+  pin:       '7890',
+  monto:     '$4.99',
+  fecha_vcto:'30/06/2026',
+  datos_pago:'Yappy 6000-0000',
+  clave_nueva:'654321',
+  link:      'http://emtv.pro:25461'
+};
+
+function actualizarPreviewPlantilla() {
+  const ta  = document.getElementById('plantilla-contenido');
+  const pre = document.getElementById('plantilla-preview');
+  if (!ta || !pre) return;
+  const texto = ta.value.replace(/\{(\w+)\}/g, (_, k) => _PREVIEW_VARS[k] ?? `{${k}}`);
+  pre.textContent = texto;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const ta = document.getElementById('plantilla-contenido');
+  if (ta) ta.addEventListener('input', actualizarPreviewPlantilla);
+});
 
 // ═══════════════════════════════════════════════════════════
 // PLATAFORMAS — SUPABASE
