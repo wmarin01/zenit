@@ -3834,8 +3834,8 @@ async function cargarPlanesPrecios() {
     });
 
     // ── 2. Reconstruir PRECIOS_IND desde Supabase ──
-    // Limpiar y repoblar
-    Object.keys(PRECIOS_IND).forEach(k => { PRECIOS_IND[k] = []; });
+    // Inicializar claves desde PLATAFORMAS y limpiar
+    PLATAFORMAS.forEach(p => { PRECIOS_IND[p.codigo] = []; });
     data.forEach(p => {
       if (p.tipo !== 'Individual') return;
       const plats = (p.plataformas || '').split('+').map(s => s.trim());
@@ -6784,12 +6784,7 @@ const COMBOS = [
 ];
 
 // Precios individuales por cantidad de perfiles
-const PRECIOS_IND = {
-  NF: [{perfiles:1, precio:10.00},{perfiles:2, precio:9.49},{perfiles:3, precio:13.49}],
-  DS: [{perfiles:1, precio:8.00}],
-  HB: [{perfiles:1, precio:9.00}],
-  PV: [{perfiles:1, precio:7.00}],
-};
+let PRECIOS_IND = {};
 
 function parsearDesgloseCombo(desglose) {
   const map = {};
