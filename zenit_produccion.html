@@ -3839,7 +3839,7 @@ async function cargarPlanesPrecios() {
     // Garantizar entrada para cualquier plataforma nueva (IP, etc.)
     PLATAFORMAS.forEach(p => { if (!PRECIOS_IND[p.codigo]) PRECIOS_IND[p.codigo] = []; });
     data.forEach(p => {
-      if (p.tipo !== 'Individual') return;
+      if ((p.tipo || '').toLowerCase() !== 'individual') return;
       const plats = (p.plataformas || '').split('+').map(s => s.trim());
       if (plats.length !== 1) return;
       const cod = plats[0];
@@ -3860,7 +3860,7 @@ async function cargarPlanesPrecios() {
     // ── 3. Reconstruir COMBOS desde Supabase ──
     COMBOS.length = 0; // vaciar sin romper la referencia
     data.forEach(p => {
-      if (p.tipo !== 'Combo') return;
+      if ((p.tipo || '').toLowerCase() !== 'combo') return;
       const plats = (p.plataformas || '').split('+').map(s => s.trim());
       if (plats.length < 2) return;
       COMBOS.push({
@@ -5510,7 +5510,8 @@ function guardarPrecio() {
       if (idx >= 0) Object.assign(PLANES_PRECIOS[idx], payload);
     });
   } else {
-    const payload = { plataformas: platVal, tipo, perfiles: perfsVal, precio: precioNum, vigente_desde: fechaStr, estado: 'Vigente' };
+    const tipoNorm = tipo === 'individual' ? 'Individual' : 'Combo';
+    const payload = { plataformas: platVal, tipo: tipoNorm, perfiles: perfsVal, precio: precioNum, vigente_desde: fechaStr, estado: 'Vigente' };
     if (tipo === 'combo') payload.desglose = desgParts.join(' + ');
     supa.from('planes_precios').insert(payload).then(({error}) => {
       if (error) { toast('Error al guardar en base de datos: ' + error.message, 'err'); return; }
