@@ -4105,7 +4105,7 @@ async function cargarUsuariosSistema() {
       const esMaster = USUARIO_ACTIVO.rol === 'Master';
 
       // 1. Ocultar menús no permitidos para operadores
-      const vistasOperador = ['dashboard', 'clientes', 'ventas', 'cobros', 'suscripciones', 'cobranza', 'inventario', 'accesos'];
+      const vistasOperador = ['dashboard', 'clientes', 'ventas', 'cobros', 'suscripciones', 'cobranza', 'inventario', 'accesos', 'ayuda'];
       
       document.querySelectorAll('.ni').forEach(item => {
         const onclickVal = item.getAttribute('onclick') || '';
