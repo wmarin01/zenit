@@ -6428,7 +6428,8 @@ function _aplicarFiltrosSubs() {
     }
   }
   if (est)   data = data.filter(s => s.est === est);
-  if (dias)  data = data.filter(s => dias==='hoy' ? s.dias===0 : dias==='3d' ? s.dias<=3 : s.dias<=7);
+  if (dias === 'vencido')    data = data.filter(s => s.dias < 0);
+  if (dias === 'por_vencer') { const n = parseInt(document.getElementById('subs-filtro-dias-num')?.value) || 7; data = data.filter(s => s.dias >= 0 && s.dias <= n); }
   if (busca) {
     const bLower = busca.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     const bDigit = busca.replace(/[^0-9]/g,'');
