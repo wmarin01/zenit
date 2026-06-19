@@ -1183,11 +1183,9 @@ async function intentarLogin() {
     <div class="ab i" style="margin-top:12px"><i class="ti ti-info-circle"></i>Los permisos de la plantilla son la base. Puedes sobreescribir permisos individuales por usuario sin afectar la plantilla.</div>
   </div>
 </div>
-  </div></div>
-
 <!-- AYUDA -->
 <div class="view" id="v-ayuda">
-<div style="max-width:860px;margin:0 auto">
+<div style="max-width:800px;margin:0 auto">
 <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:4px">Manual del Operador</div>
 <div style="color:var(--text2);font-size:13px;margin-bottom:24px">Guía paso a paso para las operaciones más comunes del sistema Zenit.</div>
 
@@ -1507,6 +1505,7 @@ async function intentarLogin() {
 </div>
 </div>
 
+  </div></div>
 <!-- MODALES -->
 <!-- Formularios específicos por parámetro -->
 <div class="ov" id="m-param-form"><div class="modal" style="max-width:520px">
@@ -8721,6 +8720,15 @@ async function guardarRenovarPin() {
     btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Confirmar renovación';
   }
 }
+</script>
+<script>
+document.addEventListener('keydown', function(e) {
+  const ayuda = document.getElementById('v-ayuda');
+  if (!ayuda || !ayuda.classList.contains('on')) return;
+  const cont = document.getElementById('content');
+  if (e.key === 'PageDown') { e.preventDefault(); cont.scrollBy({ top: 500, behavior: 'smooth' }); }
+  else if (e.key === 'PageUp') { e.preventDefault(); cont.scrollBy({ top: -500, behavior: 'smooth' }); }
+});
 </script>
 </body>
 </html>
