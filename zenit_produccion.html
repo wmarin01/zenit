@@ -1068,7 +1068,15 @@ async function intentarLogin() {
       <option value="">Todas las plataformas</option>
     </select>
     <select id="subs-filtro-est" onchange="filtSubsEst(this.value)"><option value="">Todos los estados</option><option value="activo">Activos</option><option value="vencido">Vencidos</option><option value="sin_renovar">Sin renovar</option><option value="inactivo">Inactivos</option></select>
-    <select id="subs-filtro-dias" onchange="filtSubsDias(this.value)"><option value="">Todos los vencimientos</option><option value="hoy">Vencen hoy</option><option value="3d">En 3 días</option><option value="7d">En 7 días</option></select>
+    <select id="subs-filtro-dias" onchange="filtSubsDias(this.value)">
+      <option value="">Todos los vencimientos</option>
+      <option value="vencido">Vencidos</option>
+      <option value="por_vencer">Por vencer en</option>
+    </select>
+    <span id="subs-dias-wrap" style="display:none;align-items:center;gap:5px">
+      <input type="number" id="subs-filtro-dias-num" min="0" max="365" value="7" style="width:64px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg2);color:var(--text);font-size:13px" oninput="_aplicarFiltrosSubs()">
+      <span style="font-size:13px;color:var(--text2);white-space:nowrap">días</span>
+    </span>
   </div>
   <div class="card" style="overflow-x:auto;padding:0">
     <table style="min-width:1400px">
