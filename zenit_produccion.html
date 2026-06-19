@@ -6453,7 +6453,11 @@ function _aplicarFiltrosSubs() {
 }
 function filtSubsPlat(v) { _aplicarFiltrosSubs(); }
 function filtSubsEst(v)  { _aplicarFiltrosSubs(); }
-function filtSubsDias(v) { _aplicarFiltrosSubs(); }
+function filtSubsDias(v) {
+  const wrap = document.getElementById('subs-dias-wrap');
+  wrap.style.display = v === 'por_vencer' ? 'flex' : 'none';
+  _aplicarFiltrosSubs();
+}
 
 
 // ── NORMALIZACIÓN DE TEXTO ───────────────────────────────────
