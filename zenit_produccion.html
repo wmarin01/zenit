@@ -3455,10 +3455,12 @@ async function confirmarCambio(){
     const txtNota = document.querySelector('#m-cambio textarea'); if (txtNota) txtNota.value = '';
     document.querySelectorAll('#cambio-perfiles-lista .pi').forEach(p => p.classList.remove('on'));
     cambioData = {};
-    // Recargar suscripciones sin vaciar el array (evita bloqueo de otros modales)
+    // Recargar suscripciones y perfiles disponibles para reflejar el perfil liberado
     await dbCargarSuscripciones();
+    await dbCargarPerfilesDisp();
     sincronizarPlatsClientes();
     renderSubs(SUBS_FULL);
+    if (document.getElementById('v-inventario')?.classList.contains('on')) cargarInventario();
     toast('Cambio registrado correctamente ✓', 'ok');
 
     // 5. Abrir WA con datos reales (nombre capturado antes del reset; plataforma real del perfil nuevo)
