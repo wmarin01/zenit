@@ -1106,29 +1106,59 @@ async function intentarLogin() {
   </div>
 </div>
 
-<!-- ACCESOS / BOTS -->
+<!-- ACCESOS / MENSAJES WA -->
 <div class="view" id="v-accesos">
-  <div class="ab i" style="margin-bottom:14px"><i class="ti ti-info-circle"></i>Credenciales de acceso a los bots de proveedores. <strong>Master:</strong> puede crear y editar. <strong>Operador:</strong> solo consulta para obtener códigos.</div>
-  <div style="display:flex;gap:9px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
-    <div class="sbox" style="flex:1;max-width:320px"><i class="ti ti-search"></i><input type="text" placeholder="Proveedor, plataforma..." oninput="filtAccesos(this.value)"></div>
-    <select id="accesos-filtro-plat" onchange="filtAccesosPlat(this.value)">
-      <option value="">Todas las plataformas</option>
-    </select>
+  <div class="tabs" id="accesos-tabs" style="margin-bottom:16px">
+    <div class="tab on" onclick="tabAccesos(this,'ac-mensajes')"><i class="ti ti-brand-whatsapp"></i> Mensajes recientes</div>
+    <div class="tab" onclick="tabAccesos(this,'ac-codigos')"><i class="ti ti-key"></i> Códigos</div>
   </div>
-  <div class="card" style="padding:0">
-    <div class="tw"><table>
-      <thead><tr>
-        <th>Proveedor</th>
-        <th>Plataforma</th>
-        <th>Link / Bot</th>
-        <th>Correo / Usuario</th>
-        <th>Clave</th>
-        <th>Notas</th>
-        <th>Actualizado</th>
-        <th>Acciones</th>
-      </tr></thead>
-      <tbody id="tb-accesos"></tbody>
-    </table></div>
+
+  <!-- Tab: Mensajes recientes -->
+  <div id="ac-mensajes">
+    <div style="display:flex;gap:9px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <div class="sbox" style="flex:1;max-width:300px"><i class="ti ti-search"></i><input type="text" id="wa-busq" placeholder="Cliente, tipo..." oninput="filtMensajesWA()"></div>
+      <select id="wa-filtro-tipo" onchange="filtMensajesWA()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg2);color:var(--text);font-size:13px">
+        <option value="">Todos los tipos</option>
+        <option value="entrega">Entrega</option>
+        <option value="cambio">Cambio</option>
+        <option value="vencimiento">Vencimiento</option>
+        <option value="1d">1 día</option>
+        <option value="3d">3 días</option>
+        <option value="pago">Pago</option>
+      </select>
+      <select id="wa-filtro-est" onchange="filtMensajesWA()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg2);color:var(--text);font-size:13px">
+        <option value="">Todos los estados</option>
+        <option value="pendiente">Pendiente</option>
+        <option value="enviado">Enviado</option>
+      </select>
+      <button class="btn btn-sm btn-ic" onclick="cargarMensajesWA()" title="Actualizar lista"><i class="ti ti-refresh"></i></button>
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table style="min-width:860px">
+        <thead><tr>
+          <th>Fecha/hora</th>
+          <th>Cliente</th>
+          <th>Teléfono</th>
+          <th>Tipo</th>
+          <th style="min-width:200px">Vista previa</th>
+          <th>Estado</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="tb-mensajes-wa">
+          <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:var(--text3)">Mensajes de las últimas 72 horas</div>
+  </div>
+
+  <!-- Tab: Códigos -->
+  <div id="ac-codigos" style="display:none">
+    <div class="card" style="text-align:center;padding:52px 24px">
+      <i class="ti ti-key" style="font-size:44px;color:var(--text3);display:block;margin-bottom:14px"></i>
+      <div style="font-size:16px;font-weight:600;color:var(--text2);margin-bottom:6px">Códigos de verificación</div>
+      <div style="font-size:13px;color:var(--text3)">Próximamente</div>
+    </div>
   </div>
 </div>
 <!-- HISTORIAL -->
@@ -2707,10 +2737,9 @@ function goTo(v,el){
       else if (v==='tablas')        { ha.innerHTML=''; setTimeout(()=>{ cargarTablaMotivos(); cargarMotivosCambio(); },100); }
       else if (v==='pines')         { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoLotePines()"><i class="ti ti-plus"></i>Nuevo lote</button>`; cargarPines(); cargarTarifasPin(); }
       else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); cargarPlataformas(); cargarTarifasPin(); }
-      else if (v==='accesos')       { 
-        ha.innerHTML = (!USUARIO_ACTIVO || USUARIO_ACTIVO.rol === 'Master') 
-          ? `<button class="hbtn p" onclick="openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>` : ''; 
-        setTimeout(()=>{ if(typeof dbCargarAccesos==='function') dbCargarAccesos(); },100); 
+      else if (v==='accesos')       {
+        ha.innerHTML = '';
+        cargarMensajesWA();
       }
   else if (v==='historial')     { ha.innerHTML=''; setTimeout(()=>{ if(typeof dbCargarHistorial==='function') dbCargarHistorial(); },100); }
   else if (v==='usuarios')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-usuario')"><i class="ti ti-plus"></i>Nuevo usuario</button>`;
@@ -2914,13 +2943,14 @@ function closeModal(id){const ov=document.getElementById(id);if(ov)ov.classList.
 document.querySelectorAll('.ov').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('on');}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.ov.on').forEach(ov=>ov.classList.remove('on'));});
 
-function abrirWA(n,p,m,tipo,ctx){
-  waCtx={n,p,m,ctx}; // guardar ctx para cambios de plantilla
+function abrirWA(n,p,m,tipo,ctx,meta){
+  waCtx={n,p,m,ctx,meta};
   document.getElementById('wa-tit').textContent='Mensaje para '+n;
   document.getElementById('wa-sub').textContent=p+' · '+m;
   const sel=document.querySelector('#m-wa select');if(sel)sel.value=tipo;
   const fn = WA[tipo]||WA.vencimiento;
   document.getElementById('wa-txt').innerHTML = fn(n,p,m,ctx);
+  guardarMensajeWA(meta?.clienteId||'', n, meta?.tel||'', tipo, document.getElementById('wa-txt').innerText);
   openModal('m-wa');
 }
 function cambPlant(v){document.getElementById('wa-txt').innerHTML=(WA[v]||WA.vencimiento)(waCtx.n,waCtx.p,waCtx.m,waCtx.ctx);}
@@ -3188,7 +3218,8 @@ async function confirmarVenta(){
           plats:       ventaData.plats,
           usuarios:    usuarios,
           pins:        pins
-        }
+        },
+        { clienteId: ventaData.clienteId, tel: ventaData.clienteTel }
       );
       // Reset completo del modal para la siguiente venta
       const hoy2 = new Date();
@@ -3447,6 +3478,7 @@ async function confirmarCambio(){
     // Capturar datos del cliente antes del reset de cambioData
     const clienteNombreWA = cambioData.clienteNombre || '';
     const clienteTelWA    = cambioData.clienteTel    || '';
+    const clienteIdWA     = cambioData.clienteId     || '';
 
     closeModal('m-cambio');
     // Reset completo del formulario de cambio
@@ -3474,7 +3506,7 @@ async function confirmarCambio(){
       pin:     pinNuevo || subActual.pin,
       vcto:    vcto,
       platCod: perfilNuevoPlat
-    }), 400);
+    }, { clienteId: clienteIdWA, tel: clienteTelWA }), 400);
 
   } catch(e) {
     console.error('Error en cambio:', e);
@@ -8730,6 +8762,120 @@ async function guardarRenovarPin() {
 }
 </script>
 <script>
+// ── MENSAJES WHATSAPP ────────────────────────────────────────────────────────
+
+let MENSAJES_WA_CACHE = [];
+
+async function guardarMensajeWA(clienteId, clienteNombre, telefono, tipo, contenido) {
+  try {
+    await supa.from('mensajes_wa').insert({
+      cliente_id:     clienteId || null,
+      cliente_nombre: clienteNombre || '—',
+      telefono:       telefono || null,
+      tipo:           tipo || 'otro',
+      contenido:      contenido || '',
+      estado:         'pendiente'
+    });
+  } catch(e) {
+    console.warn('[WA] No se pudo guardar mensaje:', e.message);
+  }
+}
+
+async function cargarMensajesWA() {
+  const tbody = document.getElementById('tb-mensajes-wa');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
+  try {
+    const desde = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supa
+      .from('mensajes_wa')
+      .select('*')
+      .gte('created_at', desde)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    MENSAJES_WA_CACHE = data || [];
+    _renderMensajesWA(MENSAJES_WA_CACHE);
+  } catch(e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--red);padding:24px">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function filtMensajesWA() {
+  const q    = (document.getElementById('wa-busq')?.value || '').toLowerCase().trim();
+  const tipo = document.getElementById('wa-filtro-tipo')?.value || '';
+  const est  = document.getElementById('wa-filtro-est')?.value  || '';
+  let data = MENSAJES_WA_CACHE;
+  if (tipo) data = data.filter(m => m.tipo === tipo);
+  if (est)  data = data.filter(m => m.estado === est);
+  if (q)    data = data.filter(m =>
+    (m.cliente_nombre||'').toLowerCase().includes(q) ||
+    (m.tipo||'').toLowerCase().includes(q) ||
+    (m.telefono||'').includes(q)
+  );
+  _renderMensajesWA(data);
+}
+
+function _renderMensajesWA(data) {
+  const tbody = document.getElementById('tb-mensajes-wa');
+  if (!tbody) return;
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin mensajes en las últimas 72 horas</td></tr>';
+    return;
+  }
+  const TIPO_LABEL = { entrega:'Entrega', cambio:'Cambio', vencimiento:'Vencimiento', '1d':'1 día', '3d':'3 días', pago:'Pago' };
+  tbody.innerHTML = data.map(m => {
+    const fecha = new Date(m.created_at);
+    const fStr  = fecha.toLocaleDateString('es',{day:'2-digit',month:'2-digit'}) + ' ' +
+                  fecha.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+    const prev  = (m.contenido||'').replace(/\n/g,' ').substring(0,60) + ((m.contenido||'').length > 60 ? '…' : '');
+    const esBadge = m.estado === 'enviado'
+      ? `<span class="b bg" id="wa-est-${m.id}">Enviado</span>`
+      : `<span class="b ba" id="wa-est-${m.id}">Pendiente</span>`;
+    const tel = (m.telefono||'').replace(/[^0-9+]/g,'');
+    const waUrl = tel ? `https://wa.me/${tel.replace('+','')}?text=${encodeURIComponent(m.contenido||'')}` : '';
+    return `<tr>
+      <td style="font-size:12px;white-space:nowrap;font-family:var(--mono)">${fStr}</td>
+      <td><strong>${m.cliente_nombre||'—'}</strong></td>
+      <td style="font-size:12px">${m.telefono||'—'}</td>
+      <td><span class="b bi">${TIPO_LABEL[m.tipo]||m.tipo||'—'}</span></td>
+      <td style="font-size:12px;color:var(--text2);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(m.contenido||'').replace(/"/g,'&quot;').replace(/\n/g,' ')}">${prev}</td>
+      <td>${esBadge}</td>
+      <td class="tda" style="white-space:nowrap">
+        ${waUrl
+          ? `<a href="${waUrl}" target="_blank" class="btn btn-sm btn-a btn-ic" title="Reenviar por WhatsApp"><i class="ti ti-brand-whatsapp"></i></a>`
+          : `<button class="btn btn-sm btn-ic" disabled title="Sin teléfono registrado"><i class="ti ti-brand-whatsapp"></i></button>`}
+        <button class="btn btn-sm btn-ic" onclick="marcarWAEnviado('${m.id}')" title="Marcar como enviado"${m.estado==='enviado'?' disabled':''}><i class="ti ti-check"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function marcarWAEnviado(id) {
+  try {
+    const { error } = await supa.from('mensajes_wa').update({ estado: 'enviado' }).eq('id', id);
+    if (error) throw error;
+    const badge = document.getElementById('wa-est-' + id);
+    if (badge) { badge.textContent = 'Enviado'; badge.className = 'b bg'; }
+    const fila = badge?.closest('tr');
+    if (fila) { const btn = fila.querySelector('button:last-child'); if (btn) btn.disabled = true; }
+    const rec = MENSAJES_WA_CACHE.find(m => m.id === id);
+    if (rec) rec.estado = 'enviado';
+  } catch(e) {
+    toast('Error al actualizar estado', 'error');
+  }
+}
+
+function tabAccesos(el, panelId) {
+  document.querySelectorAll('#accesos-tabs .tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+  ['ac-mensajes','ac-codigos'].forEach(id => {
+    const p = document.getElementById(id);
+    if (p) p.style.display = id === panelId ? 'block' : 'none';
+  });
+}
+
+// ── FIN MENSAJES WHATSAPP ─────────────────────────────────────────────────────
+
 document.addEventListener('keydown', function(e) {
   const ayuda = document.getElementById('v-ayuda');
   if (!ayuda || !ayuda.classList.contains('on')) return;
