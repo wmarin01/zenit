@@ -8845,6 +8845,7 @@ function _renderMensajesWA(data) {
           ? `<a href="${waUrl}" target="_blank" class="btn btn-sm btn-a btn-ic" title="Reenviar por WhatsApp"><i class="ti ti-brand-whatsapp"></i></a>`
           : `<button class="btn btn-sm btn-ic" disabled title="Sin teléfono registrado"><i class="ti ti-brand-whatsapp"></i></button>`}
         <button class="btn btn-sm btn-ic" onclick="marcarWAEnviado('${m.id}')" title="Marcar como enviado"${m.estado==='enviado'?' disabled':''}><i class="ti ti-check"></i></button>
+        <button class="btn btn-sm btn-ic" onclick="copiarMensajeWA(this)" data-contenido="${(m.contenido||'').replace(/"/g,'&quot;')}" title="Copiar mensaje"><i class="ti ti-copy"></i></button>
       </td>
     </tr>`;
   }).join('');
@@ -8863,6 +8864,13 @@ async function marcarWAEnviado(id) {
   } catch(e) {
     toast('Error al actualizar estado', 'error');
   }
+}
+
+function copiarMensajeWA(btn) {
+  const texto = btn.dataset.contenido || '';
+  navigator.clipboard.writeText(texto).then(() => {
+    toast('Mensaje copiado ✓', 'ok');
+  }).catch(() => toast('No se pudo copiar', 'warn'));
 }
 
 function tabAccesos(el, panelId) {
