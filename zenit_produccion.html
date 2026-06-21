@@ -864,16 +864,48 @@ async function intentarLogin() {
 </div>
 <!-- REPORTES -->
 <div class="view" id="v-reportes">
-  <div class="g2">
-    <div class="card"><div class="ct"><i class="ti ti-chart-bar" style="color:var(--green)"></i>Rentabilidad</div>
-      <div class="sum">
-        <div class="sr"><span class="sl">Próximamente</span><span style="color:var(--text3)">—</span></div>
+  <!-- Filtros + exportar -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="ct" style="margin-bottom:14px"><i class="ti ti-calendar-stats" style="color:var(--accent)"></i>Reporte de Vencimientos</div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+      <div class="fg" style="flex:0 0 auto;min-width:140px">
+        <label>Tipo</label>
+        <select id="vct-tipo" style="width:100%">
+          <option value="vencer">Por vencer</option>
+          <option value="vencidos">Vencidos</option>
+          <option value="todos">Todos</option>
+        </select>
       </div>
+      <div class="fg" style="flex:0 0 auto;min-width:90px">
+        <label>Días</label>
+        <input type="number" id="vct-dias" value="7" min="0" max="365" style="width:100%">
+      </div>
+      <div class="fg" style="flex:0 0 auto;min-width:150px">
+        <label>Plataforma</label>
+        <select id="vct-plat" style="width:100%"><option value="">Todas</option></select>
+      </div>
+      <button class="btn btn-p" onclick="vctGenerar()" style="flex-shrink:0"><i class="ti ti-refresh"></i>Generar</button>
     </div>
-    <div class="card"><div class="ct"><i class="ti ti-users" style="color:var(--accent)"></i>Clientes activos</div>
-      <div class="sum">
-        <div class="sr"><span class="sl">Próximamente</span><span style="color:var(--text3)">—</span></div>
-      </div>
+    <div style="margin-top:12px;font-size:12px;color:var(--text3)" id="vct-info">Configura los filtros y haz clic en Generar.</div>
+    <div id="vct-export-bar" style="display:none;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <button onclick="vctExportar('excel')" style="background:#1D6F42;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+      <button onclick="vctExportar('pdf')"   style="background:#DC2626;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+      <button onclick="vctExportar('word')"  style="background:#2B579A;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+    </div>
+  </div>
+  <!-- Tabla de resultados -->
+  <div class="card">
+    <div class="tw">
+      <table>
+        <thead><tr>
+          <th>Perfil</th><th>Plataforma</th><th>Tipo</th><th>Cliente</th>
+          <th>Cód. País</th><th>Teléfono</th><th>Monto</th>
+          <th>F. Vencimiento</th><th>Días</th><th>Estado</th><th></th>
+        </tr></thead>
+        <tbody id="vct-tbody">
+          <tr><td colspan="11" style="text-align:center;padding:30px;color:var(--text3)">Genera un reporte para ver los resultados</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -2754,7 +2786,7 @@ function goTo(v,el){
       }
       else if (v==='proveedores')   { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoProveedor()"><i class="ti ti-plus"></i>Nuevo proveedor</button>`; dbCargarProveedores(); }
       else if (v==='egresos')       { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoEgreso()"><i class="ti ti-plus"></i>Nuevo egreso</button>`; dbCargarEgresos(); }
-      else if (v==='reportes')      ha.innerHTML='';
+      else if (v==='reportes')      { ha.innerHTML=''; vctInit(); }
       else if (v==='tablas')        { ha.innerHTML=''; setTimeout(()=>{ cargarTablaMotivos(); cargarMotivosCambio(); },100); }
       else if (v==='pines')         { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoLotePines()"><i class="ti ti-plus"></i>Nuevo lote</button>`; cargarPines(); cargarTarifasPin(); }
       else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); cargarPlataformas(); cargarTarifasPin(); }
@@ -8353,9 +8385,182 @@ function hoy() {
   return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// Auto-cargar cuando se entra a reportes
-const _origGoTo = typeof goTo === 'function' ? goTo : null;
+// ═══════════════════════════════════════════════════════════
+// REPORTE DE VENCIMIENTOS
+// ═══════════════════════════════════════════════════════════
+let VCT_DATA = [];
 
+function vctInit() {
+  const sel = document.getElementById('vct-plat');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Todas</option>' +
+    (PLATAFORMAS || []).map(p => `<option value="${p.codigo}">${p.nombre || p.codigo}</option>`).join('');
+}
+
+function vctSplitTel(tel) {
+  if (!tel) return { code: '', num: '—' };
+  const raw = tel.replace(/[^\d+]/g, '');
+  const entry = Object.values(PHONE_CONFIG).find(cfg => cfg.code && raw.startsWith(cfg.code));
+  if (!entry || !entry.code) return { code: '', num: tel };
+  const local = raw.slice(entry.code.length);
+  let masked = '', di = 0;
+  if (entry.mask) {
+    for (let i = 0; i < entry.mask.length && di < local.length; i++) {
+      if (entry.mask[i] === '#') { masked += local[di++]; }
+      else if (di > 0) { masked += entry.mask[i]; }
+    }
+    if (di < local.length) masked += local.slice(di);
+  } else {
+    masked = local;
+  }
+  return { code: entry.code, num: masked || local };
+}
+
+function vctGenerar() {
+  const tipo = document.getElementById('vct-tipo')?.value || 'vencer';
+  const dias = parseInt(document.getElementById('vct-dias')?.value) || 7;
+  const plat = document.getElementById('vct-plat')?.value || '';
+
+  let data = SUBS_FULL.filter(s => s.est === 'activo' || s.est === 'sin_renovar');
+  if (plat) data = data.filter(s => s.plat === plat);
+  if (tipo === 'vencer')   data = data.filter(s => s.dias >= 0 && s.dias <= dias);
+  else if (tipo === 'vencidos') data = data.filter(s => s.dias < 0 && Math.abs(s.dias) <= dias);
+  data = [...data].sort((a, b) => a.dias - b.dias);
+
+  VCT_DATA = data.map(s => {
+    const sp = vctSplitTel(s.tel);
+    const platNom = (PLATAFORMAS || []).find(p => p.codigo === s.plat)?.nombre || s.plat || '—';
+    return {
+      perfil:  s.perfil || '—',
+      plat:    s.plat   || '—',
+      platNom,
+      tipo:    s.tipo   || '—',
+      nombre:  s.nombre || '—',
+      tel:     s.tel,
+      codPais: sp.code,
+      numTel:  sp.num,
+      monto:   s.monto  || 0,
+      fVcto:   s.fVcto  || '—',
+      dias:    s.dias,
+      est:     s.est
+    };
+  });
+
+  const tipoLabel = tipo === 'vencer'
+    ? `Por vencer en los próximos ${dias} días`
+    : tipo === 'vencidos'
+      ? `Vencidos hace ${dias} días o menos`
+      : 'Todos';
+  const platLabel = plat
+    ? (PLATAFORMAS || []).find(p => p.codigo === plat)?.nombre || plat
+    : 'todas las plataformas';
+  document.getElementById('vct-info').textContent =
+    `${VCT_DATA.length} suscripci${VCT_DATA.length !== 1 ? 'ones' : 'ón'} — ${tipoLabel} · ${platLabel}`;
+
+  const bar = document.getElementById('vct-export-bar');
+  if (bar) bar.style.display = VCT_DATA.length ? 'flex' : 'none';
+
+  vctRenderizar();
+}
+
+function vctRenderizar() {
+  const tbody = document.getElementById('vct-tbody');
+  if (!tbody) return;
+  if (!VCT_DATA.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--text3)">Sin resultados para los filtros seleccionados</td></tr>';
+    return;
+  }
+  const PC = { NF:'var(--nf)', DS:'var(--ds)', HB:'var(--hb)', PV:'var(--pv)', IP:'var(--accent)' };
+  tbody.innerHTML = VCT_DATA.map((r, i) => {
+    const diasAbs = Math.abs(r.dias);
+    const diasBadge = r.dias < 0
+      ? `<span class="b br">Hace ${diasAbs}d</span>`
+      : r.dias === 0
+        ? `<span class="b br">Hoy</span>`
+        : r.dias <= 3
+          ? `<span class="b ba">${r.dias}d</span>`
+          : `<span class="b bi">${r.dias}d</span>`;
+    const estBadge = r.est === 'activo'
+      ? '<span class="b bg">Activo</span>'
+      : '<span class="b ba">Sin renovar</span>';
+    const platColor = PC[r.plat] || 'var(--accent)';
+    const tipoBadge = r.tipo === 'Combo'
+      ? '<span class="b bpu">Combo</span>'
+      : '<span class="b bi">Individual</span>';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:11px">${r.perfil}</td>
+      <td><span class="pd"><span class="dot" style="background:${platColor}"></span>${r.platNom}</span></td>
+      <td>${tipoBadge}</td>
+      <td><strong>${r.nombre}</strong></td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--text3)">${r.codPais}</td>
+      <td style="font-family:var(--mono);font-size:12px">${r.numTel}</td>
+      <td style="color:var(--green);font-weight:500">$${Number(r.monto).toFixed(2)}</td>
+      <td style="font-size:12px;white-space:nowrap">${r.fVcto}</td>
+      <td>${diasBadge}</td>
+      <td>${estBadge}</td>
+      <td><button class="btn btn-sm btn-a" onclick="vctCopiarWA(${i})" title="Copiar mensaje WA"><i class="ti ti-brand-whatsapp"></i>WA</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function vctCopiarWA(idx) {
+  const r = VCT_DATA[idx];
+  if (!r) return;
+  const nombre = r.nombre.split(' ')[0];
+  const msg = `Hola ${nombre}, tu ${r.platNom} vence el ${r.fVcto}. Monto: $${Number(r.monto).toFixed(2)}. Contáctanos para renovar. 🙏`;
+  navigator.clipboard.writeText(msg)
+    .then(() => toast('Mensaje copiado ✓', 'ok'))
+    .catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = msg;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('Mensaje copiado ✓', 'ok');
+    });
+}
+
+function vctExportar(formato) {
+  if (!VCT_DATA.length) { toast('No hay datos para exportar', 'warn'); return; }
+  const cols = ['Perfil','Plataforma','Tipo','Cliente','Cód. País','Teléfono','Monto','F. Vencimiento','Días','Estado'];
+  const rowFn = r => [
+    r.perfil, r.platNom, r.tipo, r.nombre, r.codPais, r.numTel,
+    '$' + Number(r.monto).toFixed(2), r.fVcto,
+    r.dias < 0 ? `Hace ${Math.abs(r.dias)} días` : r.dias === 0 ? 'Hoy' : `${r.dias} días`,
+    r.est
+  ];
+  const w = v => String(v ?? '');
+  if (formato === 'excel') {
+    const lines = [cols.map(w).join('\t'), ...VCT_DATA.map(r => rowFn(r).map(w).join('\t'))];
+    descargar(new Blob([lines.join('\n')], { type: 'text/tab-separated-values;charset=utf-8' }), `zenit_vencimientos_${hoy()}.xls`);
+  } else if (formato === 'pdf' || formato === 'word') {
+    const thColor = formato === 'word' ? '#2B579A' : '#1F4E79';
+    const html = `<html><head><meta charset="utf-8"><style>
+      body{font-family:Arial,sans-serif;font-size:11px;margin:20px}
+      h2{margin:0 0 4px;font-size:14px}p{margin:0 0 14px;font-size:10px;color:#555}
+      table{border-collapse:collapse;width:100%}
+      th{background:${thColor};color:#fff;padding:6px 8px;text-align:left;font-size:10px}
+      td{padding:5px 8px;border-bottom:1px solid #eee;font-size:10px}
+      tr:nth-child(even)td{background:#f9f9f9}
+      @media print{@page{size:landscape;margin:12mm}}
+    </style></head><body>
+      <h2>ZENIT — Reporte de Vencimientos</h2>
+      <p>Fecha: ${new Date().toLocaleDateString('es-PA')} &nbsp;|&nbsp; Registros: ${VCT_DATA.length}</p>
+      <table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+      <tbody>${VCT_DATA.map(r=>'<tr>'+rowFn(r).map(v=>`<td>${w(v)}</td>`).join('')+'</tr>').join('')}</tbody>
+      </table></body></html>`;
+    if (formato === 'word') {
+      descargar(new Blob([html], { type: 'application/msword' }), `zenit_vencimientos_${hoy()}.doc`);
+    } else {
+      const win = window.open('', '_blank');
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      setTimeout(() => win.print(), 400);
+    }
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 // PLANTILLAS WA
