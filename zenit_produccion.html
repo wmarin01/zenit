@@ -824,11 +824,11 @@ async function intentarLogin() {
       <i class="ti ti-checkbox" style="color:var(--red);font-size:16px"></i>
       <span id="cobvenc-count" style="font-size:13px;color:var(--text);flex:1">0 seleccionados</span>
       <button class="btn btn-sm" id="btn-marcar-sinrenovar" style="display:none;background:var(--red);color:#fff;border-color:var(--red)" onclick="marcarSinRenovar()"><i class="ti ti-ban"></i>Marcar Sin renovar</button>
-      <button class="btn btn-sm" onclick="selAllCobVencidos(document.getElementById('chk-all-vencidos'),false)"><i class="ti ti-x"></i>Limpiar</button>
+      <button class="btn btn-sm" onclick="clearSelVencidos()"><i class="ti ti-x"></i>Limpiar</button>
     </div>
     <div class="card"><div class="tw"><table><thead><tr>
       <th style="width:36px;text-align:center"><input type="checkbox" id="chk-all-vencidos" onchange="selAllCobVencidos(this)" title="Seleccionar todos"></th>
-      <th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vencido hace</th><th>Acciones</th>
+      <th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Suscripción</th><th>Monto</th><th>F. Vencimiento</th><th>Vencido hace</th><th>Acciones</th>
     </tr></thead><tbody id="tcob-vencidos"></tbody></table></div></div>
   </div>
 </div>
@@ -2950,7 +2950,9 @@ function tabCob(el,id){
         <td><strong>${s.nombre}</strong></td>
         <td style="font-size:12px">${formatTel(s.tel)}</td>
         <td>${platDot}</td>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${s.perfil && s.perfil !== '—' ? s.perfil : (s.plat||'—')}</td>
         <td style="color:var(--red);font-weight:500">$${(s.monto||0).toFixed(2)}</td>
+        <td style="font-size:12px;white-space:nowrap">${s.fVcto||'—'}</td>
         <td><span class="b br">Hace ${diasText}</span></td>
         <td class="tda">
           <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','vencimiento')"><i class="ti ti-brand-whatsapp"></i>WA</button>
@@ -2978,11 +2980,17 @@ function tabCob(el,id){
 
 // ── SELECCIÓN MASIVA VENCIDOS ─────────────────────────────────
 function selAllCobVencidos(chk) {
-  const isChecked = typeof chk === 'boolean' ? chk : chk.checked;
-  const allChk = document.getElementById('chk-all-vencidos');
-  if (allChk) allChk.checked = isChecked;
+  const isChecked = chk.checked;
   document.querySelectorAll('.chk-vencido').forEach(c => c.checked = isChecked);
   onCobVencidoChk();
+}
+
+function clearSelVencidos() {
+  document.querySelectorAll('.chk-vencido').forEach(c => c.checked = false);
+  const allChk = document.getElementById('chk-all-vencidos');
+  if (allChk) { allChk.checked = false; allChk.indeterminate = false; }
+  const bar = document.getElementById('cobvenc-bar');
+  if (bar) bar.style.display = 'none';
 }
 
 function onCobVencidoChk() {
