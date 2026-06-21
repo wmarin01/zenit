@@ -8424,7 +8424,7 @@ function vctGenerar() {
   let data = SUBS_FULL.filter(s => s.est === 'activo' || s.est === 'sin_renovar');
   if (plat) data = data.filter(s => s.plat === plat);
   if (tipo === 'vencer')   data = data.filter(s => s.dias >= 0 && s.dias <= dias);
-  else if (tipo === 'vencidos') data = data.filter(s => s.dias < 0 && Math.abs(s.dias) <= dias);
+  else if (tipo === 'vencidos') data = data.filter(s => s.dias === -dias);
   data = [...data].sort((a, b) => a.dias - b.dias);
 
   VCT_DATA = data.map(s => {
@@ -8507,7 +8507,20 @@ function vctCopiarWA(idx) {
   const r = VCT_DATA[idx];
   if (!r) return;
   const nombre = r.nombre.split(' ')[0];
-  const msg = `Hola ${nombre}, tu ${r.platNom} vence el ${r.fVcto}. Monto: $${Number(r.monto).toFixed(2)}. Contáctanos para renovar. 🙏`;
+  const plat   = r.platNom;
+  const fecha  = r.fVcto;
+  const monto  = Number(r.monto).toFixed(2);
+  const d      = r.dias;
+  let msg;
+  if (d >= 3) {
+    msg = `🍿 Hola ${nombre}, tu ${plat} vence el ${fecha} (en ${d} días).\nRenueva a tiempo para mantener tu precio actual de $${monto}.\n💳 Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Envía comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.`;
+  } else if (d === 1 || d === 2) {
+    msg = `🔴 Hola ${nombre}, tu ${plat} vence MAÑANA ${fecha}.\n¡Renueva hoy para conservar tu precio de $${monto}!\n💳 Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.`;
+  } else if (d === 0) {
+    msg = `🚨 Hola ${nombre}, tu ${plat} VENCE HOY ${fecha}.\n⏰ Es tu último día para renovar y mantener tu acceso.\n💳 $${monto} · Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas hoy, tu cuenta será suspendida y perderás el precio promocional.`;
+  } else {
+    msg = `🚨 Hola ${nombre}, tu ${plat} VENCIÓ el ${fecha} y será SUSPENDIDA.\n⚠️ Renueva ahora para recuperar tu acceso antes de que sea eliminada.\n💳 $${monto} · Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. Sin reembolsos.\n📌 Al reactivar fuera de tiempo se aplicará la tarifa vigente, no el precio anterior.`;
+  }
   navigator.clipboard.writeText(msg)
     .then(() => toast('Mensaje copiado ✓', 'ok'))
     .catch(() => {
