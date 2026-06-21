@@ -5875,25 +5875,7 @@ function openModal(id, title) {
   }
   // Reset cambio de cuenta
   if (id === 'm-cambio') {
-    const inp = document.getElementById('cambio-busq');
-    if (inp) inp.value = '';
-    const sel = document.getElementById('cambio-cli-sel');
-    if (sel) sel.style.display = 'none';
-    const cont = document.getElementById('cambio-contenido');
-    if (cont) cont.style.display = 'none';
-    const btn = document.getElementById('btn-confirmar-cambio');
-    if (btn) btn.style.display = 'none';
-    const btnDef = document.getElementById('btn-confirmar-definitivo');
-    if (btnDef) btnDef.style.display = 'none';
-    const btnAt = document.getElementById('btn-cambio-atras');
-    if (btnAt) btnAt.style.display = 'none';
-    const btnCan = document.getElementById('btn-cambio-cancelar');
-    if (btnCan) btnCan.style.display = '';
-    const resPanel = document.getElementById('cambio-resumen-panel');
-    if (resPanel) resPanel.style.display = 'none';
-    const sub = document.getElementById('cambio-sub');
-    if (sub) sub.textContent = 'Busca el cliente para continuar';
-    cambioData = {clienteId:'', clienteNombre:'', clienteTel:''};
+    resetModalCambio();
   }
   // Reset pago
   if (id === 'm-pago') {
@@ -6592,19 +6574,80 @@ function selClienteCambio(id, nombre, tel) {
   document.getElementById('btn-confirmar-cambio').style.display = 'inline-flex';
 }
 
-function limpiarClienteCambio() {
+function resetModalCambio() {
   cambioData = {clienteId:'', clienteNombre:'', clienteTel:''};
-  document.getElementById('cambio-cli-sel').style.display = 'none';
-  document.getElementById('cambio-contenido').style.display = 'none';
-  document.getElementById('cambio-resumen-panel').style.display = 'none';
-  document.getElementById('btn-confirmar-cambio').style.display = 'none';
+
+  // Búsqueda de cliente
+  const inp = document.getElementById('cambio-busq');
+  if (inp) inp.value = '';
+  const res = document.getElementById('cambio-resultados');
+  if (res) { res.innerHTML = ''; res.style.display = 'none'; }
+
+  // Panel cliente seleccionado
+  const cliSel = document.getElementById('cambio-cli-sel');
+  if (cliSel) cliSel.style.display = 'none';
+  const cliTxt = document.getElementById('cambio-cli-txt');
+  if (cliTxt) cliTxt.textContent = '';
+
+  // Contenido principal y panel de revisión
+  const cont = document.getElementById('cambio-contenido');
+  if (cont) cont.style.display = 'none';
+  const resPanel = document.getElementById('cambio-resumen-panel');
+  if (resPanel) resPanel.style.display = 'none';
+  const resBody = document.getElementById('cambio-resumen-body');
+  if (resBody) resBody.innerHTML = '';
+
+  // Selector de tipo y motivo
+  const tipoCambio = document.getElementById('tipo-cambio');
+  if (tipoCambio) tipoCambio.selectedIndex = 0;
+  const avPrecio = document.getElementById('av-precio');
+  if (avPrecio) avPrecio.style.display = 'none';
+
+  // Cuenta anterior
+  const subSel = document.getElementById('acceso-sub-sel');
+  if (subSel) { subSel.innerHTML = '<option>— Sin suscripciones —</option>'; }
+  const correoAnt = document.getElementById('acceso-correo-val');
+  if (correoAnt) correoAnt.value = '';
+  const claveAnt = document.getElementById('cambio-clave-ant');
+  if (claveAnt) { claveAnt.value = ''; claveAnt.dataset.real = ''; claveAnt.classList.add('masked'); }
+  const pinAnt = document.getElementById('cambio-pin-ant');
+  if (pinAnt) pinAnt.value = '';
+  const vctoAnt = document.getElementById('cambio-vcto-ant');
+  if (vctoAnt) vctoAnt.value = '';
+
+  // Cuenta nueva
+  const platNuevaGrp = document.getElementById('plat-nueva-grp');
+  if (platNuevaGrp) platNuevaGrp.style.display = 'none';
+  const perfilBusq = document.getElementById('cambio-perfil-busq');
+  if (perfilBusq) perfilBusq.value = '';
+  const perfilesLista = document.getElementById('cambio-perfiles-lista');
+  if (perfilesLista) perfilesLista.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px">Selecciona un cliente primero</div>';
+  const correoNuevo = document.getElementById('cambio-correo-nuevo');
+  if (correoNuevo) correoNuevo.value = '';
+  const pinNuevo = document.getElementById('cambio-pin-nuevo');
+  if (pinNuevo) pinNuevo.value = '';
+
+  // Nota interna
+  const textarea = document.querySelector('#m-cambio textarea');
+  if (textarea) textarea.value = '';
+
+  // Botones
+  const btnConfirmar = document.getElementById('btn-confirmar-cambio');
+  if (btnConfirmar) btnConfirmar.style.display = 'none';
   const btnDef = document.getElementById('btn-confirmar-definitivo');
   if (btnDef) btnDef.style.display = 'none';
   const btnAt = document.getElementById('btn-cambio-atras');
   if (btnAt) btnAt.style.display = 'none';
   const btnCan = document.getElementById('btn-cambio-cancelar');
   if (btnCan) btnCan.style.display = '';
-  document.getElementById('cambio-sub').textContent = 'Busca el cliente para continuar';
+
+  // Subtítulo
+  const sub = document.getElementById('cambio-sub');
+  if (sub) sub.textContent = 'Busca el cliente para continuar';
+}
+
+function limpiarClienteCambio() {
+  resetModalCambio();
 }
 
 
