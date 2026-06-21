@@ -2267,9 +2267,19 @@ async function intentarLogin() {
       </div>
     </div>
     <div class="fg" style="margin-top:12px"><label>Nota interna (no visible al cliente)</label><textarea rows="2" placeholder="Describe el problema internamente..."></textarea></div>
-  </div>
   </div><!-- fin cambio-contenido -->
-  <div class="mf"><button class="btn" onclick="closeModal('m-cambio')">Cancelar</button><button class="btn btn-p" id="btn-confirmar-cambio" style="display:none" onclick="confirmarCambio()"><i class="ti ti-check"></i>Confirmar cambio</button></div>
+  <!-- Panel de revisión del cambio -->
+  <div id="cambio-resumen-panel" style="display:none">
+    <div class="ab s" style="margin-bottom:14px"><i class="ti ti-eye"></i>Revisa los datos antes de confirmar definitivamente</div>
+    <div id="cambio-resumen-body"></div>
+  </div>
+  </div><!-- fin mb -->
+  <div class="mf">
+    <button class="btn" id="btn-cambio-cancelar" onclick="closeModal('m-cambio')">Cancelar</button>
+    <button class="btn btn-p" id="btn-confirmar-cambio" style="display:none" onclick="mostrarResumenCambio()"><i class="ti ti-eye"></i>Revisar cambio</button>
+    <button class="btn" id="btn-cambio-atras" style="display:none" onclick="volverResumenCambio()"><i class="ti ti-arrow-left"></i> Atrás</button>
+    <button class="btn btn-p" id="btn-confirmar-definitivo" style="display:none" onclick="confirmarCambio()"><i class="ti ti-check"></i>Confirmar definitivo</button>
+  </div>
 </div></div>
 <!-- Cambio contraseña -->
 <div class="ov" id="m-clave"><div class="modal" style="max-width:580px">
@@ -3386,6 +3396,62 @@ async function confirmarPago() {
     if (btnF) { btnF.disabled = false; btnF.innerHTML = '<i class="ti ti-check"></i>Registrar pago'; }
   }
 }
+function mostrarResumenCambio() {
+  if (!cambioData.clienteId) { toast('Selecciona un cliente primero','warn'); return; }
+  const perfilNuevoEl = document.querySelector('#cambio-perfiles-lista .pi.on');
+  if (!perfilNuevoEl) { toast('Selecciona un perfil nuevo','warn'); return; }
+
+  const subSel = document.getElementById('acceso-sub-sel');
+  const parts = (subSel?.value || '').split('|');
+  const perfilAnterior = parts[2] || '—';
+  const correoAnterior = document.getElementById('acceso-correo-val')?.value || '—';
+
+  const perfilNuevoCod = perfilNuevoEl.dataset.codigo || '—';
+  const correoNuevo = document.getElementById('cambio-correo-nuevo')?.value || perfilNuevoEl.dataset.correo || '—';
+  const pinNuevo = document.getElementById('cambio-pin-nuevo')?.value || document.getElementById('cambio-pin-ant')?.value || '—';
+  const motivo = document.getElementById('sel-motivo')?.value || '—';
+  const vcto = document.getElementById('cambio-vcto-ant')?.value || '—';
+  const nota = document.querySelector('#m-cambio textarea')?.value?.trim() || '';
+
+  const rows = [
+    { l:'Cliente',         v:`<strong>${cambioData.clienteNombre||'—'}</strong>` },
+    { l:'Teléfono',        v: cambioData.clienteTel||'—' },
+    { l:'Perfil anterior', v:`<span style="font-family:var(--mono);color:var(--red)">${perfilAnterior}</span> · ${correoAnterior}` },
+    { l:'Perfil nuevo',    v:`<span style="font-family:var(--mono);color:var(--green)">${perfilNuevoCod}</span> · ${correoNuevo}` },
+    { l:'PIN',             v:`<span style="font-family:var(--mono)">${pinNuevo}</span>` },
+    { l:'Vencimiento',     v: vcto },
+    { l:'Motivo',          v: motivo },
+  ];
+  if (nota) rows.push({ l:'Nota', v: nota });
+
+  document.getElementById('cambio-resumen-body').innerHTML = rows.map((r,i) =>
+    `<div style="display:flex;gap:12px;align-items:flex-start;padding:9px 0${i<rows.length-1?';border-bottom:1px solid var(--border)':''}">
+      <span style="flex:0 0 126px;font-size:12px;color:var(--text2);font-weight:500">${r.l}</span>
+      <span style="font-size:13px;color:var(--text)">${r.v}</span>
+    </div>`
+  ).join('');
+
+  document.getElementById('cambio-contenido').style.display = 'none';
+  document.getElementById('cambio-busq-sec').style.display = 'none';
+  document.getElementById('cambio-resumen-panel').style.display = 'block';
+  document.getElementById('btn-confirmar-cambio').style.display = 'none';
+  document.getElementById('btn-cambio-cancelar').style.display = 'none';
+  document.getElementById('btn-cambio-atras').style.display = '';
+  document.getElementById('btn-confirmar-definitivo').style.display = '';
+  document.getElementById('cambio-sub').textContent = 'Revisa los datos del cambio';
+}
+
+function volverResumenCambio() {
+  document.getElementById('cambio-resumen-panel').style.display = 'none';
+  document.getElementById('cambio-contenido').style.display = 'block';
+  document.getElementById('cambio-busq-sec').style.display = '';
+  document.getElementById('btn-cambio-atras').style.display = 'none';
+  document.getElementById('btn-confirmar-definitivo').style.display = 'none';
+  document.getElementById('btn-cambio-cancelar').style.display = '';
+  document.getElementById('btn-confirmar-cambio').style.display = 'inline-flex';
+  document.getElementById('cambio-sub').textContent = cambioData.clienteNombre ? cambioData.clienteNombre + ' · Completa los datos' : 'Busca el cliente para continuar';
+}
+
 async function confirmarCambio(){
   if (!cambioData.clienteId) { toast('Selecciona un cliente primero','warn'); return; }
 
@@ -3429,7 +3495,7 @@ async function confirmarCambio(){
     }
   }
 
-  const btn = document.getElementById('btn-confirmar-cambio');
+  const btn = document.getElementById('btn-confirmar-definitivo');
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
 
   try {
@@ -3513,7 +3579,8 @@ async function confirmarCambio(){
     toast('Error al guardar: ' + (e.message || e), 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-check"></i>Confirmar cambio';
+    btn.innerHTML = '<i class="ti ti-check"></i>Confirmar definitivo';
+    if (document.getElementById('m-cambio')?.classList.contains('on')) volverResumenCambio();
   }
 }
 function confirmarClave(){closeModal('m-clave');toast('Contraseña actualizada · 2 clientes notificados','ok');}
@@ -5730,6 +5797,14 @@ function openModal(id, title) {
     if (cont) cont.style.display = 'none';
     const btn = document.getElementById('btn-confirmar-cambio');
     if (btn) btn.style.display = 'none';
+    const btnDef = document.getElementById('btn-confirmar-definitivo');
+    if (btnDef) btnDef.style.display = 'none';
+    const btnAt = document.getElementById('btn-cambio-atras');
+    if (btnAt) btnAt.style.display = 'none';
+    const btnCan = document.getElementById('btn-cambio-cancelar');
+    if (btnCan) btnCan.style.display = '';
+    const resPanel = document.getElementById('cambio-resumen-panel');
+    if (resPanel) resPanel.style.display = 'none';
     const sub = document.getElementById('cambio-sub');
     if (sub) sub.textContent = 'Busca el cliente para continuar';
     cambioData = {clienteId:'', clienteNombre:'', clienteTel:''};
@@ -6435,7 +6510,14 @@ function limpiarClienteCambio() {
   cambioData = {clienteId:'', clienteNombre:'', clienteTel:''};
   document.getElementById('cambio-cli-sel').style.display = 'none';
   document.getElementById('cambio-contenido').style.display = 'none';
+  document.getElementById('cambio-resumen-panel').style.display = 'none';
   document.getElementById('btn-confirmar-cambio').style.display = 'none';
+  const btnDef = document.getElementById('btn-confirmar-definitivo');
+  if (btnDef) btnDef.style.display = 'none';
+  const btnAt = document.getElementById('btn-cambio-atras');
+  if (btnAt) btnAt.style.display = 'none';
+  const btnCan = document.getElementById('btn-cambio-cancelar');
+  if (btnCan) btnCan.style.display = '';
   document.getElementById('cambio-sub').textContent = 'Busca el cliente para continuar';
 }
 
@@ -7860,6 +7942,98 @@ function syncRolSelects() {
 // INIT — solo cargar si hay sesión activa
 renderC(CLIENTES);
 // Función centralizada de inicio de app — llamada desde login o si hay sesión guardada
+// ═══════════════════════════════════════════════════════════
+// REALTIME — suscripciones Supabase a cambios en tiempo real
+// ═══════════════════════════════════════════════════════════
+let RT_CHANNELS = [];
+
+function iniciarRealtime() {
+  RT_CHANNELS.forEach(ch => { try { supa.removeChannel(ch); } catch(e) {} });
+  RT_CHANNELS = [];
+
+  function rtSub(tabla, callback) {
+    const ch = supa.channel('rt-' + tabla)
+      .on('postgres_changes', { event: '*', schema: 'public', table: tabla }, callback)
+      .subscribe();
+    RT_CHANNELS.push(ch);
+  }
+
+  rtSub('perfiles', () => {
+    console.log('[RT] cambio en perfiles');
+    dbCargarPerfilesDisp();
+  });
+
+  rtSub('suscripciones', () => {
+    console.log('[RT] cambio en suscripciones');
+    (async () => {
+      await dbCargarSuscripciones();
+      if (document.getElementById('v-subs')?.classList.contains('on')) renderSubs(SUBS_FULL);
+      renderDashboard();
+    })();
+  });
+
+  rtSub('cuentas_inventario', () => {
+    console.log('[RT] cambio en cuentas_inventario');
+    if (document.getElementById('v-inventario')?.classList.contains('on')) cargarInventario();
+  });
+
+  rtSub('clientes', () => {
+    console.log('[RT] cambio en clientes');
+    dbCargarClientes();
+  });
+
+  rtSub('cobros', () => {
+    console.log('[RT] cambio en cobros');
+    (async () => {
+      await dbCargarCobros();
+      if (typeof updMetricasCobros === 'function') updMetricasCobros();
+      if (typeof renderCobros === 'function' && document.getElementById('v-cobros')?.classList.contains('on')) renderCobros(COBROS);
+    })();
+  });
+
+  rtSub('ventas', () => {
+    console.log('[RT] cambio en ventas');
+    dbCargarVentas();
+  });
+
+  rtSub('egresos', () => {
+    console.log('[RT] cambio en egresos');
+    if (document.getElementById('v-egresos')?.classList.contains('on')) dbCargarEgresos();
+  });
+
+  rtSub('pines', () => {
+    console.log('[RT] cambio en pines');
+    cargarPines();
+  });
+
+  rtSub('planes_precios', () => {
+    console.log('[RT] cambio en planes_precios');
+    cargarPlanesPrecios();
+  });
+
+  rtSub('plataformas', () => {
+    console.log('[RT] cambio en plataformas');
+    cargarPlataformas();
+  });
+
+  rtSub('mensajes_wa', () => {
+    console.log('[RT] cambio en mensajes_wa');
+    if (document.getElementById('v-accesos')?.classList.contains('on')) cargarMensajesWA();
+  });
+
+  rtSub('tarifas_pin', () => {
+    console.log('[RT] cambio en tarifas_pin');
+    cargarTarifasPin();
+  });
+
+  rtSub('proveedores', () => {
+    console.log('[RT] cambio en proveedores');
+    if (document.getElementById('v-proveedores')?.classList.contains('on')) dbCargarProveedores();
+  });
+
+  console.log('[RT] Realtime iniciado — ' + RT_CHANNELS.length + ' canales activos');
+}
+
 async function iniciarApp() {
   try {
     await verificarConexion();
@@ -7878,6 +8052,7 @@ async function iniciarApp() {
     renderSubs(SUBS_FULL);
     if (typeof updMetricasCobros === 'function') updMetricasCobros();
     if (typeof renderCobros === 'function') renderCobros(COBROS);
+    iniciarRealtime();
     console.log('[APP] Carga completa ✓');
   } catch(e) {
     console.error('[APP] Error en iniciarApp:', e);
