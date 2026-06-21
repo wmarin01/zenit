@@ -148,21 +148,18 @@ async function dbCargarClientes() {
   const { data, error } = await supa.from('clientes').select('*').order('created_at');
   if (error) { console.error('Error cargando clientes:', error); return; }
   if (data && data.length > 0) {
-    // Convertir formato Supabase → formato interno
+    CLIENTES.length = 0;
     data.forEach(c => {
-      const existe = CLIENTES.find(x => x.id === c.id);
-      if (!existe) {
-        CLIENTES.push({
-          id: c.id,
-          n: c.nombre,
-          a: c.apellido,
-          tel: normalizeTel(c.telefono),
-          plats: [],
-          dias: 0,
-          est: c.estado,
-          contactos: (c.contactos || []).map(ct => ({ t: ct.tipo, v: ct.valor }))
-        });
-      }
+      CLIENTES.push({
+        id: c.id,
+        n: c.nombre,
+        a: c.apellido,
+        tel: normalizeTel(c.telefono),
+        plats: [],
+        dias: 0,
+        est: c.estado,
+        contactos: (c.contactos || []).map(ct => ({ t: ct.tipo, v: ct.valor }))
+      });
     });
     renderC(CLIENTES);
     console.log('Clientes cargados desde Supabase:', data.length);
@@ -180,6 +177,7 @@ async function dbCargarCobros() {
   const { data, error } = await supa.from('cobros').select('*').order('created_at', { ascending: false }).limit(1000);
   if (error) { console.error('Error cargando cobros:', error); return; }
   if (data && data.length > 0) {
+    COBROS.length = 0;
     data.forEach(c => {
       COBROS.push({
         fecha: (() => {
@@ -3268,50 +3266,15 @@ async function confirmarVenta(){
     const resumen = entries.map(e=>e.perf?.codigo||'—').join('+');
     await dbGuardarHistorial('Venta nueva', ventaData.clienteNombre + ' — ' + resumen + ' — $' + monto.toFixed(2), 'var(--green)');
 
-    // 5. Actualizar memoria
-    VENTAS_DB.unshift({
-      nombre: ventaData.clienteNombre,
-      plataformas: [...new Set(plats)].join('+'),
-      perfiles: resumen,
-      pins: entries.map(e=>pins[e.key]||'—').join('/'),
-      vigencia_ini: fIniVal, vigencia_fin: fVctoVal, monto
-    });
-    renderVentasDB();
-
-    for (const {p, key, perf} of entries) {
-      SUBS_FULL.unshift({
-        id: Date.now() + Math.random(),
-        clienteId: ventaData.clienteId,
-        nombre: ventaData.clienteNombre,
-        tel: ventaData.clienteTel,
-        plat: p, perfil: perf?.codigo||'—',
-        correo: perf?.correo||'—',
-        usuario: usuarios[key]||'—',
-        pin: pins[key]||'—',
-        fIni: fIniStr, fVcto: vctoStr,
-        monto, est: 'activo', tipoCliente: 'Nuevo',
-        dias: Math.ceil((new Date(fVctoVal)-new Date())/86400000)
-      });
-      if (PERFILES_DISP[p]) {
-        PERFILES_DISP[p] = PERFILES_DISP[p].filter(pr => pr.codigo !== (perf?.codigo));
-      }
+    // 5. Liberar perfiles usados de PERFILES_DISP inmediatamente (evita re-selección)
+    for (const {p, perf} of entries) {
+      if (PERFILES_DISP[p]) PERFILES_DISP[p] = PERFILES_DISP[p].filter(pr => pr.codigo !== (perf?.codigo));
     }
-
-    // Actualizar plats del cliente
-    const cli = CLIENTES.find(c => c.id === ventaData.clienteId);
-    if (cli) {
-      [...new Set(plats)].forEach(p => { if (!cli.plats.includes(p)) cli.plats.push(p); });
-    }
-
-    COBROS.unshift({
-      fecha: fIniStr, tipo: 'Venta nueva',
-      clienteId: ventaData.clienteId, nombre: ventaData.clienteNombre,
-      tel: normalizeTel(ventaData.clienteTel),
-      plat: normalizarCombo([...new Set(plats)].join('+')),
-      correo: correo2, usuario: usuario2, monto, banco, forma, doc,
-      operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
-      est: 'procesado'
-    });
+    // Recargar datos frescos desde DB en lugar de actualizar optimistamente
+    // (la actualización optimista causa duplicados cuando Realtime ya refrescó el array)
+    await dbCargarVentas();
+    await dbCargarSuscripciones();
+    _aplicarFiltrosSubs();
 
     closeModal('m-venta');
     sincronizarPlatsClientes();
@@ -6589,6 +6552,10 @@ function resetModalCambio() {
   const cliTxt = document.getElementById('cambio-cli-txt');
   if (cliTxt) cliTxt.textContent = '';
 
+  // Sección de búsqueda: siempre visible al abrir
+  const busqSec = document.getElementById('cambio-busq-sec');
+  if (busqSec) busqSec.style.display = '';
+
   // Contenido principal y panel de revisión
   const cont = document.getElementById('cambio-contenido');
   if (cont) cont.style.display = 'none';
@@ -8183,7 +8150,10 @@ function iniciarRealtime() {
   console.log('[RT] Realtime iniciado — ' + RT_CHANNELS.length + ' canales activos');
 }
 
+let _appIniciada = false;
 async function iniciarApp() {
+  if (_appIniciada) { console.warn('[APP] iniciarApp() ya fue llamada — skip'); return; }
+  _appIniciada = true;
   try {
     await verificarConexion();
     await cargarPlanesPrecios();
@@ -8203,6 +8173,7 @@ async function iniciarApp() {
     iniciarRealtime();
     console.log('[APP] Carga completa ✓');
   } catch(e) {
+    _appIniciada = false;
     console.error('[APP] Error en iniciarApp:', e);
   }
 }
