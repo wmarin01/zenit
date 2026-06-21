@@ -8492,8 +8492,8 @@ function vctRenderizar() {
       <td><span class="pd"><span class="dot" style="background:${platColor}"></span>${r.platNom}</span></td>
       <td>${tipoBadge}</td>
       <td><strong>${r.nombre}</strong></td>
-      <td style="font-family:var(--mono);font-size:12px;color:var(--text3)">${r.codPais}</td>
-      <td style="font-family:var(--mono);font-size:12px">${r.numTel}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--text3)">${r.codPais.replace('+','')}</td>
+      <td style="font-family:var(--mono);font-size:12px;white-space:nowrap">${r.numTel.replace(/[\s\-]/g,'')}<button onclick="vctCopiarTel('${(r.codPais+r.numTel).replace(/[^\d]/g,'')}',this)" title="Copiar número" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:0 0 0 4px;vertical-align:middle"><i class="ti ti-copy" style="font-size:13px"></i></button></td>
       <td style="color:var(--green);font-weight:500">$${Number(r.monto).toFixed(2)}</td>
       <td style="font-size:12px;white-space:nowrap">${r.fVcto}</td>
       <td>${diasBadge}</td>
@@ -8531,6 +8531,20 @@ function vctCopiarWA(idx) {
       document.execCommand('copy');
       document.body.removeChild(ta);
       toast('Mensaje copiado ✓', 'ok');
+    });
+}
+
+function vctCopiarTel(num, btn) {
+  navigator.clipboard.writeText(num)
+    .then(() => toast('Número copiado ✓', 'ok'))
+    .catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = num;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('Número copiado ✓', 'ok');
     });
 }
 
