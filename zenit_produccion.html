@@ -813,11 +813,24 @@ async function intentarLogin() {
     <div class="tab" onclick="tabCob(this,'tc-1d')">Mañana<span class="tcnt">8</span></div>
     <div class="tab" onclick="tabCob(this,'tc-3d')">En 3 días<span class="tcnt">12</span></div>
     <div class="tab" onclick="tabCob(this,'tc-todos')">Todos<span class="tcnt">23</span></div>
+    <div class="tab" onclick="tabCob(this,'tc-vencidos')" style="color:var(--red)">Vencidos<span class="tcnt" style="background:rgba(240,77,77,.15);color:var(--red)">0</span></div>
   </div>
   <div id="tc-hoy"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob-hoy"></tbody></table></div></div></div>
   <div id="tc-1d" style="display:none"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob-1d"></tbody></table></div></div></div>
   <div id="tc-3d" style="display:none"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob-3d"></tbody></table></div></div></div>
   <div id="tc-todos" style="display:none"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob-todos"></tbody></table></div></div></div>
+  <div id="tc-vencidos" style="display:none">
+    <div id="cobvenc-bar" style="display:none;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:rgba(240,77,77,.07);border:1px solid rgba(240,77,77,.22);border-radius:var(--r)">
+      <i class="ti ti-checkbox" style="color:var(--red);font-size:16px"></i>
+      <span id="cobvenc-count" style="font-size:13px;color:var(--text);flex:1">0 seleccionados</span>
+      <button class="btn btn-sm" id="btn-marcar-sinrenovar" style="display:none;background:var(--red);color:#fff;border-color:var(--red)" onclick="marcarSinRenovar()"><i class="ti ti-ban"></i>Marcar Sin renovar</button>
+      <button class="btn btn-sm" onclick="selAllCobVencidos(document.getElementById('chk-all-vencidos'),false)"><i class="ti ti-x"></i>Limpiar</button>
+    </div>
+    <div class="card"><div class="tw"><table><thead><tr>
+      <th style="width:36px;text-align:center"><input type="checkbox" id="chk-all-vencidos" onchange="selAllCobVencidos(this)" title="Seleccionar todos"></th>
+      <th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vencido hace</th><th>Acciones</th>
+    </tr></thead><tbody id="tcob-vencidos"></tbody></table></div></div>
+  </div>
 </div>
 <!-- INVENTARIO -->
 <div class="view" id="v-inventario">
@@ -2869,7 +2882,7 @@ function renderCob(data){
 function tabCob(el,id){
   document.getElementById('cobtabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   el.classList.add('on');
-  ['tc-hoy','tc-1d','tc-3d','tc-todos'].forEach(x=>{const d=document.getElementById(x);if(d)d.style.display='none';});
+  ['tc-hoy','tc-1d','tc-3d','tc-todos','tc-vencidos'].forEach(x=>{const d=document.getElementById(x);if(d)d.style.display='none';});
   const t=document.getElementById(id);if(t)t.style.display='block';
   // Renderizar cobranza desde suscripciones activas de Supabase
   const hoy = new Date(); hoy.setHours(0,0,0,0);
@@ -2882,16 +2895,18 @@ function tabCob(el,id){
     return {...s, diasVcto: diff};
   });
   let filtrados;
-  if      (id==='tc-hoy')   filtrados = withDays.filter(s => s.diasVcto === 0);
-  else if (id==='tc-1d')    filtrados = withDays.filter(s => s.diasVcto === 1);
-  else if (id==='tc-3d')    filtrados = withDays.filter(s => s.diasVcto <= 3 && s.diasVcto >= 0);
-  else                      filtrados = withDays.filter(s => s.diasVcto <= 30 && s.diasVcto >= 0);
+  if      (id==='tc-hoy')      filtrados = withDays.filter(s => s.diasVcto === 0);
+  else if (id==='tc-1d')       filtrados = withDays.filter(s => s.diasVcto === 1);
+  else if (id==='tc-3d')       filtrados = withDays.filter(s => s.diasVcto <= 3 && s.diasVcto >= 0);
+  else if (id==='tc-vencidos') filtrados = withDays.filter(s => s.diasVcto < 0);
+  else                         filtrados = withDays.filter(s => s.diasVcto <= 30 && s.diasVcto >= 0);
   // Actualizar contadores en tabs
   const counts = {
-    'tc-hoy':  withDays.filter(s=>s.diasVcto===0).length,
-    'tc-1d':   withDays.filter(s=>s.diasVcto===1).length,
-    'tc-3d':   withDays.filter(s=>s.diasVcto<=3&&s.diasVcto>=0).length,
-    'tc-todos':withDays.filter(s=>s.diasVcto<=30&&s.diasVcto>=0).length,
+    'tc-hoy':      withDays.filter(s=>s.diasVcto===0).length,
+    'tc-1d':       withDays.filter(s=>s.diasVcto===1).length,
+    'tc-3d':       withDays.filter(s=>s.diasVcto<=3&&s.diasVcto>=0).length,
+    'tc-todos':    withDays.filter(s=>s.diasVcto<=30&&s.diasVcto>=0).length,
+    'tc-vencidos': withDays.filter(s=>s.diasVcto<0).length,
   };
   document.getElementById('cobtabs').querySelectorAll('.tab').forEach(tab => {
     const tabId = tab.getAttribute('onclick')?.match(/'(tc-[^']+)'/)?.[1];
@@ -2899,7 +2914,7 @@ function tabCob(el,id){
     if (tabId && cnt) cnt.textContent = counts[tabId] || 0;
   });
   // Renderizar tabla en el contenedor activo
-  const tbodyMap = {'tc-hoy':'tcob-hoy','tc-1d':'tcob-1d','tc-3d':'tcob-3d','tc-todos':'tcob-todos'};
+  const tbodyMap = {'tc-hoy':'tcob-hoy','tc-1d':'tcob-1d','tc-3d':'tcob-3d','tc-todos':'tcob-todos','tc-vencidos':'tcob-vencidos'};
   const cobBusca = (document.getElementById('cob-busq')?.value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   const tbody = document.getElementById(tbodyMap[id] || 'tcob-hoy');
   if (!tbody) return;
@@ -2918,6 +2933,32 @@ function tabCob(el,id){
   }
   if (!filtrados.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No hay suscripciones en este período</td></tr>'; return; }
   const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
+  // ── Render especial para pestaña Vencidos (con checkboxes y barra de acción) ──
+  if (id === 'tc-vencidos') {
+    const chkAll = document.getElementById('chk-all-vencidos');
+    if (chkAll) chkAll.checked = false;
+    const bar = document.getElementById('cobvenc-bar');
+    if (bar) bar.style.display = 'none';
+    const btnM = document.getElementById('btn-marcar-sinrenovar');
+    if (btnM) btnM.style.display = USUARIO_ACTIVO?.rol === 'Master' ? '' : 'none';
+    tbody.innerHTML = filtrados.map(s => {
+      const d = Math.abs(s.diasVcto);
+      const diasText = d + ' día' + (d !== 1 ? 's' : '');
+      const platDot = (s.plat||'').split('+').map(p=>`<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
+      return `<tr>
+        <td style="text-align:center"><input type="checkbox" class="chk-vencido" data-clienteid="${s.clienteId}" data-subid="${s.id}" onchange="onCobVencidoChk()"></td>
+        <td><strong>${s.nombre}</strong></td>
+        <td style="font-size:12px">${formatTel(s.tel)}</td>
+        <td>${platDot}</td>
+        <td style="color:var(--red);font-weight:500">$${(s.monto||0).toFixed(2)}</td>
+        <td><span class="b br">Hace ${diasText}</span></td>
+        <td class="tda">
+          <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','vencimiento')"><i class="ti ti-brand-whatsapp"></i>WA</button>
+          <button class="btn btn-sm btn-s" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Pago</button>
+        </td></tr>`;
+    }).join('');
+    return;
+  }
   tbody.innerHTML = filtrados.map(s => {
     const platDot = (s.plat||'').split('+').map(p=>`<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
     const vb = s.diasVcto===0 ? '<span class="b br">Hoy</span>' : s.diasVcto===1 ? '<span class="b ba">Mañana</span>' : `<span class="b" style="background:rgba(245,200,35,.15);color:#f5c842">${s.diasVcto} días</span>`;
@@ -2933,6 +2974,64 @@ function tabCob(el,id){
         <button class="btn btn-sm btn-s" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Pago</button>
       </td></tr>`;
   }).join('');
+}
+
+// ── SELECCIÓN MASIVA VENCIDOS ─────────────────────────────────
+function selAllCobVencidos(chk) {
+  const isChecked = typeof chk === 'boolean' ? chk : chk.checked;
+  const allChk = document.getElementById('chk-all-vencidos');
+  if (allChk) allChk.checked = isChecked;
+  document.querySelectorAll('.chk-vencido').forEach(c => c.checked = isChecked);
+  onCobVencidoChk();
+}
+
+function onCobVencidoChk() {
+  const checks = document.querySelectorAll('.chk-vencido');
+  const checked = document.querySelectorAll('.chk-vencido:checked').length;
+  const bar = document.getElementById('cobvenc-bar');
+  if (!bar) return;
+  bar.style.display = checked > 0 ? 'flex' : 'none';
+  const cnt = document.getElementById('cobvenc-count');
+  if (cnt) cnt.textContent = checked + ' suscripci' + (checked !== 1 ? 'ones' : 'ón') + ' seleccionada' + (checked !== 1 ? 's' : '');
+  const chkAll = document.getElementById('chk-all-vencidos');
+  if (chkAll) {
+    chkAll.indeterminate = checked > 0 && checked < checks.length;
+    if (!chkAll.indeterminate) chkAll.checked = checked === checks.length && checks.length > 0;
+  }
+}
+
+async function marcarSinRenovar() {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede ejecutar esta acción', 'warn'); return; }
+  const checks = Array.from(document.querySelectorAll('.chk-vencido:checked'));
+  if (!checks.length) return;
+  const clienteIds = [...new Set(checks.map(c => c.dataset.clienteid).filter(Boolean))];
+  if (!clienteIds.length) return;
+  const hoy = new Date().toISOString().split('T')[0];
+  const btn = document.getElementById('btn-marcar-sinrenovar');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Procesando...'; }
+  let total = 0;
+  try {
+    for (const clienteId of clienteIds) {
+      const { error } = await supa
+        .from('suscripciones')
+        .update({ estado: 'sin_renovar' })
+        .eq('cliente_id', clienteId)
+        .eq('estado', 'activo')
+        .lt('fecha_vcto', hoy);
+      if (error) throw error;
+      SUBS_FULL.forEach(s => {
+        if (s.clienteId === clienteId && s.est === 'activo' && s.dias < 0) { s.est = 'sin_renovar'; total++; }
+      });
+    }
+    toast(`${total} suscripci${total === 1 ? 'ón marcada' : 'ones marcadas'} como Sin renovar ✓`, 'ok');
+    await dbGuardarHistorial('Marcado Sin renovar masivo', `${total} suscripciones · ${clienteIds.length} clientes`, 'var(--amber)');
+    document.querySelector('#cobtabs .tab.on')?.click();
+  } catch(e) {
+    console.error('[SR] Error:', e);
+    toast('Error al actualizar: ' + (e.message || e), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-ban"></i>Marcar Sin renovar'; }
+  }
 }
 
 function tabParam(el,id){
