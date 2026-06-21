@@ -3167,7 +3167,7 @@ function confirmarBloqueo(nombre){
 async function confirmarVenta(){
   const tipo     = ventaData.tipo;
   const comboId  = ventaData.plats.length > 1 && new Set(ventaData.plats).size > 1
-    ? ventaData.plats.join('+') : '—';
+    ? normalizarCombo(ventaData.plats.join('+')) : '—';
 
   // Construir lista de entradas indexadas
   const plats = ventaData.plats;
@@ -3234,7 +3234,7 @@ async function confirmarVenta(){
     // 1. Guardar venta
     await dbGuardarVenta({
       clienteId: ventaData.clienteId, nombre: ventaData.clienteNombre,
-      plats: [...new Set(plats)].join('+'),
+      plats: normalizarCombo([...new Set(plats)].join('+')),
       perfiles: entries.map(e=>e.perf?.codigo||'—').join('+'),
       pins: entries.map(e=>pins[e.key]||'—').join('/'),
       fechaIni: fIniVal, fechaFin: fVctoVal, monto, canal
@@ -3307,7 +3307,7 @@ async function confirmarVenta(){
       fecha: fIniStr, tipo: 'Venta nueva',
       clienteId: ventaData.clienteId, nombre: ventaData.clienteNombre,
       tel: normalizeTel(ventaData.clienteTel),
-      plat: [...new Set(plats)].join('+'),
+      plat: normalizarCombo([...new Set(plats)].join('+')),
       correo: correo2, usuario: usuario2, monto, banco, forma, doc,
       operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
       est: 'procesado'
@@ -3380,7 +3380,7 @@ async function confirmarPago() {
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
 
   try {
-    const plats = Array.from(checkboxes).map(cb => cb.dataset.plat).join('+');
+    const plats = normalizarCombo(Array.from(checkboxes).map(cb => cb.dataset.plat).join('+'));
 
     // Analizar combos: qué plataformas están seleccionadas vs no
     const comboAnalysis = new Map(); // comboKey → { checked: [], unchecked: [] }
@@ -5460,7 +5460,7 @@ function renderSubsPago(clienteId) {
   const grupoMap = new Map();
   subsRaw.forEach(s => {
     let key;
-    if (s.combo && s.combo !== '—') key = 'combo_' + s.combo;
+    if (s.combo && s.combo !== '—') key = 'combo_' + normalizarCombo(s.combo);
     else if ((s.tipo || '').toLowerCase() === 'combo') key = 'comboplat_' + (s.plat || s.id);
     else key = 'ind_' + s.id;
     if (!grupoMap.has(key)) {
@@ -6039,7 +6039,7 @@ function guardarPrecio() {
   tbody.appendChild(tr);
   // Agregar combo a lista de ventas
   if (tipo === 'combo' && selected.length > 0) {
-    const comboId = selected.join('+');
+    const comboId = normalizarCombo(selected.join('+'));
     const totalCombo = parseFloat(document.getElementById('precio-combo-total')?.textContent?.replace('$','')) || 0;
     const desgloseCombo = selected.map(p => (PLATS[p]?.nombre||p)+' incluido').join(' + ');
     const existeIdx = COMBOS.findIndex(c => c.id === comboId);
@@ -7362,6 +7362,18 @@ const COMBOS = [
 
 // Precios individuales por cantidad de perfiles
 let PRECIOS_IND = {};
+
+function normalizarCombo(plataformas) {
+  if (!plataformas || typeof plataformas !== 'string') return plataformas || '';
+  const ORDER = ['NF', 'DS', 'HB', 'PV', 'IP'];
+  const parts = plataformas.split('+').map(s => s.trim()).filter(Boolean);
+  if (parts.length <= 1) return parts[0] || '';
+  parts.sort((a, b) => {
+    const ia = ORDER.indexOf(a); const ib = ORDER.indexOf(b);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+  return parts.join('+');
+}
 
 function parsearDesgloseCombo(desglose) {
   const map = {};
