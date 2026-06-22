@@ -2628,7 +2628,7 @@ const WA={
     }
     return `Hola <span class="wav">${n}</span> 🔄\n\nActualizamos tu cuenta de <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.usuario||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n\nTu vencimiento no cambia. 🙏`;
   },
-  clave:(n,p,m)=>`Hola <span class="wav">${n}</span> 🔐\n\nPor seguridad actualizamos la clave de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${correo||'—'}</span>\n🔑 Clave nueva: <span class="wav">${claveNueva||'—'}</span>\n👤 Perfil: <span class="wav">${perfil||'—'}</span>\n🔢 PIN: <span class="wav">${pin||'—'}</span>\n📅 Vence: <span class="wav">${vcto||'—'}</span>\n\nCualquier duda escríbenos. 🙏`,
+  clave:(n,p,m)=>`Hola <span class="wav">${n}</span> 🔐\n\nPor seguridad actualizamos la clave de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${correo||'—'}</span>\n🔑 Clave nueva: <span class="wav">${claveNueva||'—'}</span>\n👤 Usuario: <span class="wav">${perfil||'—'}</span>\n🔢 PIN: <span class="wav">${pin||'—'}</span>\n📅 Vence: <span class="wav">${vcto||'—'}</span>\n\nCualquier duda escríbenos. 🙏`,
   reenvio_accesos:(n,p,m,ctx)=>{
     // Combo: ctx tiene plats[] — delegar a WA.entrega que ya maneja multi-perfil
     if (ctx?.plats?.length) return WA.entrega(n, p, m, ctx);
@@ -2652,7 +2652,7 @@ const WA={
         key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
       );
     }
-    return `Hola <span class="wav">${n}</span> 🎉\n\nTe reenviamos los accesos de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Perfil: <span class="wav">${ctx?.perfil||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n📅 Vence: <span class="wav">${ctx?.fecha_vcto||'—'}</span>\n💰 Monto: <span class="wav">${m}</span> 🍿`;
+    return `Hola <span class="wav">${n}</span> 🎉\n\nTe reenviamos los accesos de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.perfil||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n📅 Vence: <span class="wav">${ctx?.fecha_vcto||'—'}</span>\n💰 Monto: <span class="wav">${m}</span> 🍿`;
   },
 };
 // Fecha dinámica en el header
@@ -8692,12 +8692,12 @@ function vctExportar(formato) {
 // PLANTILLAS WA
 // ═══════════════════════════════════════════════════════════
 let PLANTILLAS_WA = [
-  {nombre:'Entrega de cuenta nueva',   tipo:'Venta',     contenido:'Hola {nombre} 🎉 Tu {plataforma} ya está activa. Correo: {correo} · Clave: {clave} · Perfil: {perfil} · PIN: {pin} · Vence: {fecha_vcto} · Próx. pago: {monto} 🍿'},
+  {nombre:'Entrega de cuenta nueva',   tipo:'Venta',     contenido:'Hola {nombre} 🎉 Tu {plataforma} ya está activa. Correo: {correo} · Clave: {clave} · Usuario: {perfil} · PIN: {pin} · Vence: {fecha_vcto} · Próx. pago: {monto} 🍿'},
   {nombre:'Recordatorio 3 días',       tipo:'Cobranza',  contenido:'Hola {nombre} 👋 Tu {plataforma} vence en 3 días. Monto: {monto}. Datos: {datos_pago} 🙏'},
   {nombre:'Recordatorio 1 día',        tipo:'Cobranza',  contenido:'Hola {nombre}, tu {plataforma} vence mañana. Envía tu pago de {monto} para no perder el servicio. 🙏'},
   {nombre:'Confirmación de pago',      tipo:'Post pago', contenido:'Hola {nombre} ✅ Recibimos tu pago de {monto} por {plataforma}. Renovado hasta {fecha_vcto}. ¡Gracias! 🎉'},
-  {nombre:'Cambio de contraseña',      tipo:'Seguridad', contenido:'Hola {nombre} 🔐 Por seguridad actualizamos la clave de tu {plataforma}. Correo: {correo} · Clave nueva: {clave_nueva} · Perfil: {perfil} · PIN: {pin}. Cualquier duda escríbenos. 🙏'},
-  {nombre:'Cambio de cuenta / plataforma', tipo:'Cambio', contenido:'Hola {nombre} 🔄 Actualizamos tu cuenta de {plataforma}. Correo: {correo} · Clave: {clave} · Perfil: {perfil} · PIN: {pin}. Tu vencimiento no cambia. 🙏'}
+  {nombre:'Cambio de contraseña',      tipo:'Seguridad', contenido:'Hola {nombre} 🔐 Por seguridad actualizamos la clave de tu {plataforma}. Correo: {correo} · Clave nueva: {clave_nueva} · Usuario: {perfil} · PIN: {pin}. Cualquier duda escríbenos. 🙏'},
+  {nombre:'Cambio de cuenta / plataforma', tipo:'Cambio', contenido:'Hola {nombre} 🔄 Actualizamos tu cuenta de {plataforma}. Correo: {correo} · Clave: {clave} · Usuario: {perfil} · PIN: {pin}. Tu vencimiento no cambia. 🙏'}
 ];
 let _plantillaEditIdx = -1;
 
