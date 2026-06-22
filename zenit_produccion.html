@@ -2610,9 +2610,45 @@ const WA={
   },
   cambio:(n,p,m,ctx)=>{
     const link = (PLATAFORMAS||[]).find(x => x.codigo === ctx?.platCod)?.link || '';
+    const plantilla = (PLANTILLAS_WA||[]).find(t => t.tipo === 'Cambio');
+    if (plantilla) {
+      const vars = {
+        nombre:     n,
+        plataforma: p,
+        correo:     ctx?.correo  || '—',
+        clave:      ctx?.clave   || '—',
+        perfil:     ctx?.perfil  || '—',
+        usuario:    ctx?.usuario || '—',
+        pin:        ctx?.pin     || '—',
+        link:       link         || '—'
+      };
+      return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
+        key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
+      );
+    }
     return `Hola <span class="wav">${n}</span> 🔄\n\nActualizamos tu cuenta de <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.usuario||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n\nTu vencimiento no cambia. 🙏`;
   },
   clave:(n,p,m)=>`Hola <span class="wav">${n}</span> 🔐\n\nPor seguridad actualizamos la clave de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${correo||'—'}</span>\n🔑 Clave nueva: <span class="wav">${claveNueva||'—'}</span>\n👤 Perfil: <span class="wav">${perfil||'—'}</span>\n🔢 PIN: <span class="wav">${pin||'—'}</span>\n📅 Vence: <span class="wav">${vcto||'—'}</span>\n\nCualquier duda escríbenos. 🙏`,
+  reenvio_accesos:(n,p,m,ctx)=>{
+    const plantilla = (PLANTILLAS_WA||[]).find(t => t.tipo === 'Venta');
+    if (plantilla) {
+      const vars = {
+        nombre:     n,
+        plataforma: p,
+        correo:     ctx?.correo     || '—',
+        clave:      ctx?.clave      || '—',
+        perfil:     ctx?.perfil     || '—',
+        pin:        ctx?.pin        || '—',
+        fecha_vcto: ctx?.fecha_vcto || '—',
+        monto:      ctx?.monto      || m,
+        datos_pago: '—'
+      };
+      return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
+        key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
+      );
+    }
+    return `Hola <span class="wav">${n}</span> 🎉\n\nTe reenviamos los accesos de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Perfil: <span class="wav">${ctx?.perfil||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n📅 Vence: <span class="wav">${ctx?.fecha_vcto||'—'}</span>\n💰 Monto: <span class="wav">${m}</span> 🍿`;
+  },
 };
 // Fecha dinámica en el header
 function actualizarFechaHeader() {
@@ -3819,8 +3855,8 @@ async function guardarCuenta(){
       if (!clave)  { toast('La clave de acceso es requerida','warn'); return; }
 
       // 🚀 Validar que el correo no esté duplicado
-      const duplicado = INV_CACHE.find(c => c.correo.toLowerCase() === correo.toLowerCase() && c.id !== codigo && c.estado !== 'Inactiva');
-      if (duplicado) { toast('Este correo ya está registrado en la cuenta ' + duplicado.id, 'warn'); return; }
+      const duplicado = INV_CACHE.find(c => c.correo.toLowerCase() === correo.toLowerCase() && c.plataforma === platVal && c.id !== codigo && c.estado !== 'Inactiva');
+      if (duplicado) { toast('Este correo ya está registrado en la cuenta ' + duplicado.id + ' (' + platVal + ')', 'warn'); return; }
 
       const maxPerf = platVal==='DS' ? 7 : platVal==='PV' ? 6 : 5;
 
@@ -6971,9 +7007,28 @@ function renderSubs(data) {
         <button class="btn btn-sm btn-ic" onclick="abrirEditarSubById(${s.id})" title="Editar"><i class="ti ti-edit"></i></button>
         <button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago')" title="Registrar pago"><i class="ti ti-cash"></i></button>
         <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${s.nombre}','${s.plat}','$${s.monto.toFixed(2)}','${s.dias===0?'vencimiento':s.dias<=1?'1d':'3d'}')" title="WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>
+        <button class="btn btn-sm btn-ic" onclick="reenviarAccesos(${s.id})" title="Reenviar accesos"><i class="ti ti-send"></i></button>
       </td>
     </tr>`;
   }).join('');
+}
+
+function reenviarAccesos(subId) {
+  const s = SUBS_FULL.find(x => x.id === subId);
+  if (!s) { toast('Suscripción no encontrada', 'warn'); return; }
+  const cli = CLIENTES.find(c => c.id === s.clienteId);
+  const platNom = (PLATAFORMAS||[]).find(p => p.codigo === s.plat)?.nombre || s.plat;
+  const monto = '$' + Number(s.monto).toFixed(2);
+  const ctx = {
+    correo:     s.correo || '—',
+    clave:      s.clave  || '—',
+    perfil:     s.perfil || '—',
+    pin:        s.pin    || '—',
+    fecha_vcto: s.fVcto  || '—',
+    monto
+  };
+  const meta = { clienteId: s.clienteId, tel: cli?.tel || s.tel || '' };
+  abrirWA(s.nombre, platNom, monto, 'reenvio_accesos', ctx, meta);
 }
 
 function toggleClaveSub(btn, clave) {
