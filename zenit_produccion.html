@@ -2630,6 +2630,10 @@ const WA={
   },
   clave:(n,p,m)=>`Hola <span class="wav">${n}</span> 🔐\n\nPor seguridad actualizamos la clave de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${correo||'—'}</span>\n🔑 Clave nueva: <span class="wav">${claveNueva||'—'}</span>\n👤 Perfil: <span class="wav">${perfil||'—'}</span>\n🔢 PIN: <span class="wav">${pin||'—'}</span>\n📅 Vence: <span class="wav">${vcto||'—'}</span>\n\nCualquier duda escríbenos. 🙏`,
   reenvio_accesos:(n,p,m,ctx)=>{
+    // Combo: ctx tiene plats[] — delegar a WA.entrega que ya maneja multi-perfil
+    if (ctx?.plats?.length) return WA.entrega(n, p, m, ctx);
+    // Individual: usar plantilla de tipo 'Venta' de PLANTILLAS_WA
+    const link = (PLATAFORMAS||[]).find(x => x.codigo === ctx?.platCod)?.link || '';
     const plantilla = (PLANTILLAS_WA||[]).find(t => t.tipo === 'Venta');
     if (plantilla) {
       const vars = {
@@ -2641,6 +2645,7 @@ const WA={
         pin:        ctx?.pin        || '—',
         fecha_vcto: ctx?.fecha_vcto || '—',
         monto:      ctx?.monto      || m,
+        link:       link            || '—',
         datos_pago: '—'
       };
       return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
@@ -5644,9 +5649,15 @@ function toggleSubPago(idx) {
 
 function calcTotalPago(rows) {
   let total = 0;
+  const combosSumados = new Set();
   rows.forEach((r, i) => {
     const chk = document.getElementById('chk-sub-'+i);
-    if (chk?.checked) total += r.precio;
+    if (!chk?.checked) return;
+    if (r.esCombo && r.comboKey) {
+      if (combosSumados.has(r.comboKey)) return;
+      combosSumados.add(r.comboKey);
+    }
+    total += r.precio;
   });
   const mt = document.getElementById('pago-monto');
   const mh = document.getElementById('pago-monto-hint');
@@ -5660,14 +5671,24 @@ function updResumenPago(rows) {
   const cont = document.getElementById('pago-resumen');
   if (!cont) return;
   let html = '', total = 0;
+  const combosSumados = new Set();
   rows.forEach((r, i) => {
     const chk = document.getElementById('chk-sub-'+i);
     if (!chk?.checked) return;
     const meses = parseInt(document.getElementById('meses-sub-'+i)?.value) || 1;
     const vctoNuevo = calcNuevoVcto(r.vcto, meses);
-    total += r.precio;
-    const lbl = (PLATS[r.plat]?.nombre || r.plat) + (r.esCombo ? ' (combo)' : ' ' + r.perfil);
-    html += `<div class="sr"><span class="sl">${lbl}</span><span>${r.vcto} → ${vctoNuevo} · $${r.precio.toFixed(2)}</span></div>`;
+    if (r.esCombo && r.comboKey) {
+      if (combosSumados.has(r.comboKey)) return;
+      combosSumados.add(r.comboKey);
+      const comboPlats = JSON.parse(r.comboPlats || '[]');
+      const lbl = comboPlats.map(p => PLATS[p]?.nombre || p).join(' + ') + ' (combo)';
+      total += r.precio;
+      html += `<div class="sr"><span class="sl">${lbl}</span><span>${r.vcto} → ${vctoNuevo} · $${r.precio.toFixed(2)}</span></div>`;
+    } else {
+      total += r.precio;
+      const lbl = (PLATS[r.plat]?.nombre || r.plat) + ' · ' + r.perfil;
+      html += `<div class="sr"><span class="sl">${lbl}</span><span>${r.vcto} → ${vctoNuevo} · $${r.precio.toFixed(2)}</span></div>`;
+    }
   });
   if (html) {
     const _montoStr = (document.getElementById('pago-monto')?.value || '').replace('$','').replace(',','.').trim();
@@ -7016,19 +7037,42 @@ function renderSubs(data) {
 function reenviarAccesos(subId) {
   const s = SUBS_FULL.find(x => x.id === subId);
   if (!s) { toast('Suscripción no encontrada', 'warn'); return; }
-  const cli = CLIENTES.find(c => c.id === s.clienteId);
-  const platNom = (PLATAFORMAS||[]).find(p => p.codigo === s.plat)?.nombre || s.plat;
-  const monto = '$' + Number(s.monto).toFixed(2);
-  const ctx = {
-    correo:     s.correo || '—',
-    clave:      s.clave  || '—',
-    perfil:     s.perfil || '—',
-    pin:        s.pin    || '—',
-    fecha_vcto: s.fVcto  || '—',
-    monto
-  };
+  const cli  = CLIENTES.find(c => c.id === s.clienteId);
   const meta = { clienteId: s.clienteId, tel: cli?.tel || s.tel || '' };
-  abrirWA(s.nombre, platNom, monto, 'reenvio_accesos', ctx, meta);
+
+  if (s.tipo === 'Combo' && s.combo && s.combo !== '—' && s.combo !== 'undefined') {
+    // Agrupar todas las subs activas del mismo cliente con el mismo combo
+    const comboSubs = SUBS_FULL.filter(x =>
+      x.clienteId === s.clienteId && x.combo === s.combo && x.est !== 'inactivo'
+    );
+    const plats = comboSubs.map(x => x.plat);
+    const perfilesSel = {}, pins = {}, usuarios = {};
+    comboSubs.forEach((x, i) => {
+      const idxEnPlat = comboSubs.slice(0, i).filter(y => y.plat === x.plat).length;
+      const key = typeof getPerfKey === 'function' ? getPerfKey(plats, x.plat, idxEnPlat) : x.plat;
+      perfilesSel[key] = { correo: x.correo || '—', clave: x.clave || '—', codigo: x.perfil };
+      pins[key]     = x.pin     || '—';
+      usuarios[key] = x.usuario || '—';
+    });
+    const montoTotal  = comboSubs.reduce((acc, x) => acc + (Number(x.monto) || 0), 0);
+    const first       = comboSubs[0] || s;
+    const platNomFirst = (PLATAFORMAS||[]).find(p => p.codigo === first.plat)?.nombre || first.plat;
+    abrirWA(
+      s.nombre, platNomFirst, '$' + montoTotal.toFixed(2), 'reenvio_accesos',
+      { perfilesSel, plats, pins, usuarios, vcto: s.fVcto },
+      meta
+    );
+  } else {
+    // Individual
+    const platNom = (PLATAFORMAS||[]).find(p => p.codigo === s.plat)?.nombre || s.plat;
+    const monto   = '$' + Number(s.monto).toFixed(2);
+    abrirWA(
+      s.nombre, platNom, monto, 'reenvio_accesos',
+      { correo: s.correo||'—', clave: s.clave||'—', perfil: s.perfil||'—',
+        pin: s.pin||'—', fecha_vcto: s.fVcto||'—', monto, platCod: s.plat },
+      meta
+    );
+  }
 }
 
 function toggleClaveSub(btn, clave) {
