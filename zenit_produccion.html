@@ -6022,8 +6022,8 @@ function guardarPrecio() {
     precioStr = precio.startsWith('$') ? precio : '$'+precio;
   } else {
     const rows = document.querySelectorAll('#precio-combo-rows .precio-combo-row');
-    const dotColors = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
-    const nombres = {NF:'NF',DS:'DS',HB:'HB',PV:'PV'};
+    const getColor  = cod => `var(--${cod.toLowerCase()})`;
+    const getNombre = cod => (PLATAFORMAS||[]).find(x => x.codigo === cod)?.nombre || cod;
     let total = 0;
     rows.forEach(row => {
       const chk = row.querySelector('input[type=checkbox]');
@@ -6033,8 +6033,8 @@ function guardarPrecio() {
         const p = parseFloat(inp?.value?.replace(/[^0-9.]/g,'')) || 0;
         total += p;
         selected.push(plat);
-        platsHtml += `<span class="pd"><span class="dot" style="background:${dotColors[plat]}"></span>${nombres[plat]}</span>`;
-        desgParts.push(`${nombres[plat]} $${p.toFixed(2)}`);
+        platsHtml += `<span class="pd"><span class="dot" style="background:${getColor(plat)}"></span>${getNombre(plat)}</span>`;
+        desgParts.push(`${getNombre(plat)} $${p.toFixed(2)}`);
       }
     });
     if (!selected.length) { toast('Selecciona al menos una plataforma','warn'); return; }
@@ -8697,7 +8697,7 @@ let PLANTILLAS_WA = [
   {nombre:'Recordatorio 1 día',        tipo:'Cobranza',  contenido:'Hola {nombre}, tu {plataforma} vence mañana. Envía tu pago de {monto} para no perder el servicio. 🙏'},
   {nombre:'Confirmación de pago',      tipo:'Post pago', contenido:'Hola {nombre} ✅ Recibimos tu pago de {monto} por {plataforma}. Renovado hasta {fecha_vcto}. ¡Gracias! 🎉'},
   {nombre:'Cambio de contraseña',      tipo:'Seguridad', contenido:'Hola {nombre} 🔐 Por seguridad actualizamos la clave de tu {plataforma}. Correo: {correo} · Clave nueva: {clave_nueva} · Usuario: {perfil} · PIN: {pin}. Cualquier duda escríbenos. 🙏'},
-  {nombre:'Cambio de cuenta / plataforma', tipo:'Cambio', contenido:'Hola {nombre} 🔄 Actualizamos tu cuenta de {plataforma}. Correo: {correo} · Clave: {clave} · Usuario: {perfil} · PIN: {pin}. Tu vencimiento no cambia. 🙏'}
+  {nombre:'Cambio de cuenta / plataforma', tipo:'Cambio', contenido:'Hola {nombre} 🔄 Actualizamos tu cuenta de {plataforma}.\n📧 Correo: {correo}\n🔑 Clave: {clave}\n👤 Usuario: {usuario}\n📌 PIN: {pin}\nTu vencimiento no cambia. Cualquier duda escríbenos. 🙏'}
 ];
 let _plantillaEditIdx = -1;
 
@@ -8859,6 +8859,15 @@ function poblarSelectsPlataforma() {
   // Select de nueva plataforma en modal cambio
   const platNuevaSel = document.getElementById('plat-nueva-sel');
   if (platNuevaSel) platNuevaSel.innerHTML = optsBase;
+
+  // Filas del combo: reconstruir desde PLATAFORMAS para incluir todas las activas
+  const comboRowsEl = document.getElementById('precio-combo-rows');
+  if (comboRowsEl) {
+    comboRowsEl.innerHTML = activas.map(p => {
+      const cls = p.codigo.toLowerCase();
+      return `<div class="precio-combo-row" style="display:flex;align-items:center;gap:10px;padding:8px 11px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm)"><input type="checkbox" value="${p.codigo}" onchange="updPrecioCombo()" style="width:auto;flex-shrink:0"><span class="dot ${cls}" style="width:9px;height:9px;border-radius:50%"></span><span style="font-size:13px;flex:1">${p.nombre}</span><input type="text" class="combo-precio" placeholder="$0.00" style="max-width:90px" oninput="updPrecioCombo()"></div>`;
+    }).join('');
+  }
 }
 
 function editarPlataforma(codigo) {
