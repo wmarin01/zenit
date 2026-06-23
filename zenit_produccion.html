@@ -5076,7 +5076,7 @@ function poblarPlanesPorTipo(tipo) {
         opt.value = 'COMBO|' + i;
         opt.dataset.comboIdx = String(i);
         opt.dataset.precio = c.precio.toFixed(2);
-        const nombres = c.plats.map(p => PLATS[p]?.nombre || p).join(' + ');
+        const nombres = c.plats.map(p => (PLATAFORMAS||[]).find(x => x.codigo === p)?.nombre || PLATS[p]?.nombre || p).join(' + ');
         opt.textContent = `${nombres} — $${c.precio.toFixed(2)} (${c.desglose})`;
         selPlan.appendChild(opt);
       });
@@ -6062,6 +6062,12 @@ function guardarPrecio() {
       COMBOS.push({id:comboId, plats:selected, precio:totalCombo, desglose:desgloseCombo, perfiles:selected.map(()=>'1').join('+')});
     }
   }
+  // Para combo, completar platVal y perfsVal que solo se asignan en el bloque individual
+  if (tipo === 'combo') {
+    platVal  = selected.join('+');
+    perfsVal = selected.map(() => '1').join('+');
+  }
+
   // Persistir en Supabase
   const precioId = document.getElementById('precio-id')?.value;
   const precioNum = parseFloat(precioStr.replace('$','')) || 0;
