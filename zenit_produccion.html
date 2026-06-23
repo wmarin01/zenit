@@ -1442,6 +1442,55 @@ async function intentarLogin() {
       <div id="ac-cod-wa-wrap"></div>
 
     </div>
+
+    <!-- Configurar accesos (solo Master) -->
+    <div id="ac-accesos-cfg" style="display:none;margin-top:18px">
+      <div style="border-top:1px solid var(--border);padding-top:14px">
+        <button class="btn" onclick="codToggleConfig(this)" style="gap:8px">
+          <i class="ti ti-settings"></i> ⚙️ Configurar accesos
+          <i class="ti ti-chevron-down" id="cod-cfg-chev" style="margin-left:6px;transition:transform .2s"></i>
+        </button>
+        <div id="ac-accesos-cfg-body" style="display:none;margin-top:12px">
+          <div class="card">
+            <div style="display:flex;align-items:center;margin-bottom:12px">
+              <span style="font-weight:600;font-size:14px">Registros de acceso</span>
+              <button class="btn btn-sm" onclick="codAccesoFormAbrir()" style="margin-left:auto"><i class="ti ti-plus"></i> Nuevo</button>
+            </div>
+            <div id="cod-acceso-form-wrap" style="display:none;margin-bottom:14px;padding:14px;background:var(--bg3);border-radius:var(--rsm)">
+              <input type="hidden" id="caf-id">
+              <div class="g2" style="gap:8px;margin-bottom:10px">
+                <div><label style="font-size:12px;color:var(--text3)">Correo *</label><input id="caf-correo" type="email" placeholder="correo@ejemplo.com" style="margin-top:3px"></div>
+                <div><label style="font-size:12px;color:var(--text3)">Proveedor</label><input id="caf-proveedor" type="text" style="margin-top:3px"></div>
+                <div><label style="font-size:12px;color:var(--text3)">Plataforma</label><input id="caf-plataforma" type="text" placeholder="NF, DS, HB..." style="margin-top:3px"></div>
+                <div><label style="font-size:12px;color:var(--text3)">Tipo de bot *</label>
+                  <select id="caf-tipo_bot" style="margin-top:3px">
+                    <option value="correo_propio">✉️ correo_propio</option>
+                    <option value="web">🌐 web</option>
+                    <option value="telegram">✈️ telegram</option>
+                    <option value="manual">✍️ manual</option>
+                  </select>
+                </div>
+                <div><label style="font-size:12px;color:var(--text3)">Link</label><input id="caf-link" type="url" placeholder="https://..." style="margin-top:3px"></div>
+                <div><label style="font-size:12px;color:var(--text3)">Usuario</label><input id="caf-usuario" type="text" style="margin-top:3px"></div>
+                <div><label style="font-size:12px;color:var(--text3)">Clave</label><input id="caf-clave" type="text" style="margin-top:3px"></div>
+                <div><label style="font-size:12px;color:var(--text3)">Notas</label><input id="caf-notas" type="text" style="margin-top:3px"></div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-p" onclick="codAccesoGuardar()"><i class="ti ti-check"></i> Guardar</button>
+                <button class="btn" onclick="codAccesoFormCerrar()"><i class="ti ti-x"></i> Cancelar</button>
+              </div>
+            </div>
+            <div class="tw">
+              <table>
+                <thead><tr><th>Correo</th><th>Proveedor</th><th>Plataforma</th><th>Tipo bot</th><th>Link</th><th>Usuario</th><th></th></tr></thead>
+                <tbody id="tb-accesos-body"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:16px">—</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 <!-- HISTORIAL -->
@@ -10382,6 +10431,10 @@ function tabAccesos(el, panelId) {
     const p = document.getElementById(id);
     if (p) p.style.display = id === panelId ? 'block' : 'none';
   });
+  if (panelId === 'ac-codigos') {
+    const cfg = document.getElementById('ac-accesos-cfg');
+    if (cfg) cfg.style.display = USUARIO_ACTIVO?.rol === 'Master' ? 'block' : 'none';
+  }
 }
 
 // ── CÓDIGOS DE VERIFICACIÓN ─────────────────────────────────────────────────
@@ -10468,6 +10521,7 @@ async function codSelPlat(btn, subId) {
   _cod.sub    = sub;
   _cod.tipo   = null;
   _cod.codigo = null;
+  _cod.acceso = null;
 
   // Resaltar botón seleccionado
   const dc = _COD_DOT[sub.plat] || '--accent';
@@ -10475,7 +10529,7 @@ async function codSelPlat(btn, subId) {
   btn.style.borderColor = `var(${dc})`;
   btn.style.background  = 'var(--bg4)';
 
-  // Correo desde SUBS_FULL (ya es el correo de cuenta)
+  // Paso 1: obtener correo y proveedor desde cuentas_inventario
   let correo    = sub.correo && sub.correo !== '—' ? sub.correo : '';
   let proveedor = '—';
   const cuentaId = (sub.perfil && sub.perfil !== '—' && sub.perfil.length > 3) ? sub.perfil.slice(0, -1) : null;
@@ -10485,9 +10539,18 @@ async function codSelPlat(btn, subId) {
   }
   _cod.correo = correo;
 
-  const esInterno = correo.endsWith('@ntfwm.com');
-  const tipos     = _COD_TIPOS[sub.plat] || ['Inicio sesión'];
-  const platNom   = (PLATAFORMAS||[]).find(p=>p.codigo===sub.plat)?.nombre || sub.plat;
+  // Paso 2: buscar configuración de acceso por correo de cuenta
+  if (correo) {
+    const { data: acc } = await supa.from('accesos').select('*').eq('correo', correo).maybeSingle();
+    _cod.acceso = acc || null;
+  }
+
+  const tipBot  = _cod.acceso?.tipo_bot || 'manual';
+  const tipos   = _COD_TIPOS[sub.plat] || ['Inicio sesión'];
+  const platNom = (PLATAFORMAS||[]).find(p=>p.codigo===sub.plat)?.nombre || sub.plat;
+
+  const _TIP_LABEL = { correo_propio:'✉️ Correo propio', web:'🌐 Web / Portal', telegram:'✈️ Telegram', manual:'✍️ Manual' };
+  const _TIP_COLOR = { correo_propio:'var(--green)', web:'var(--accent)', telegram:'var(--purple)', manual:'var(--text3)' };
 
   const wrap = document.getElementById('ac-cod-cuenta-wrap');
   if (wrap) {
@@ -10498,12 +10561,12 @@ async function codSelPlat(btn, subId) {
         <span style="color:var(--text3)">Proveedor</span><strong>${proveedor}</strong>
         <span style="color:var(--text3)">Vence</span><span><strong>${sub.fVcto}</strong> <span style="color:var(--text3);font-size:12px">${sub.dias}d restantes</span></span>
         <span style="color:var(--text3)">Perfil</span><strong style="font-family:var(--mono)">${sub.perfil}</strong>
+        <span style="color:var(--text3)">Método</span><span style="color:${_TIP_COLOR[tipBot]||'var(--text3)'};font-weight:600">${_TIP_LABEL[tipBot]||tipBot}</span>
       </div>
       <div class="ct" style="font-size:11px;margin-bottom:10px"><i class="ti ti-key" style="color:var(--amber)"></i>¿Qué tipo de código necesitas?</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${tipos.map(t=>`<button class="btn cod-tipo-btn" onclick="codSelTipo(this,'${t.replace(/'/g,"&#39;")}')">${t}</button>`).join('')}
       </div>
-      ${!esInterno ? `<div style="margin-top:12px;padding:9px 12px;background:var(--bg4);border-radius:var(--rsm);font-size:12px;color:var(--text3)"><i class="ti ti-info-circle"></i> Cuenta externa — consulta automática no disponible, usa el campo manual.</div>` : ''}
     </div>`;
   }
 
@@ -10516,31 +10579,53 @@ function codSelTipo(el, tipo) {
   document.querySelectorAll('.cod-tipo-btn').forEach(b => b.classList.remove('btn-p'));
   el.classList.add('btn-p');
 
-  const correo    = _cod.correo || '';
-  const esInterno = correo.endsWith('@ntfwm.com');
-  const plat      = _cod.sub?.plat;
-  const dc        = _COD_DOT[plat] || '--accent';
-
+  const acceso = _cod.acceso;
+  const tipBot = acceso?.tipo_bot || 'manual';
+  const plat   = _cod.sub?.plat;
+  const dc     = _COD_DOT[plat] || '--accent';
   const resDiv = document.getElementById('ac-cod-resultado');
   const waWrap = document.getElementById('ac-cod-wa-wrap');
   if (waWrap) waWrap.innerHTML = '';
 
+  const manualField = `<div style="display:flex;gap:8px">
+    <input type="text" id="cod-manual-inp" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg3);color:var(--text);font-family:var(--mono);font-size:16px;letter-spacing:2px" placeholder="Ej: 123456">
+    <button class="btn" onclick="codUsarManual()"><i class="ti ti-check"></i> Usar</button>
+  </div>`;
+
+  const credRow = (label, val) => !val ? '' : `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+    <span style="color:var(--text3);font-size:12px;min-width:55px">${label}</span>
+    <code style="flex:1;font-size:13px;background:var(--bg4);padding:4px 8px;border-radius:var(--rsm);word-break:break-all">${val}</code>
+    <button class="btn btn-sm btn-ic" data-copy="${val.replace(/"/g,'&quot;')}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>
+  </div>`;
+
   let html = `<div class="card">`;
-  if (esInterno) {
+
+  if (tipBot === 'correo_propio') {
     html += `<button id="cod-fetch-btn" class="btn" style="width:100%;justify-content:center;padding:13px;font-size:14px;background:var(${dc});border-color:var(${dc});color:#fff;margin-bottom:14px" onclick="codObtenerAuto()">
       <i class="ti ti-search"></i> 🔍 Obtener código automático
     </button>
     <div id="cod-fetch-res"></div>
     <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:12px">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:8px">¿No encontró nada? Pega el código manualmente:</div>`;
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px">¿No encontró nada? Pega el código manualmente:</div>
+      ${manualField}
+    </div>`;
+
+  } else if (tipBot === 'web') {
+    if (acceso?.link) html += `<a href="${acceso.link}" target="_blank" rel="noopener" class="btn" style="display:flex;width:100%;justify-content:center;padding:13px;font-size:14px;margin-bottom:12px;text-decoration:none">🌐 Abrir correo / portal</a>`;
+    const creds = credRow('Usuario', acceso?.usuario) + credRow('Clave', acceso?.clave);
+    if (creds) html += `<div style="margin-bottom:12px">${creds}</div>`;
+    html += `<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Pega el código obtenido:</div>${manualField}`;
+
+  } else if (tipBot === 'telegram') {
+    if (acceso?.link) html += `<a href="${acceso.link}" target="_blank" rel="noopener" class="btn" style="display:flex;width:100%;justify-content:center;padding:13px;font-size:14px;margin-bottom:12px;text-decoration:none">✈️ Abrir bot Telegram</a>`;
+    const creds = credRow('Usuario', acceso?.usuario) + credRow('Clave', acceso?.clave);
+    if (creds) html += `<div style="margin-bottom:12px">${creds}</div>`;
+    html += `<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Pega el código obtenido:</div>${manualField}`;
+
   } else {
-    html += `<div style="font-size:12px;color:var(--text2);margin-bottom:10px">Pega el código aquí:</div>`;
+    html += `<div style="padding:9px 12px;background:var(--bg4);border-radius:var(--rsm);font-size:12px;color:var(--text3);margin-bottom:12px"><i class="ti ti-info-circle"></i> Sin acceso automático configurado para esta cuenta.</div>${manualField}`;
   }
-  html += `<div style="display:flex;gap:8px">
-    <input type="text" id="cod-manual-inp" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg3);color:var(--text);font-family:var(--mono);font-size:16px;letter-spacing:2px" placeholder="Ej: 123456">
-    <button class="btn" onclick="codUsarManual()"><i class="ti ti-check"></i> Usar</button>
-  </div>`;
-  if (esInterno) html += `</div>`;
+
   html += `</div>`;
   if (resDiv) resDiv.innerHTML = html;
 }
@@ -10623,6 +10708,98 @@ function codReset() {
   const b = document.getElementById('cod-busq'); if(b) b.value='';
   const r = document.getElementById('cod-resultados'); if(r) r.innerHTML='';
   const d = document.getElementById('ac-cod-detalle'); if(d) d.style.display='none';
+}
+
+// ─── GESTIÓN TABLA ACCESOS ───────────────────────────────────────────────────
+
+function codToggleConfig(btn) {
+  const body = document.getElementById('ac-accesos-cfg-body');
+  const chev = document.getElementById('cod-cfg-chev');
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display   = open ? 'none' : 'block';
+  if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+  if (!open) codLoadAccesos();
+}
+
+async function codLoadAccesos() {
+  const tbody = document.getElementById('tb-accesos-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:12px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i></td></tr>';
+  const { data, error } = await supa.from('accesos').select('*').order('correo');
+  if (error) { tbody.innerHTML = `<tr><td colspan="7"><div class="ab e"><i class="ti ti-alert-triangle"></i>${error.message}</div></td></tr>`; return; }
+  const TL = { correo_propio:'✉️', web:'🌐', telegram:'✈️', manual:'✍️' };
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:16px">Sin registros</td></tr>'; return; }
+  tbody.innerHTML = data.map(a => `<tr>
+    <td style="font-size:12px;font-family:var(--mono)">${a.correo||'—'}</td>
+    <td style="font-size:12px">${a.proveedor||'—'}</td>
+    <td><span class="b bi">${a.plataforma||'—'}</span></td>
+    <td style="font-size:12px">${TL[a.tipo_bot]||''} ${a.tipo_bot||'—'}</td>
+    <td style="font-size:11px">${a.link ? `<a href="${a.link}" target="_blank" rel="noopener" style="color:var(--accent)">Abrir</a>` : '—'}</td>
+    <td style="font-size:12px">${a.usuario||'—'}</td>
+    <td class="tda">
+      <button class="btn btn-sm btn-ic" onclick="codAccesoEditar('${a.id}')" title="Editar"><i class="ti ti-edit"></i></button>
+      <button class="btn btn-sm btn-ic" style="color:var(--red)" onclick="codAccesoEliminar('${a.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+    </td>
+  </tr>`).join('');
+}
+
+function codAccesoFormAbrir(data) {
+  const fw = document.getElementById('cod-acceso-form-wrap');
+  if (!fw) return;
+  document.getElementById('caf-id').value         = data?.id || '';
+  document.getElementById('caf-correo').value     = data?.correo || '';
+  document.getElementById('caf-proveedor').value  = data?.proveedor || '';
+  document.getElementById('caf-plataforma').value = data?.plataforma || '';
+  document.getElementById('caf-tipo_bot').value   = data?.tipo_bot || 'correo_propio';
+  document.getElementById('caf-link').value       = data?.link || '';
+  document.getElementById('caf-usuario').value    = data?.usuario || '';
+  document.getElementById('caf-clave').value      = data?.clave || '';
+  document.getElementById('caf-notas').value      = data?.notas || '';
+  fw.style.display = 'block';
+  fw.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function codAccesoFormCerrar() {
+  const fw = document.getElementById('cod-acceso-form-wrap');
+  if (fw) fw.style.display = 'none';
+}
+
+async function codAccesoEditar(id) {
+  const { data, error } = await supa.from('accesos').select('*').eq('id', id).single();
+  if (error || !data) { toast('Error al cargar registro','err'); return; }
+  codAccesoFormAbrir(data);
+}
+
+async function codAccesoEliminar(id) {
+  if (!confirm('¿Eliminar este registro de acceso?')) return;
+  const { error } = await supa.from('accesos').delete().eq('id', id);
+  if (error) { toast('Error: ' + error.message,'err'); return; }
+  toast('Eliminado ✓','ok');
+  codLoadAccesos();
+}
+
+async function codAccesoGuardar() {
+  const id     = document.getElementById('caf-id').value.trim();
+  const correo = document.getElementById('caf-correo').value.trim();
+  if (!correo) { toast('El correo es requerido','warn'); return; }
+  const payload = {
+    correo,
+    proveedor:  document.getElementById('caf-proveedor').value.trim()  || null,
+    plataforma: document.getElementById('caf-plataforma').value.trim() || null,
+    tipo_bot:   document.getElementById('caf-tipo_bot').value,
+    link:       document.getElementById('caf-link').value.trim()       || null,
+    usuario:    document.getElementById('caf-usuario').value.trim()    || null,
+    clave:      document.getElementById('caf-clave').value.trim()      || null,
+    notas:      document.getElementById('caf-notas').value.trim()      || null
+  };
+  const { error } = id
+    ? await supa.from('accesos').update(payload).eq('id', id)
+    : await supa.from('accesos').insert(payload);
+  if (error) { toast('Error: ' + error.message,'err'); return; }
+  toast(id ? 'Actualizado ✓' : 'Registro creado ✓','ok');
+  codAccesoFormCerrar();
+  codLoadAccesos();
 }
 
 // ── FIN MENSAJES WHATSAPP ─────────────────────────────────────────────────────
