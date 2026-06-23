@@ -864,48 +864,263 @@ async function intentarLogin() {
 </div>
 <!-- REPORTES -->
 <div class="view" id="v-reportes">
-  <!-- Filtros + exportar -->
-  <div class="card" style="margin-bottom:12px">
-    <div class="ct" style="margin-bottom:14px"><i class="ti ti-calendar-stats" style="color:var(--accent)"></i>Reporte de Vencimientos</div>
-    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
-      <div class="fg" style="flex:0 0 auto;min-width:140px">
-        <label>Tipo</label>
-        <select id="vct-tipo" style="width:100%">
-          <option value="vencer">Por vencer</option>
-          <option value="vencidos">Vencidos</option>
-          <option value="todos">Todos</option>
-        </select>
+  <div class="tabs" id="rpt-tabs">
+    <div class="tab on" onclick="tabRpt(this,'rpt-resumen')">Resumen</div>
+    <div class="tab" onclick="tabRpt(this,'rpt-vencimientos')">Vencimientos</div>
+    <div class="tab" onclick="tabRpt(this,'rpt-suscripciones');tabRpts(document.getElementById('rpts-tab-activas'),'rpts-activas')">Suscripciones</div>
+    <div class="tab" onclick="tabRpt(this,'rpt-inventario');tabRpti(document.getElementById('rpti-tab-perfiles'),'rpti-perfiles')">Inventario</div>
+    <div class="tab" id="rpt-tab-financiero" style="display:none" onclick="tabRpt(this,'rpt-financiero');tabRptf(document.getElementById('rptf-tab-ingresos'),'rptf-ingresos')">Financiero</div>
+  </div>
+
+  <!-- Resumen -->
+  <div class="pp on" id="rpt-resumen">
+    <div class="card" style="margin-bottom:12px">
+      <div class="ct" style="margin-bottom:14px"><i class="ti ti-chart-bar" style="color:var(--accent)"></i>Resumen por período</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+        <div class="fg" style="flex:0 0 auto;min-width:180px">
+          <label>Período</label>
+          <select id="rpt-periodo" style="width:100%">
+            <option value="hoy">Hoy</option>
+            <option value="semana">Esta semana</option>
+            <option value="mes" selected>Este mes</option>
+            <option value="bimestre">Bimestre</option>
+            <option value="trimestre">Trimestre</option>
+            <option value="cuatrimestre">Cuatrimestre</option>
+            <option value="semestre">Semestre</option>
+            <option value="anio">Año</option>
+          </select>
+        </div>
+        <button class="btn btn-p" onclick="rptResumenGenerar()" style="flex-shrink:0"><i class="ti ti-refresh"></i>Generar</button>
       </div>
-      <div class="fg" style="flex:0 0 auto;min-width:90px">
-        <label>Días</label>
-        <input type="number" id="vct-dias" value="7" min="0" max="365" style="width:100%">
-      </div>
-      <div class="fg" style="flex:0 0 auto;min-width:150px">
-        <label>Plataforma</label>
-        <select id="vct-plat" style="width:100%"><option value="">Todas</option></select>
-      </div>
-      <button class="btn btn-p" onclick="vctGenerar()" style="flex-shrink:0"><i class="ti ti-refresh"></i>Generar</button>
     </div>
-    <div style="margin-top:12px;font-size:12px;color:var(--text3)" id="vct-info">Configura los filtros y haz clic en Generar.</div>
-    <div id="vct-export-bar" style="display:none;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-      <button onclick="vctExportar('excel')" style="background:#1D6F42;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
-      <button onclick="vctExportar('pdf')"   style="background:#DC2626;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
-      <button onclick="vctExportar('word')"  style="background:#2B579A;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+    <div id="rpt-resumen-resultado">
+      <div style="padding:30px;text-align:center;color:var(--text3)">Selecciona un período y haz clic en Generar.</div>
     </div>
   </div>
-  <!-- Tabla de resultados -->
-  <div class="card">
-    <div class="tw">
-      <table>
-        <thead><tr>
-          <th>Perfil</th><th>Plataforma</th><th>Tipo</th><th>Cliente</th>
-          <th>Cód. País</th><th>Teléfono</th><th>Monto</th>
-          <th>F. Vencimiento</th><th>Días</th><th>Estado</th><th></th>
-        </tr></thead>
-        <tbody id="vct-tbody">
-          <tr><td colspan="11" style="text-align:center;padding:30px;color:var(--text3)">Genera un reporte para ver los resultados</td></tr>
-        </tbody>
-      </table>
+
+  <!-- Vencimientos (sin cambios) -->
+  <div class="pp" id="rpt-vencimientos">
+    <div class="card" style="margin-bottom:12px">
+      <div class="ct" style="margin-bottom:14px"><i class="ti ti-calendar-stats" style="color:var(--accent)"></i>Reporte de Vencimientos</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+        <div class="fg" style="flex:0 0 auto;min-width:140px">
+          <label>Tipo</label>
+          <select id="vct-tipo" style="width:100%">
+            <option value="vencer">Por vencer</option>
+            <option value="vencidos">Vencidos</option>
+            <option value="todos">Todos</option>
+          </select>
+        </div>
+        <div class="fg" style="flex:0 0 auto;min-width:90px">
+          <label>Días</label>
+          <input type="number" id="vct-dias" value="7" min="0" max="365" style="width:100%">
+        </div>
+        <div class="fg" style="flex:0 0 auto;min-width:150px">
+          <label>Plataforma</label>
+          <select id="vct-plat" style="width:100%"><option value="">Todas</option></select>
+        </div>
+        <button class="btn btn-p" onclick="vctGenerar()" style="flex-shrink:0"><i class="ti ti-refresh"></i>Generar</button>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text3)" id="vct-info">Configura los filtros y haz clic en Generar.</div>
+      <div id="vct-export-bar" style="display:none;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <button onclick="vctExportar('excel')" style="background:#1D6F42;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="vctExportar('pdf')"   style="background:#DC2626;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="vctExportar('word')"  style="background:#2B579A;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>Perfil</th><th>Plataforma</th><th>Tipo</th><th>Cliente</th>
+            <th>Cód. País</th><th>Teléfono</th><th>Monto</th>
+            <th>F. Vencimiento</th><th>Días</th><th>Estado</th><th></th>
+          </tr></thead>
+          <tbody id="vct-tbody">
+            <tr><td colspan="11" style="text-align:center;padding:30px;color:var(--text3)">Genera un reporte para ver los resultados</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suscripciones -->
+  <div class="pp" id="rpt-suscripciones">
+    <div class="tabs" id="rpts-tabs" style="margin-bottom:14px">
+      <div class="tab on" id="rpts-tab-activas" onclick="tabRpts(this,'rpts-activas')">Activas por plataforma</div>
+      <div class="tab" onclick="tabRpts(this,'rpts-nuevos')">Clientes nuevos</div>
+      <div class="tab" onclick="tabRpts(this,'rpts-perdidos')">Clientes perdidos</div>
+      <div class="tab" onclick="tabRpts(this,'rpts-retencion')">Tasa de retención</div>
+    </div>
+
+    <!-- Sub-tab 1: Activas por plataforma y operador -->
+    <div class="pp on" id="rpts-activas">
+      <div id="rpts-activas-cuerpo">
+        <div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- Sub-tab 2: Clientes nuevos -->
+    <div class="pp" id="rpts-nuevos" style="display:none">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+        <select id="rpts-nuevos-periodo" style="flex:1;max-width:220px">
+          <option value="hoy">Hoy</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes" selected>Este mes</option>
+          <option value="bimestre">Bimestre actual</option>
+          <option value="trimestre">Trimestre actual</option>
+          <option value="cuatrimestre">Cuatrimestre actual</option>
+          <option value="semestre">Semestre actual</option>
+          <option value="anio">Año actual</option>
+        </select>
+        <button class="btn" onclick="rptsNuevosGenerar()"><i class="ti ti-refresh"></i> Generar</button>
+      </div>
+      <div id="rpts-nuevos-res"></div>
+    </div>
+
+    <!-- Sub-tab 3: Clientes perdidos -->
+    <div class="pp" id="rpts-perdidos" style="display:none">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+        <select id="rpts-perdidos-periodo" style="flex:1;max-width:220px">
+          <option value="hoy">Hoy</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes" selected>Este mes</option>
+          <option value="bimestre">Bimestre actual</option>
+          <option value="trimestre">Trimestre actual</option>
+          <option value="cuatrimestre">Cuatrimestre actual</option>
+          <option value="semestre">Semestre actual</option>
+          <option value="anio">Año actual</option>
+        </select>
+        <button class="btn" onclick="rptsPerdidosGenerar()"><i class="ti ti-refresh"></i> Generar</button>
+      </div>
+      <div id="rpts-perdidos-res"></div>
+    </div>
+
+    <!-- Sub-tab 4: Tasa de retención -->
+    <div class="pp" id="rpts-retencion" style="display:none">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+        <select id="rpts-retencion-periodo" style="flex:1;max-width:220px">
+          <option value="hoy">Hoy</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes" selected>Este mes</option>
+          <option value="bimestre">Bimestre actual</option>
+          <option value="trimestre">Trimestre actual</option>
+          <option value="cuatrimestre">Cuatrimestre actual</option>
+          <option value="semestre">Semestre actual</option>
+          <option value="anio">Año actual</option>
+        </select>
+        <button class="btn" onclick="rptsRetencionGenerar()"><i class="ti ti-refresh"></i> Generar</button>
+      </div>
+      <div id="rpts-retencion-res"></div>
+    </div>
+  </div>
+
+  <!-- Inventario -->
+  <div class="pp" id="rpt-inventario">
+    <div class="tabs" id="rpti-tabs" style="margin-bottom:14px">
+      <div class="tab on" id="rpti-tab-perfiles" onclick="tabRpti(this,'rpti-perfiles')">Perfiles disponibles</div>
+      <div class="tab" onclick="tabRpti(this,'rpti-ocupacion')">Ocupación de cuentas</div>
+      <div class="tab" id="rpti-tab-vencprov" style="display:none" onclick="tabRpti(this,'rpti-vencprov')">Próximas a vencer</div>
+    </div>
+
+    <!-- Sub-tab 1: Perfiles disponibles por plataforma -->
+    <div class="pp on" id="rpti-perfiles">
+      <div id="rpti-perfiles-cuerpo">
+        <div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- Sub-tab 2: Ocupación de cuentas -->
+    <div class="pp" id="rpti-ocupacion" style="display:none">
+      <div id="rpti-ocupacion-cuerpo">
+        <div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- Sub-tab 3: Cuentas próximas a vencer (Master only) -->
+    <div class="pp" id="rpti-vencprov" style="display:none">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+        <select id="rpti-vp-dias" style="width:auto">
+          <option value="7">7 días</option>
+          <option value="15" selected>15 días</option>
+          <option value="30">30 días</option>
+        </select>
+        <button class="btn" onclick="rptiVencProvGenerar()"><i class="ti ti-refresh"></i> Generar</button>
+      </div>
+      <div id="rpti-vp-res"></div>
+    </div>
+  </div>
+
+  <!-- Financiero (solo Master) -->
+  <div class="pp" id="rpt-financiero">
+    <div class="tabs" id="rptf-tabs" style="margin-bottom:14px">
+      <div class="tab on" id="rptf-tab-ingresos"    onclick="tabRptf(this,'rptf-ingresos')">Ingresos vs Egresos</div>
+      <div class="tab"                               onclick="tabRptf(this,'rptf-rentabilidad')">Rentabilidad por plataforma</div>
+      <div class="tab"                               onclick="tabRptf(this,'rptf-topclientes')">Clientes top</div>
+      <div class="tab"                               onclick="tabRptf(this,'rptf-proyeccion')">Proyección</div>
+    </div>
+
+    <!-- Sub-tab 1: Ingresos vs Egresos -->
+    <div class="pp on" id="rptf-ingresos">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+        <select id="rptf-ie-periodo" style="flex:1;max-width:220px">
+          <option value="hoy">Hoy</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes" selected>Este mes</option>
+          <option value="bimestre">Bimestre actual</option>
+          <option value="trimestre">Trimestre actual</option>
+          <option value="cuatrimestre">Cuatrimestre actual</option>
+          <option value="semestre">Semestre actual</option>
+          <option value="anio">Año actual</option>
+        </select>
+        <button class="btn" onclick="rptfIngresosGenerar()"><i class="ti ti-refresh"></i> Generar</button>
+      </div>
+      <div id="rptf-ie-res"></div>
+    </div>
+
+    <!-- Sub-tab 2: Rentabilidad por plataforma -->
+    <div class="pp" id="rptf-rentabilidad" style="display:none">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+        <select id="rptf-ren-periodo" style="flex:1;max-width:220px">
+          <option value="hoy">Hoy</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes" selected>Este mes</option>
+          <option value="bimestre">Bimestre actual</option>
+          <option value="trimestre">Trimestre actual</option>
+          <option value="cuatrimestre">Cuatrimestre actual</option>
+          <option value="semestre">Semestre actual</option>
+          <option value="anio">Año actual</option>
+        </select>
+        <button class="btn" onclick="rptfRentabilidadGenerar()"><i class="ti ti-refresh"></i> Generar</button>
+      </div>
+      <div id="rptf-ren-res"></div>
+    </div>
+
+    <!-- Sub-tab 3: Clientes con mayor facturación -->
+    <div class="pp" id="rptf-topclientes" style="display:none">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+        <select id="rptf-top-periodo" style="flex:1;max-width:220px">
+          <option value="hoy">Hoy</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes" selected>Este mes</option>
+          <option value="bimestre">Bimestre actual</option>
+          <option value="trimestre">Trimestre actual</option>
+          <option value="cuatrimestre">Cuatrimestre actual</option>
+          <option value="semestre">Semestre actual</option>
+          <option value="anio">Año actual</option>
+        </select>
+        <button class="btn" onclick="rptfTopClientesGenerar()"><i class="ti ti-refresh"></i> Generar</button>
+      </div>
+      <div id="rptf-top-res"></div>
+    </div>
+
+    <!-- Sub-tab 4: Proyección de ingresos -->
+    <div class="pp" id="rptf-proyeccion" style="display:none">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+        <span style="font-size:13px;color:var(--text2)">Mes en curso</span>
+        <button class="btn" onclick="rptfProyeccionGenerar()"><i class="ti ti-refresh"></i> Generar</button>
+      </div>
+      <div id="rptf-proy-res"></div>
     </div>
   </div>
 </div>
@@ -1753,7 +1968,7 @@ async function intentarLogin() {
       <div class="fst">Plataforma y perfiles</div>
       <div class="fr c3">
         <div class="fg"><label>Plataforma<span class="req">*</span></label>
-          <select id="precio-plat">
+          <select id="precio-plat" onchange="updPrecioPerfiles(this.value)">
           </select>
         </div>
         <div class="fg"><label>Cantidad de perfiles<span class="req">*</span></label>
@@ -2592,7 +2807,7 @@ const WA={
       // Individual
       const {pl, perf, pin, usr} = entries[0] || {pl:p,perf:{},pin:'—',usr:'—'};
       const link = getLink(pl);
-      return `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu <span class="wav">${getPNom(pl)}</span> ya está activa:\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👁️ Usuario: <span class="wav">${usr}</span>\n🔢 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''} 🍿`;
+      return `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu <span class="wav">${getPNom(pl)}</span> ya está activa:\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👁️ Usuario: <span class="wav">${usr}</span>\n🔢 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''} 🍿\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
     }
     // Multi-perfil o combo
     let msg = `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu combo ya está activo:\n`;
@@ -2606,6 +2821,7 @@ const WA={
       if (link) msg += `🔗 Link: <span class="wav">${link}</span>\n`;
     });
     msg += `\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span> 🎪`;
+    msg += `\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
     return msg;
   },
   cambio:(n,p,m,ctx)=>{
@@ -3370,7 +3586,10 @@ async function confirmarVenta(){
           perfilesSel: ventaData.perfilesSel,
           plats:       ventaData.plats,
           usuarios:    usuarios,
-          pins:        pins
+          pins:        pins,
+          perfil:      tipo === 'combo'
+            ? entries.map(e => e.perf?.codigo || '—').join(' | ')
+            : (firstEntry.perf?.codigo || '—')
         },
         { clienteId: ventaData.clienteId, tel: ventaData.clienteTel }
       );
@@ -3863,7 +4082,7 @@ async function guardarCuenta(){
       const duplicado = INV_CACHE.find(c => c.correo.toLowerCase() === correo.toLowerCase() && c.plataforma === platVal && c.id !== codigo && c.estado !== 'Inactiva');
       if (duplicado) { toast('Este correo ya está registrado en la cuenta ' + duplicado.id + ' (' + platVal + ')', 'warn'); return; }
 
-      const maxPerf = platVal==='DS' ? 7 : platVal==='PV' ? 6 : 5;
+      const maxPerf = (PLATAFORMAS||[]).find(x => x.codigo === platVal)?.max_perfiles ?? PLATS[platVal]?.max_perfiles ?? 5;
 
       const btn = document.querySelector('#m-cuenta .btn-p');
       btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
@@ -5982,6 +6201,18 @@ function abrirEditarPrecio(id) {
 function updPrecioTipo(v) {
   document.getElementById('precio-ind-sec').style.display = v === 'individual' ? 'block' : 'none';
   document.getElementById('precio-combo-sec').style.display = v === 'combo' ? 'block' : 'none';
+}
+
+function updPrecioPerfiles(platCod) {
+  const sel = document.getElementById('precio-perfiles');
+  if (!sel) return;
+  const max = (PLATAFORMAS||[]).find(x => x.codigo === platCod)?.max_perfiles ?? PLATS[platCod]?.max_perfiles ?? 7;
+  const current = parseInt(sel.value) || 1;
+  sel.innerHTML = Array.from({length: max}, (_, i) => {
+    const n = i + 1;
+    return `<option value="${n}">${n} ${n === 1 ? 'perfil' : 'perfiles'}</option>`;
+  }).join('');
+  sel.value = String(Math.min(current, max));
 }
 
 function updPrecioCombo() {
@@ -8497,9 +8728,10 @@ let VCT_DATA = [];
 
 function vctInit() {
   const sel = document.getElementById('vct-plat');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">Todas</option>' +
+  if (sel) sel.innerHTML = '<option value="">Todas</option>' +
     (PLATAFORMAS || []).map(p => `<option value="${p.codigo}">${p.nombre || p.codigo}</option>`).join('');
+  const finTab = document.getElementById('rpt-tab-financiero');
+  if (finTab) finTab.style.display = USUARIO_ACTIVO?.rol === 'Master' ? '' : 'none';
 }
 
 function vctSplitTel(tel) {
@@ -8528,7 +8760,7 @@ function vctGenerar() {
 
   let data = SUBS_FULL.filter(s => s.est === 'activo' || s.est === 'sin_renovar');
   if (plat) data = data.filter(s => s.plat === plat);
-  if (tipo === 'vencer')   data = data.filter(s => s.dias >= 0 && s.dias <= dias);
+  if (tipo === 'vencer')   data = data.filter(s => s.dias === dias);
   else if (tipo === 'vencidos') data = data.filter(s => s.dias === -dias);
   data = [...data].sort((a, b) => a.dias - b.dias);
 
@@ -8695,15 +8927,620 @@ function vctExportar(formato) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// REPORTES — TABS Y RESUMEN
+// ═══════════════════════════════════════════════════════════
+
+function tabRpt(el, id) {
+  document.getElementById('rpt-tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelectorAll('#v-reportes .pp').forEach(p => { p.classList.remove('on'); p.style.display = 'none'; });
+  const t = document.getElementById(id);
+  if (t) { t.classList.add('on'); t.style.display = 'block'; }
+}
+
+function rptGetRango(periodo) {
+  const hoy = new Date();
+  const y = hoy.getFullYear(), m = hoy.getMonth();
+  const iso = d => new Date(d).toISOString().split('T')[0];
+  switch (periodo) {
+    case 'hoy':
+      return { ini: iso(hoy), fin: iso(hoy) };
+    case 'semana': {
+      const d = new Date(hoy); const dow = d.getDay() || 7;
+      d.setDate(d.getDate() - dow + 1);
+      const e = new Date(d); e.setDate(d.getDate() + 6);
+      return { ini: iso(d), fin: iso(e) };
+    }
+    case 'mes':
+      return { ini: iso(new Date(y, m, 1)), fin: iso(new Date(y, m + 1, 0)) };
+    case 'bimestre': {
+      const b = Math.floor(m / 2);
+      return { ini: iso(new Date(y, b*2, 1)), fin: iso(new Date(y, b*2 + 2, 0)) };
+    }
+    case 'trimestre': {
+      const t = Math.floor(m / 3);
+      return { ini: iso(new Date(y, t*3, 1)), fin: iso(new Date(y, t*3 + 3, 0)) };
+    }
+    case 'cuatrimestre': {
+      const c = Math.floor(m / 4);
+      return { ini: iso(new Date(y, c*4, 1)), fin: iso(new Date(y, c*4 + 4, 0)) };
+    }
+    case 'semestre': {
+      const s = m < 6 ? 0 : 1;
+      return { ini: iso(new Date(y, s*6, 1)), fin: iso(new Date(y, s*6 + 6, 0)) };
+    }
+    case 'anio':
+      return { ini: iso(new Date(y, 0, 1)), fin: iso(new Date(y, 11, 31)) };
+    default:
+      return { ini: iso(new Date(y, m, 1)), fin: iso(new Date(y, m + 1, 0)) };
+  }
+}
+
+async function rptResumenGenerar() {
+  const periodo  = document.getElementById('rpt-periodo')?.value || 'mes';
+  const { ini, fin } = rptGetRango(periodo);
+  const esMaster = USUARIO_ACTIVO?.rol === 'Master';
+  const resDiv   = document.getElementById('rpt-resumen-resultado');
+  if (resDiv) resDiv.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
+
+  try {
+    const [rV, rC, rE, rH] = await Promise.all([
+      supa.from('ventas').select('monto, plataformas').gte('created_at', ini+'T00:00:00').lte('created_at', fin+'T23:59:59'),
+      supa.from('cobros').select('monto, plataforma').gte('fecha', ini).lte('fecha', fin),
+      supa.from('egresos').select('total, categoria').gte('fecha', ini).lte('fecha', fin),
+      supa.from('historial').select('id', { count: 'exact', head: true }).ilike('accion', '%cambio%').gte('created_at', ini+'T00:00:00').lte('created_at', fin+'T23:59:59')
+    ]);
+
+    const ventas  = rV.data  || [];
+    const cobros  = rC.data  || [];
+    const egresos = rE.data  || [];
+    const cambiosCnt = rH.count || 0;
+    const fmt = n => '$' + (n||0).toFixed(2);
+
+    const ventasMonto  = ventas.reduce((s, v)  => s + (parseFloat(v.monto)||0),  0);
+    const cobrosMonto  = cobros.reduce((s, c)  => s + (parseFloat(c.monto)||0),  0);
+    const egresosMonto = egresos.reduce((s, e) => s + (parseFloat(e.total)||0),  0);
+
+    let html = '<div class="mg" style="margin-bottom:16px">';
+    if (esMaster) {
+      html += `
+        <div class="card mc" style="--mc-c:var(--accent2)"><div class="ml"><div class="mt">Ventas</div><div class="mv" style="color:var(--green)">${ventas.length}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${fmt(ventasMonto)}</div></div><div class="mi" style="background:var(--accent2)"><i class="ti ti-shopping-cart"></i></div></div>
+        <div class="card mc" style="--mc-c:var(--green)"><div class="ml"><div class="mt">Cobros</div><div class="mv" style="color:var(--green)">${cobros.length}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${fmt(cobrosMonto)}</div></div><div class="mi" style="background:var(--green2)"><i class="ti ti-cash"></i></div></div>
+        <div class="card mc" style="--mc-c:var(--purple)"><div class="ml"><div class="mt">Cambios</div><div class="mv">${cambiosCnt}</div></div><div class="mi" style="background:var(--purple)"><i class="ti ti-arrows-exchange"></i></div></div>
+        <div class="card mc" style="--mc-c:var(--red)"><div class="ml"><div class="mt">Egresos</div><div class="mv" style="color:var(--red)">${fmt(egresosMonto)}</div></div><div class="mi" style="background:rgba(240,77,77,.2)"><i class="ti ti-trending-down"></i></div></div>`;
+    } else {
+      html += `
+        <div class="card mc" style="--mc-c:var(--accent2)"><div class="ml"><div class="mt">Ventas</div><div class="mv">${ventas.length}</div></div><div class="mi" style="background:var(--accent2)"><i class="ti ti-shopping-cart"></i></div></div>
+        <div class="card mc" style="--mc-c:var(--green)"><div class="ml"><div class="mt">Cobros</div><div class="mv">${cobros.length}</div></div><div class="mi" style="background:var(--green2)"><i class="ti ti-cash"></i></div></div>
+        <div class="card mc" style="--mc-c:var(--purple)"><div class="ml"><div class="mt">Cambios</div><div class="mv">${cambiosCnt}</div></div><div class="mi" style="background:var(--purple)"><i class="ti ti-arrows-exchange"></i></div></div>`;
+    }
+    html += '</div>';
+
+    if (esMaster) {
+      const byPlatV = {}, byPlatC = {}, byCat = {};
+      ventas.forEach(v => {
+        (v.plataformas||'').split('+').map(s=>s.trim()).filter(Boolean).forEach(p => {
+          if (!byPlatV[p]) byPlatV[p] = {cnt:0, monto:0};
+          byPlatV[p].cnt++; byPlatV[p].monto += parseFloat(v.monto)||0;
+        });
+      });
+      cobros.forEach(c => {
+        const p = c.plataforma||'—';
+        if (!byPlatC[p]) byPlatC[p] = {cnt:0, monto:0};
+        byPlatC[p].cnt++; byPlatC[p].monto += parseFloat(c.monto)||0;
+      });
+      egresos.forEach(e => {
+        const cat = e.categoria||'—';
+        if (!byCat[cat]) byCat[cat] = 0;
+        byCat[cat] += parseFloat(e.total)||0;
+      });
+
+      const dot = p => `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--${p.toLowerCase()});margin-right:5px;vertical-align:middle"></span>`;
+      const noData = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Sin datos en este período</div>';
+      const rowVC = (label, cnt, monto) => `<tr><td style="padding:4px 0;font-size:12px">${label}</td><td style="text-align:right;font-size:11px;color:var(--text3);padding-left:8px">${cnt}</td><td style="text-align:right;font-size:12px;color:var(--green);padding-left:8px">${fmt(monto)}</td></tr>`;
+      const rowE  = (label, monto) => `<tr><td style="padding:4px 0;font-size:12px">${label}</td><td style="text-align:right;font-size:12px;color:var(--red);padding-left:8px">${fmt(monto)}</td></tr>`;
+
+      html += '<div class="g3">';
+
+      html += '<div class="card"><div class="ct" style="font-size:12px;margin-bottom:10px"><i class="ti ti-shopping-cart" style="color:var(--accent)"></i>Ventas por plataforma</div>';
+      const entV = Object.entries(byPlatV).sort((a,b)=>b[1].monto-a[1].monto);
+      html += entV.length ? `<table style="width:100%"><tbody>${entV.map(([p,d])=>rowVC(dot(p)+p, d.cnt+' vta'+(d.cnt!==1?'s':''), d.monto)).join('')}</tbody></table>` : noData;
+      html += '</div>';
+
+      html += '<div class="card"><div class="ct" style="font-size:12px;margin-bottom:10px"><i class="ti ti-cash" style="color:var(--green)"></i>Cobros por plataforma</div>';
+      const entC = Object.entries(byPlatC).sort((a,b)=>b[1].monto-a[1].monto);
+      html += entC.length ? `<table style="width:100%"><tbody>${entC.map(([p,d])=>rowVC(dot(p)+p, d.cnt+' cobro'+(d.cnt!==1?'s':''), d.monto)).join('')}</tbody></table>` : noData;
+      html += '</div>';
+
+      html += '<div class="card"><div class="ct" style="font-size:12px;margin-bottom:10px"><i class="ti ti-trending-down" style="color:var(--red)"></i>Egresos por categoría</div>';
+      const entE = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+      html += entE.length ? `<table style="width:100%"><tbody>${entE.map(([cat,monto])=>rowE(cat, monto)).join('')}</tbody></table>` : noData;
+      html += '</div>';
+
+      html += '</div>';
+    }
+
+    if (resDiv) resDiv.innerHTML = html;
+  } catch(e) {
+    console.error('[RPT] Error resumen:', e);
+    if (resDiv) resDiv.innerHTML = `<div class="ab e" style="margin-top:12px"><i class="ti ti-alert-triangle"></i>Error al cargar datos: ${e.message}</div>`;
+  }
+}
+
+// ─── SUSCRIPCIONES SUB-MÓDULO ──────────────────────────────
+
+function tabRpts(el, id) {
+  document.getElementById('rpts-tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelectorAll('#rpt-suscripciones > .pp').forEach(p => { p.classList.remove('on'); p.style.display = 'none'; });
+  const panel = document.getElementById(id);
+  if (panel) { panel.classList.add('on'); panel.style.display = 'block'; }
+  if (id === 'rpts-activas') rptsRenderActivas();
+}
+
+function rptsRenderActivas() {
+  const activas = SUBS_FULL.filter(s => s.est === 'activo');
+  const total = activas.length;
+  const byPlat = {};
+  activas.forEach(s => { const p = s.plat || '—'; byPlat[p] = (byPlat[p]||0) + 1; });
+  const platRows = Object.entries(byPlat).sort((a,b)=>b[1]-a[1]).map(([p,cnt]) => {
+    const nom = (PLATAFORMAS||[]).find(x=>x.codigo===p)?.nombre || p;
+    const pct = total ? ((cnt/total)*100).toFixed(1) : '0.0';
+    return `<tr><td><span class="pd"><span class="dot ${p.toLowerCase()}"></span>${nom}</span></td><td style="text-align:right">${cnt}</td><td style="text-align:right;color:var(--text3)">${pct}%</td></tr>`;
+  }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:16px">Sin suscripciones activas</td></tr>';
+  const platHtml = `<div class="card"><div class="ct" style="font-size:12px;margin-bottom:10px"><i class="ti ti-device-tv" style="color:var(--accent)"></i>Activas por plataforma <span style="font-size:11px;color:var(--text3);margin-left:6px">${total} total</span></div><div class="tw"><table><thead><tr><th>Plataforma</th><th style="text-align:right">Activas</th><th style="text-align:right">% del total</th></tr></thead><tbody>${platRows}</tbody></table></div></div>`;
+  const cuerpo = document.getElementById('rpts-activas-cuerpo');
+  if (cuerpo) cuerpo.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">${platHtml}<div id="rpts-op-card"><div style="padding:20px;text-align:center;color:var(--text3);font-size:13px"><i class="ti ti-loader"></i> Cargando operadores...</div></div></div>`;
+  supa.from('historial').select('operador').ilike('accion', '%venta nueva%').limit(2000).then(({ data }) => {
+    const byOp = {};
+    (data||[]).forEach(h => { const op = h.operador||'Sin asignar'; byOp[op] = (byOp[op]||0)+1; });
+    const opRows = Object.entries(byOp).sort((a,b)=>b[1]-a[1])
+      .map(([op,cnt]) => `<tr><td>${op}</td><td style="text-align:right">${cnt}</td></tr>`).join('')
+      || '<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:16px">Sin datos de operador</td></tr>';
+    const opCard = document.getElementById('rpts-op-card');
+    if (opCard) opCard.outerHTML = `<div class="card"><div class="ct" style="font-size:12px;margin-bottom:10px"><i class="ti ti-user-check" style="color:var(--purple)"></i>Ventas por operador <span style="font-size:11px;color:var(--text3);margin-left:6px">histórico</span></div><div class="tw"><table><thead><tr><th>Operador</th><th style="text-align:right">Ventas</th></tr></thead><tbody>${opRows}</tbody></table></div></div>`;
+  });
+}
+
+async function rptsNuevosGenerar() {
+  const periodo = document.getElementById('rpts-nuevos-periodo')?.value || 'mes';
+  const { ini, fin } = rptGetRango(periodo);
+  const esMaster = USUARIO_ACTIVO?.rol === 'Master';
+  const resDiv = document.getElementById('rpts-nuevos-res');
+  if (resDiv) resDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
+  try {
+    const { data: ventas, error } = await supa.from('ventas')
+      .select('nombre,plataformas,monto,created_at')
+      .gte('created_at', ini + 'T00:00:00')
+      .lte('created_at', fin + 'T23:59:59')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const cnt = (ventas||[]).length;
+    const totalMonto = (ventas||[]).reduce((s,v) => s + (parseFloat(v.monto)||0), 0);
+    const colNum = esMaster ? 4 : 3;
+    const thMonto = esMaster ? '<th>Monto</th>' : '';
+    const rows = (ventas||[]).map(v => {
+      const plats = (v.plataformas||'').split('+').filter(Boolean).map(p => `<span class="pd"><span class="dot" style="background:var(--${p.toLowerCase().trim()})"></span>${p}</span>`).join('');
+      const fecha = v.created_at ? v.created_at.substring(0,10).split('-').reverse().join('/') : '—';
+      const tdM = esMaster ? `<td style="color:var(--green)">$${parseFloat(v.monto||0).toFixed(2)}</td>` : '';
+      return `<tr><td>${v.nombre||'—'}</td><td>${plats||'—'}</td>${tdM}<td>${fecha}</td></tr>`;
+    }).join('') || `<tr><td colspan="${colNum}" style="text-align:center;color:var(--text3);padding:16px">Sin ventas en este período</td></tr>`;
+    const sumario = `<strong>${cnt}</strong> cliente${cnt!==1?'s':''} nuevo${cnt!==1?'s':''}` + (esMaster ? ` · <strong style="color:var(--green)">$${totalMonto.toFixed(2)}</strong>` : '');
+    if (resDiv) resDiv.innerHTML = `<div style="font-size:13px;color:var(--text2);margin-bottom:10px">${sumario}</div><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Plataforma(s)</th>${thMonto}<th>Fecha</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  } catch(e) {
+    if (resDiv) resDiv.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>Error: ${e.message}</div>`;
+  }
+}
+
+function rptsPerdidosGenerar() {
+  const periodo = document.getElementById('rpts-perdidos-periodo')?.value || 'mes';
+  const { ini, fin } = rptGetRango(periodo);
+  const esMaster = USUARIO_ACTIVO?.rol === 'Master';
+  const resDiv = document.getElementById('rpts-perdidos-res');
+  const vctoISO = s => {
+    const p = (s.fVcto||'').split('/');
+    return (p.length===3 && p[2]) ? `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}` : '';
+  };
+  const perdidos = SUBS_FULL.filter(s => {
+    const iso = vctoISO(s);
+    return (s.est==='sin_renovar' || s.est==='inactivo') && iso >= ini && iso <= fin;
+  });
+  const cnt = perdidos.length;
+  const totalMonto = perdidos.reduce((s,x) => s + (x.monto||0), 0);
+  const colNum = esMaster ? 5 : 4;
+  const thMonto = esMaster ? '<th>Monto</th>' : '';
+  const rows = perdidos.map(s => {
+    const platNom = (PLATAFORMAS||[]).find(p=>p.codigo===s.plat)?.nombre || s.plat || '—';
+    const tdM = esMaster ? `<td style="color:var(--red)">$${(s.monto||0).toFixed(2)}</td>` : '';
+    return `<tr><td>${s.nombre}</td><td>${formatTel(s.tel)||'—'}</td><td>${platNom}</td>${tdM}<td>${s.fVcto}</td></tr>`;
+  }).join('') || `<tr><td colspan="${colNum}" style="text-align:center;color:var(--text3);padding:16px">Sin clientes perdidos en este período</td></tr>`;
+  const sumario = `<strong>${cnt}</strong> cliente${cnt!==1?'s':''} perdido${cnt!==1?'s':''}` + (esMaster ? ` · <strong style="color:var(--red)">$${totalMonto.toFixed(2)}</strong>` : '');
+  if (resDiv) resDiv.innerHTML = `<div style="font-size:13px;color:var(--text2);margin-bottom:10px">${sumario}</div><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataforma</th>${thMonto}<th>F. Vencimiento</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+function rptsRetencionGenerar() {
+  const periodo = document.getElementById('rpts-retencion-periodo')?.value || 'mes';
+  const { ini, fin } = rptGetRango(periodo);
+  const esMaster = USUARIO_ACTIVO?.rol === 'Master';
+  const resDiv = document.getElementById('rpts-retencion-res');
+  const fIniISO = s => { const p=(s.fIni||'').split('/'); return (p.length===3&&p[2])?`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`:''; };
+  const fVctoISO = s => { const p=(s.fVcto||'').split('/'); return (p.length===3&&p[2])?`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`:''; };
+  const activosIni = SUBS_FULL.filter(s => { const fi=fIniISO(s); return fi && fi<ini; });
+  const nuevos     = SUBS_FULL.filter(s => { const fi=fIniISO(s); return fi && fi>=ini && fi<=fin; });
+  const activosFin = SUBS_FULL.filter(s => { const fv=fVctoISO(s); return s.est==='activo' && fv && fv>=fin; });
+  const denom = activosIni.length + nuevos.length;
+  const tasa = denom > 0 ? Math.min(100, activosFin.length / denom * 100) : 0;
+  const color = tasa>=80?'var(--green)':tasa>=60?'var(--amber)':'var(--red)';
+  const nomP = {hoy:'Hoy',semana:'Esta semana',mes:'Este mes',bimestre:'Bimestre actual',trimestre:'Trimestre actual',cuatrimestre:'Cuatrimestre actual',semestre:'Semestre actual',anio:'Año actual'}[periodo]||periodo;
+  let html = `<div class="card" style="text-align:center;padding:36px"><div style="font-size:52px;font-weight:700;color:${color};line-height:1">${tasa.toFixed(1)}%</div><div style="font-size:13px;color:var(--text3);margin-top:8px">Tasa de retención — ${nomP}</div></div>`;
+  if (esMaster) {
+    html += `<div class="card" style="margin-top:12px"><div class="ct" style="font-size:12px;margin-bottom:12px"><i class="ti ti-calculator" style="color:var(--accent)"></i>Detalle del cálculo</div><table style="width:100%;font-size:13px"><tbody><tr><td style="padding:5px 0;color:var(--text2)">Activos al inicio del período</td><td style="text-align:right;font-weight:500">${activosIni.length}</td></tr><tr><td style="padding:5px 0;color:var(--text2)">Clientes nuevos en el período</td><td style="text-align:right;font-weight:500">${nuevos.length}</td></tr><tr><td style="padding:5px 0;color:var(--text2)">Activos al final del período</td><td style="text-align:right;font-weight:500">${activosFin.length}</td></tr><tr style="border-top:1px solid var(--border)"><td style="padding:8px 0 5px;font-size:12px;color:var(--text3)" colspan="2">Fórmula: Activos fin ÷ (Inicio + Nuevos) × 100 = ${activosFin.length} ÷ (${activosIni.length} + ${nuevos.length}) × 100 = <strong style="color:${color}">${tasa.toFixed(1)}%</strong></td></tr></tbody></table></div>`;
+  }
+  if (resDiv) resDiv.innerHTML = html;
+}
+
+// ─── INVENTARIO SUB-MÓDULO ─────────────────────────────────
+
+const _RPTI_DOT = { NF:'--nf', DS:'--ds', HB:'--hb', PV:'--pv', IP:'--teal' };
+
+function tabRpti(el, id) {
+  document.getElementById('rpti-tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelectorAll('#rpt-inventario > .pp').forEach(p => { p.classList.remove('on'); p.style.display = 'none'; });
+  const panel = document.getElementById(id);
+  if (panel) { panel.classList.add('on'); panel.style.display = 'block'; }
+  if (id === 'rpti-perfiles')  rptiRenderPerfiles();
+  if (id === 'rpti-ocupacion') rptiOcupacionGenerar();
+}
+
+function rptiRenderPerfiles() {
+  const esMaster = USUARIO_ACTIVO?.rol === 'Master';
+  const vcpTab = document.getElementById('rpti-tab-vencprov');
+  if (vcpTab) vcpTab.style.display = esMaster ? '' : 'none';
+
+  const cuerpo = document.getElementById('rpti-perfiles-cuerpo');
+  if (!cuerpo) return;
+
+  const plats = (PLATAFORMAS && PLATAFORMAS.length)
+    ? PLATAFORMAS.filter(p => p.estado !== 'inactiva')
+    : Object.keys(PERFILES_DISP).map(k => ({ codigo: k, nombre: k }));
+
+  if (!plats.length) {
+    cuerpo.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:16px">No hay plataformas configuradas</div>';
+    return;
+  }
+
+  const total = plats.reduce((s, p) => s + (PERFILES_DISP[p.codigo]||[]).length, 0);
+  const cards = plats.map(p => {
+    const cnt     = (PERFILES_DISP[p.codigo] || []).length;
+    const dotCol  = _RPTI_DOT[p.codigo] || '--accent';
+    const valCol  = cnt === 0 ? 'var(--red)' : cnt <= 3 ? 'var(--amber)' : 'var(--green)';
+    const badge   = cnt === 0
+      ? '<span class="b br">Agotado</span>'
+      : cnt <= 3
+        ? '<span class="b ba">Bajo</span>'
+        : '<span class="b bg">OK</span>';
+    return `<div class="card mc" style="--mc-c:var(${dotCol})">
+      <div class="ml">${p.nombre || p.codigo}</div>
+      <div class="mv" style="color:${valCol}">${cnt}</div>
+      <div class="ms">${badge}</div>
+    </div>`;
+  }).join('');
+
+  cuerpo.innerHTML = `<div style="font-size:13px;color:var(--text2);margin-bottom:12px"><strong>${total}</strong> perfiles disponibles en total</div><div class="mg">${cards}</div>`;
+}
+
+async function rptiOcupacionGenerar() {
+  const cuerpo = document.getElementById('rpti-ocupacion-cuerpo');
+  if (cuerpo) cuerpo.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
+  try {
+    const { data: cuentas, error: e1 } = await supa.from('inventario')
+      .select('id, plataforma, max_perfiles')
+      .eq('estado', 'Activa');
+    if (e1) throw e1;
+
+    // Count occupied profiles per account from active subscriptions
+    let subsAll = [];
+    let sp = 0;
+    while (true) {
+      const { data: sd } = await supa.from('suscripciones').select('perfil_id').eq('estado','activo').range(sp*1000, sp*1000+999);
+      if (!sd || !sd.length) break;
+      subsAll = subsAll.concat(sd);
+      if (sd.length < 1000) break;
+      sp++;
+    }
+    const ocupadoMap = {};
+    subsAll.forEach(s => {
+      const raw = (s.perfil_id||'').trim();
+      if (!raw) return;
+      const cid = raw.slice(0, -1);
+      ocupadoMap[cid] = (ocupadoMap[cid]||0) + 1;
+    });
+
+    // Aggregate by platform
+    const byPlat = {};
+    (cuentas||[]).forEach(c => {
+      if (!byPlat[c.plataforma]) byPlat[c.plataforma] = { cuentas:0, maxPerf:0, ocupados:0 };
+      byPlat[c.plataforma].cuentas++;
+      byPlat[c.plataforma].maxPerf   += parseInt(c.max_perfiles)||0;
+      byPlat[c.plataforma].ocupados  += ocupadoMap[c.id] || 0;
+    });
+
+    const platOrder = ['NF','DS','HB','PV','IP'];
+    const rows = Object.entries(byPlat)
+      .sort((a,b) => platOrder.indexOf(a[0]) - platOrder.indexOf(b[0]))
+      .map(([cod, d]) => {
+        const nom      = (PLATAFORMAS||[]).find(x=>x.codigo===cod)?.nombre || cod;
+        const disp     = Math.max(0, d.maxPerf - d.ocupados);
+        const pct      = d.maxPerf > 0 ? Math.min(100, d.ocupados / d.maxPerf * 100) : 0;
+        const barColor = pct > 90 ? 'var(--red)' : pct >= 70 ? 'var(--amber)' : 'var(--green)';
+        const dotCol   = _RPTI_DOT[cod] || '--accent';
+        const bar = `<div style="height:6px;border-radius:3px;background:var(--bg4);margin-top:3px"><div style="height:100%;width:${pct.toFixed(1)}%;background:${barColor};border-radius:3px"></div></div>`;
+        return `<tr>
+          <td><span class="pd"><span class="dot" style="background:var(${dotCol})"></span>${nom}</span></td>
+          <td style="text-align:center">${d.cuentas}</td>
+          <td style="text-align:center">${d.maxPerf}</td>
+          <td style="text-align:center;color:var(--accent)">${d.ocupados}</td>
+          <td style="text-align:center;color:var(--green)">${disp}</td>
+          <td style="min-width:100px"><div style="font-size:11px;color:${barColor};text-align:right">${pct.toFixed(1)}%</div>${bar}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:16px">Sin cuentas activas</td></tr>';
+
+    if (cuerpo) cuerpo.innerHTML = `<div class="card"><div class="tw"><table><thead><tr><th>Plataforma</th><th style="text-align:center">Cuentas activas</th><th style="text-align:center">Total perfiles</th><th style="text-align:center">Ocupados</th><th style="text-align:center">Disponibles</th><th>% Ocupación</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  } catch(e) {
+    if (cuerpo) cuerpo.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>Error: ${e.message}</div>`;
+  }
+}
+
+async function rptiVencProvGenerar() {
+  const dias   = parseInt(document.getElementById('rpti-vp-dias')?.value || '15');
+  const resDiv = document.getElementById('rpti-vp-res');
+  if (resDiv) resDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
+  try {
+    const hoy    = new Date(); hoy.setHours(0,0,0,0);
+    const limite = new Date(hoy); limite.setDate(limite.getDate() + dias);
+    const iso    = d => d.toISOString().split('T')[0];
+    const { data: cuentas, error } = await supa.from('inventario')
+      .select('id, plataforma, correo, proveedor, fecha_vcto_prov')
+      .eq('estado', 'Activa')
+      .gte('fecha_vcto_prov', iso(hoy))
+      .lte('fecha_vcto_prov', iso(limite))
+      .order('fecha_vcto_prov', { ascending: true });
+    if (error) throw error;
+
+    const cnt  = (cuentas||[]).length;
+    const rows = (cuentas||[]).map(c => {
+      const fv       = c.fecha_vcto_prov || '';
+      const vctoDate = fv ? new Date(fv + 'T00:00:00') : null;
+      const diasR    = vctoDate ? Math.ceil((vctoDate - hoy) / 86400000) : 999;
+      const rowBg    = diasR <= 7 ? 'rgba(240,77,77,.07)' : diasR <= 15 ? 'rgba(245,166,35,.05)' : '';
+      const diasCol  = diasR <= 7 ? 'var(--red)' : diasR <= 15 ? 'var(--amber)' : 'var(--text2)';
+      const nom      = (PLATAFORMAS||[]).find(p=>p.codigo===c.plataforma)?.nombre || c.plataforma || '—';
+      const dotCol   = _RPTI_DOT[c.plataforma] || '--accent';
+      const vctoFmt  = fv ? fv.split('-').reverse().join('/') : '—';
+      return `<tr style="background:${rowBg}">
+        <td><strong>${c.id}</strong></td>
+        <td><span class="pd"><span class="dot" style="background:var(${dotCol})"></span>${nom}</span></td>
+        <td style="font-size:11px">${c.correo||'—'}</td>
+        <td>${c.proveedor||'—'}</td>
+        <td>${vctoFmt}</td>
+        <td style="text-align:center;font-weight:600;color:${diasCol}">${diasR < 999 ? diasR+'d' : '—'}</td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:16px">Sin cuentas próximas a vencer en ${dias} días</td></tr>`;
+
+    if (resDiv) resDiv.innerHTML = `<div style="font-size:13px;color:var(--text2);margin-bottom:10px"><strong>${cnt}</strong> cuenta${cnt!==1?'s':''} próxima${cnt!==1?'s':''} a vencer en ${dias} días</div><div class="card"><div class="tw"><table><thead><tr><th>Código</th><th>Plataforma</th><th>Correo</th><th>Proveedor</th><th>F. Vencimiento</th><th style="text-align:center">Días</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  } catch(e) {
+    if (resDiv) resDiv.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>Error: ${e.message}</div>`;
+  }
+}
+
+// ─── FINANCIERO SUB-MÓDULO ─────────────────────────────────
+
+const _RPTF_DOT = { NF:'--nf', DS:'--ds', HB:'--hb', PV:'--pv', IP:'--teal' };
+
+function tabRptf(el, id) {
+  document.getElementById('rptf-tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelectorAll('#rpt-financiero > .pp').forEach(p => { p.classList.remove('on'); p.style.display = 'none'; });
+  const panel = document.getElementById(id);
+  if (panel) { panel.classList.add('on'); panel.style.display = 'block'; }
+}
+
+async function rptfIngresosGenerar() {
+  const periodo = document.getElementById('rptf-ie-periodo')?.value || 'mes';
+  const { ini, fin } = rptGetRango(periodo);
+  const resDiv = document.getElementById('rptf-ie-res');
+  if (resDiv) resDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
+  try {
+    const [rC, rE] = await Promise.all([
+      supa.from('cobros').select('monto').gte('fecha', ini).lte('fecha', fin),
+      supa.from('egresos').select('total, categoria').gte('fecha', ini).lte('fecha', fin)
+    ]);
+    if (rC.error) throw rC.error;
+    if (rE.error) throw rE.error;
+
+    const cobros   = rC.data || [];
+    const egresos  = rE.data || [];
+    const totalIng = cobros.reduce((s,c)  => s + (parseFloat(c.monto)||0), 0);
+    const totalEgr = egresos.reduce((s,e) => s + (parseFloat(e.total)||0), 0);
+    const balance  = totalIng - totalEgr;
+    const fmt = n => '$' + n.toFixed(2);
+    const balColor = balance >= 0 ? 'var(--green)' : 'var(--red)';
+
+    let html = `<div class="mg" style="margin-bottom:16px">
+      <div class="card mc" style="--mc-c:var(--green)"><div class="ml">Ingresos</div><div class="mv" style="color:var(--green)">${fmt(totalIng)}</div><div class="ms">${cobros.length} cobros</div></div>
+      <div class="card mc" style="--mc-c:var(--red)"><div class="ml">Egresos</div><div class="mv" style="color:var(--red)">${fmt(totalEgr)}</div><div class="ms">${egresos.length} registros</div></div>
+      <div class="card mc" style="--mc-c:${balColor}"><div class="ml">Balance</div><div class="mv" style="color:${balColor}">${fmt(balance)}</div><div class="ms">${balance >= 0 ? 'superávit' : 'déficit'}</div></div>
+    </div>`;
+
+    const byCat = {};
+    egresos.forEach(e => {
+      const cat = e.categoria || 'Sin categoría';
+      byCat[cat] = (byCat[cat]||0) + (parseFloat(e.total)||0);
+    });
+    const catRows = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat, monto]) => {
+      const pct = totalEgr > 0 ? (monto/totalEgr*100).toFixed(1) : '0.0';
+      return `<tr><td>${cat}</td><td style="text-align:right;color:var(--red)">${fmt(monto)}</td><td style="text-align:right;color:var(--text3)">${pct}%</td></tr>`;
+    }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:16px">Sin egresos en este período</td></tr>';
+
+    html += `<div class="card"><div class="ct" style="font-size:12px;margin-bottom:10px"><i class="ti ti-trending-down" style="color:var(--red)"></i>Egresos por categoría</div><div class="tw"><table><thead><tr><th>Categoría</th><th style="text-align:right">Monto</th><th style="text-align:right">%</th></tr></thead><tbody>${catRows}</tbody></table></div></div>`;
+    if (resDiv) resDiv.innerHTML = html;
+  } catch(e) {
+    if (resDiv) resDiv.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>Error: ${e.message}</div>`;
+  }
+}
+
+async function rptfRentabilidadGenerar() {
+  const periodo = document.getElementById('rptf-ren-periodo')?.value || 'mes';
+  const { ini, fin } = rptGetRango(periodo);
+  const resDiv = document.getElementById('rptf-ren-res');
+  if (resDiv) resDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
+  try {
+    const [rC, rCI] = await Promise.all([
+      supa.from('cobros').select('plataforma, monto').gte('fecha', ini).lte('fecha', fin),
+      supa.from('cuentas_inventario').select('plataforma, costo_proveedor').eq('estado', 'Activa')
+    ]);
+    if (rC.error) throw rC.error;
+    if (rCI.error) throw rCI.error;
+
+    const ingByPlat = {};
+    (rC.data||[]).forEach(c => {
+      const p = c.plataforma || '—';
+      ingByPlat[p] = (ingByPlat[p]||0) + (parseFloat(c.monto)||0);
+    });
+    const costByPlat = {};
+    (rCI.data||[]).forEach(c => {
+      const p = c.plataforma || '—';
+      costByPlat[p] = (costByPlat[p]||0) + (parseFloat(c.costo_proveedor)||0);
+    });
+
+    const platOrder = ['NF','DS','HB','PV','IP'];
+    const allPlats  = new Set([...Object.keys(ingByPlat), ...Object.keys(costByPlat)]);
+    const rows = [...allPlats].sort((a,b) => platOrder.indexOf(a) - platOrder.indexOf(b)).map(cod => {
+      const nom    = (PLATAFORMAS||[]).find(x=>x.codigo===cod)?.nombre || cod;
+      const ing    = ingByPlat[cod]  || 0;
+      const cost   = costByPlat[cod] || 0;
+      const gan    = ing - cost;
+      const margen = ing > 0 ? gan / ing * 100 : null;
+      const rowBg  = margen === null ? '' : margen > 30 ? 'rgba(62,207,142,.06)' : margen > 10 ? 'rgba(245,166,35,.05)' : 'rgba(240,77,77,.06)';
+      const mCol   = margen === null ? 'var(--text3)' : margen > 30 ? 'var(--green)' : margen > 10 ? 'var(--amber)' : 'var(--red)';
+      const dc     = _RPTF_DOT[cod] || '--accent';
+      return `<tr style="background:${rowBg}">
+        <td><span class="pd"><span class="dot" style="background:var(${dc})"></span>${nom}</span></td>
+        <td style="text-align:right;color:var(--green)">$${ing.toFixed(2)}</td>
+        <td style="text-align:right;color:var(--red)">$${cost.toFixed(2)}</td>
+        <td style="text-align:right;color:${gan>=0?'var(--green)':'var(--red)'}">$${gan.toFixed(2)}</td>
+        <td style="text-align:right;color:${mCol}">${margen !== null ? margen.toFixed(1)+'%' : 'N/A'}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:16px">Sin datos en este período</td></tr>';
+
+    if (resDiv) resDiv.innerHTML = `<div class="card"><div class="tw"><table><thead><tr><th>Plataforma</th><th style="text-align:right">Ingresos</th><th style="text-align:right">Costos</th><th style="text-align:right">Ganancia</th><th style="text-align:right">Margen %</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  } catch(e) {
+    if (resDiv) resDiv.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>Error: ${e.message}</div>`;
+  }
+}
+
+async function rptfTopClientesGenerar() {
+  const periodo = document.getElementById('rptf-top-periodo')?.value || 'mes';
+  const { ini, fin } = rptGetRango(periodo);
+  const resDiv = document.getElementById('rptf-top-res');
+  if (resDiv) resDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
+  try {
+    const { data: cobros, error } = await supa.from('cobros')
+      .select('cliente_id, nombre, telefono, plataforma, monto')
+      .gte('fecha', ini).lte('fecha', fin);
+    if (error) throw error;
+
+    const byCliente = {};
+    (cobros||[]).forEach(c => {
+      const key = c.cliente_id || c.nombre || '—';
+      if (!byCliente[key]) byCliente[key] = { nombre: c.nombre||'—', tel: c.telefono||'—', plats: new Set(), total: 0 };
+      byCliente[key].total += parseFloat(c.monto)||0;
+      if (c.plataforma) byCliente[key].plats.add(c.plataforma);
+    });
+
+    const top20 = Object.values(byCliente).sort((a,b)=>b.total-a.total).slice(0, 20);
+    const rows = top20.map((c, i) => {
+      const platsHtml = [...c.plats].map(p => {
+        const dc = _RPTF_DOT[p] || '--accent';
+        return `<span class="pd"><span class="dot" style="background:var(${dc})"></span>${p}</span>`;
+      }).join('');
+      const numCol = i === 0 ? 'var(--amber)' : i < 3 ? 'var(--text2)' : 'var(--text3)';
+      return `<tr>
+        <td style="text-align:center;font-weight:600;color:${numCol}">${i+1}</td>
+        <td>${c.nombre}</td>
+        <td style="font-size:11px">${formatTel(c.tel)||c.tel||'—'}</td>
+        <td>${platsHtml||'—'}</td>
+        <td style="text-align:right;color:var(--green);font-weight:600">$${c.total.toFixed(2)}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:16px">Sin cobros en este período</td></tr>';
+
+    if (resDiv) resDiv.innerHTML = `<div style="font-size:13px;color:var(--text2);margin-bottom:10px">Top ${top20.length} clientes · ${(cobros||[]).length} cobros en el período</div><div class="card"><div class="tw"><table><thead><tr><th style="text-align:center">#</th><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th style="text-align:right">Total pagado</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  } catch(e) {
+    if (resDiv) resDiv.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>Error: ${e.message}</div>`;
+  }
+}
+
+async function rptfProyeccionGenerar() {
+  const resDiv = document.getElementById('rptf-proy-res');
+  if (resDiv) resDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
+  try {
+    const hoy    = new Date(); hoy.setHours(0,0,0,0);
+    const y = hoy.getFullYear(), m = hoy.getMonth();
+    const mesIni = new Date(y, m, 1).toISOString().split('T')[0];
+    const mesFin = new Date(y, m+1, 0).toISOString().split('T')[0];
+    const hoyISO = hoy.toISOString().split('T')[0];
+    const fmt = n => '$' + n.toFixed(2);
+
+    const { data: cobrosMes, error } = await supa.from('cobros')
+      .select('cliente_id, plataforma, monto, fecha')
+      .gte('fecha', mesIni).lte('fecha', hoyISO);
+    if (error) throw error;
+
+    const yaCobrado = (cobrosMes||[]).reduce((s,c) => s+(parseFloat(c.monto)||0), 0);
+    const pagados   = new Set((cobrosMes||[]).map(c => `${c.cliente_id||''}|${c.plataforma||''}`));
+
+    // Active subs with vcto in current month (from SUBS_FULL)
+    const vctoISO = s => {
+      const p = (s.fVcto||'').split('/');
+      return (p.length===3&&p[2]) ? `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}` : '';
+    };
+    const subsDelMes  = SUBS_FULL.filter(s => { const v = vctoISO(s); return s.est==='activo' && v>=mesIni && v<=mesFin; });
+    const pendientes  = subsDelMes.filter(s => !pagados.has(`${s.clienteId||''}|${s.plat||''}`));
+    const porCobrar   = pendientes.reduce((s,x) => s+(x.monto||0), 0);
+    const total       = yaCobrado + porCobrar;
+
+    let html = `<div class="mg" style="margin-bottom:16px">
+      <div class="card mc" style="--mc-c:var(--green)"><div class="ml">Ya cobrado</div><div class="mv" style="color:var(--green)">${fmt(yaCobrado)}</div><div class="ms">${(cobrosMes||[]).length} cobros</div></div>
+      <div class="card mc" style="--mc-c:var(--amber)"><div class="ml">Por cobrar</div><div class="mv" style="color:var(--amber)">${fmt(porCobrar)}</div><div class="ms">${pendientes.length} suscripciones</div></div>
+      <div class="card mc" style="--mc-c:var(--accent)"><div class="ml">Total proyectado</div><div class="mv" style="color:var(--accent)">${fmt(total)}</div><div class="ms">mes en curso</div></div>
+    </div>`;
+
+    const pendRows = [...pendientes]
+      .sort((a,b) => { const va=vctoISO(a), vb=vctoISO(b); return va<vb?-1:va>vb?1:0; })
+      .map(s => {
+        const nom = (PLATAFORMAS||[]).find(p=>p.codigo===s.plat)?.nombre || s.plat || '—';
+        const dc  = _RPTF_DOT[s.plat] || '--accent';
+        return `<tr><td>${s.nombre}</td><td><span class="pd"><span class="dot" style="background:var(${dc})"></span>${nom}</span></td><td style="text-align:right;color:var(--amber)">$${(s.monto||0).toFixed(2)}</td><td>${s.fVcto}</td></tr>`;
+      }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">Sin cobros pendientes este mes</td></tr>';
+
+    html += `<div class="card"><div class="ct" style="font-size:12px;margin-bottom:10px"><i class="ti ti-clock" style="color:var(--amber)"></i>Pendientes de cobro este mes</div><div class="tw"><table><thead><tr><th>Cliente</th><th>Plataforma</th><th style="text-align:right">Monto</th><th>F. Vencimiento</th></tr></thead><tbody>${pendRows}</tbody></table></div></div>`;
+    if (resDiv) resDiv.innerHTML = html;
+  } catch(e) {
+    if (resDiv) resDiv.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>Error: ${e.message}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // PLANTILLAS WA
 // ═══════════════════════════════════════════════════════════
 let PLANTILLAS_WA = [
-  {nombre:'Entrega de cuenta nueva',   tipo:'Venta',     contenido:'Hola {nombre} 🎉 Tu {plataforma} ya está activa. Correo: {correo} · Clave: {clave} · Usuario: {perfil} · PIN: {pin} · Vence: {fecha_vcto} · Próx. pago: {monto} 🍿'},
+  {nombre:'Entrega de cuenta nueva',   tipo:'Venta',     contenido:'Hola {nombre} 🎉 Tu {plataforma} ya está activa. Correo: {correo} · Clave: {clave} · Usuario: {perfil} · PIN: {pin} · Vence: {fecha_vcto} · Próx. pago: {monto} 🍿\n─────────────\n🔖 Ref: {perfil}'},
   {nombre:'Recordatorio 3 días',       tipo:'Cobranza',  contenido:'Hola {nombre} 👋 Tu {plataforma} vence en 3 días. Monto: {monto}. Datos: {datos_pago} 🙏'},
   {nombre:'Recordatorio 1 día',        tipo:'Cobranza',  contenido:'Hola {nombre}, tu {plataforma} vence mañana. Envía tu pago de {monto} para no perder el servicio. 🙏'},
   {nombre:'Confirmación de pago',      tipo:'Post pago', contenido:'Hola {nombre} ✅ Recibimos tu pago de {monto} por {plataforma}. Renovado hasta {fecha_vcto}. ¡Gracias! 🎉'},
-  {nombre:'Cambio de contraseña',      tipo:'Seguridad', contenido:'Hola {nombre} 🔐 Por seguridad actualizamos la clave de tu {plataforma}. Correo: {correo} · Clave nueva: {clave_nueva} · Usuario: {perfil} · PIN: {pin}. Cualquier duda escríbenos. 🙏'},
-  {nombre:'Cambio de cuenta / plataforma', tipo:'Cambio', contenido:'Hola {nombre} 🔄 Actualizamos tu cuenta de {plataforma}.\n📧 Correo: {correo}\n🔑 Clave: {clave}\n👤 Usuario: {usuario}\n📌 PIN: {pin}\nTu vencimiento no cambia. Cualquier duda escríbenos. 🙏'}
+  {nombre:'Cambio de contraseña',      tipo:'Seguridad', contenido:'Hola {nombre} 🔐 Por seguridad actualizamos la clave de tu {plataforma}. Correo: {correo} · Clave nueva: {clave_nueva} · Usuario: {perfil} · PIN: {pin}. Cualquier duda escríbenos. 🙏\n─────────────\n🔖 Ref: {perfil}'},
+  {nombre:'Cambio de cuenta / plataforma', tipo:'Cambio', contenido:'Hola {nombre} 🔄 Actualizamos tu cuenta de {plataforma}.\n📧 Correo: {correo}\n🔑 Clave: {clave}\n👤 Usuario: {usuario}\n📌 PIN: {pin}\nTu vencimiento no cambia. Cualquier duda escríbenos. 🙏\n─────────────\n🔖 Ref: {perfil}'}
 ];
 let _plantillaEditIdx = -1;
 
