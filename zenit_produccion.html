@@ -10439,7 +10439,7 @@ function tabAccesos(el, panelId) {
 
 // ── CÓDIGOS DE VERIFICACIÓN ─────────────────────────────────────────────────
 
-const _GAS_URL = 'https://script.google.com/macros/s/AKfycbw5GqdbYmghnVFgkIdU5FSRzKDBIbanZLXeGTrCxewmIvuv87on2Mw2Qy9dloorGtpqzA/exec';
+const _GAS_URL = 'https://script.google.com/macros/s/AKfycbx0L9wcVFGoinn3MMTDsFNZTQZlZcFRlaZWpOQFdGtKA3vRb12BituUqeOlKI5TcHw7og/exec';
 const _COD_DOT = { NF:'--nf', DS:'--ds', HB:'--hb', PV:'--pv', IP:'--teal' };
 const _COD_TIPOS = {
   NF: ['Inicio sesión', 'Actualizar hogar', 'Ver temporalmente', 'Verificación cuenta'],
@@ -10639,7 +10639,8 @@ async function codObtenerAuto() {
   if (btn) { btn.disabled=true; btn.innerHTML='<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Buscando en el correo...'; }
   if (resBox) resBox.innerHTML = '';
   try {
-    const resp = await fetch(`${_GAS_URL}?correo=${encodeURIComponent(correo)}&plataforma=${encodeURIComponent(plat)}`);
+    const usuario = _cod.acceso?.usuario || '';
+    const resp = await fetch(`${_GAS_URL}?correo=${encodeURIComponent(correo)}&plataforma=${encodeURIComponent(plat)}&usuario=${encodeURIComponent(usuario)}`);
     const data = await resp.json();
     if (data.error || !data.codigo) {
       if (resBox) resBox.innerHTML = `<div style="padding:11px 14px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);border-radius:var(--rsm);font-size:13px;color:var(--amber)"><i class="ti ti-mail-off"></i> No se encontraron emails recientes. Usa el campo manual.</div>`;
