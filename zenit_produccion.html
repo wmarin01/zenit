@@ -4676,9 +4676,13 @@ async function cargarUsuariosSistema() {
           if (sel) sel.innerHTML = data.map(u => `<option value="${u.usuario}">${u.nombre||u.usuario}</option>`).join('');
         });
 
+        // Actualizar selector "Para:" del chat con usuarios reales
+        USUARIOS_SISTEMA_DATA = data;
+        poblarSelectorPara();
+
         // 🔒 EJECUTAR EL CANDADO DE ROLES INMEDIATAMENTE
         aplicarPermisos();
-        
+
         console.log('[USUARIOS] Cargados:', data.length, '| Activo:', USUARIO_ACTIVO?.usuario);
       } catch(e) { console.warn('[USUARIOS] Error:', e.message); }
     }
@@ -10022,6 +10026,7 @@ async function cargarParametros() {
 let CHAT_OPEN = false;
 let CHAT_INTERVALO = null;
 let CHAT_ULTIMO_ID = 0;
+let USUARIOS_SISTEMA_DATA = [];
 
 function initChat() {
   // Crear el widget flotante
@@ -10050,7 +10055,6 @@ function initChat() {
         <label style="font-size:11px;color:var(--text3)">Para:</label>
         <select id="chat-para" style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text1);font-size:12px">
           <option value="">Todos</option>
-          <option value="wmarin01">wmarin01</option>
         </select>
       </div>
       <div id="chat-msgs" style="flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;height:300px"></div>
@@ -10082,12 +10086,21 @@ function toggleChat() {
 
 async function cargarMensajes() {
   try {
-    const usuario = document.querySelector('.sb-user div div')?.textContent || 'Sistema';
-    const {data} = await supa.from('mensajes').select('*').order('created_at').limit(100);
+    const usuario = USUARIO_ACTIVO?.usuario || USUARIO_ACTIVO?.nombre;
+    const esMaster = USUARIO_ACTIVO?.rol === 'Master';
+
+    let query = supa.from('mensajes').select('*').order('created_at').limit(100);
+    if (!esMaster && usuario) {
+      query = query.or(`de.eq.${usuario},para.eq.${usuario}`);
+    }
+
+    const {data} = await query;
     if (!data) return;
 
-    // Badge de no leídos
-    const noLeidos = data.filter(m => !m.leido && m.de !== usuario).length;
+    // Badge de no leídos: para Master = mensajes de otros no leídos; para operador = mensajes dirigidos a él no leídos
+    const noLeidos = esMaster
+      ? data.filter(m => !m.leido && m.de !== usuario).length
+      : data.filter(m => !m.leido && m.para === usuario).length;
     const badge = document.getElementById('chat-badge');
     if (badge) {
       badge.style.display = noLeidos > 0 ? 'flex' : 'none';
@@ -10125,7 +10138,7 @@ async function enviarMensaje() {
   const msg = input?.value?.trim();
   if (!msg) return;
 
-  const usuario = document.querySelector('.sb-user div div')?.textContent || 'Usuario';
+  const usuario = USUARIO_ACTIVO?.usuario || USUARIO_ACTIVO?.nombre || 'Usuario';
   try {
     await supa.from('mensajes').insert({
       de: usuario,
@@ -10142,11 +10155,23 @@ async function enviarMensaje() {
 
 async function marcarLeidos() {
   try {
-    const usuario = document.querySelector('.sb-user div div')?.textContent || 'Usuario';
-    await supa.from('mensajes').update({leido:true}).neq('de', usuario).eq('leido', false);
+    const usuario = USUARIO_ACTIVO?.usuario || USUARIO_ACTIVO?.nombre || 'Usuario';
+    const esMaster = USUARIO_ACTIVO?.rol === 'Master';
+    // Master marca como leídos todos los mensajes que no son suyos; operador solo los dirigidos a él
+    const q = supa.from('mensajes').update({leido:true}).eq('leido', false);
+    esMaster ? await q.neq('de', usuario) : await q.eq('para', usuario);
     const badge = document.getElementById('chat-badge');
     if (badge) badge.style.display = 'none';
   } catch(e) {}
+}
+
+function poblarSelectorPara() {
+  const sel = document.getElementById('chat-para');
+  if (!sel) return;
+  const miUsuario = USUARIO_ACTIVO?.usuario || USUARIO_ACTIVO?.nombre;
+  const otros = USUARIOS_SISTEMA_DATA.filter(u => (u.usuario || u.nombre) !== miUsuario && u.estado === 'Activo');
+  sel.innerHTML = '<option value="">Todos</option>' +
+    otros.map(u => `<option value="${u.usuario||u.nombre}">${u.nombre||u.usuario}</option>`).join('');
 }
 
 // Inicializar chat y parámetros al cargar
