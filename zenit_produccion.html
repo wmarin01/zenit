@@ -2891,7 +2891,7 @@ const WA={
       // Individual
       const {pl, perf, pin, usr} = entries[0] || {pl:p,perf:{},pin:'—',usr:'—'};
       const link = perf?.link || ctx?.link || getLink(pl);
-      return `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu <span class="wav">${getPNom(pl)}</span> ya está activa:\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👁️ Usuario: <span class="wav">${usr}</span>\n🔢 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''} 🍿\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
+      return `Hola <span class="wav">${n}</span> 🎉 Tu <span class="wav">${getPNom(pl)}</span> ya está activa.\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👤 Usuario: <span class="wav">${usr}</span>\n📌 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
     }
     // Multi-perfil o combo
     let msg = `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu combo ya está activo:\n`;
@@ -9643,7 +9643,7 @@ async function rptfProyeccionGenerar() {
 // PLANTILLAS WA
 // ═══════════════════════════════════════════════════════════
 let PLANTILLAS_WA = [
-  {nombre:'Entrega de cuenta nueva',   tipo:'Venta',     contenido:'Hola {nombre} 🎉 Tu {plataforma} ya está activa. Correo: {correo} · Clave: {clave} · Usuario: {perfil} · PIN: {pin} · Vence: {fecha_vcto} · Próx. pago: {monto} 🍿\n─────────────\n🔖 Ref: {perfil}'},
+  {nombre:'Entrega de cuenta nueva',   tipo:'Venta',     contenido:'Hola {nombre} 🎉 Tu {plataforma} ya está activa.\n📧 Correo: {correo}\n🔑 Clave: {clave}\n👤 Usuario: {perfil}\n📌 PIN: {pin}\n📅 Vence: {fecha_vcto}\n💰 Próx. pago: {monto}\n─────────────\n🔖 Ref: {perfil}'},
   {nombre:'Recordatorio 3 días',       tipo:'Cobranza',  contenido:'Hola {nombre} 👋 Tu {plataforma} vence en 3 días. Monto: {monto}. Datos: {datos_pago} 🙏'},
   {nombre:'Recordatorio 1 día',        tipo:'Cobranza',  contenido:'Hola {nombre}, tu {plataforma} vence mañana. Envía tu pago de {monto} para no perder el servicio. 🙏'},
   {nombre:'Confirmación de pago',      tipo:'Post pago', contenido:'Hola {nombre} ✅ Recibimos tu pago de {monto} por {plataforma}. Renovado hasta {fecha_vcto}. ¡Gracias! 🎉'},
