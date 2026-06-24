@@ -2948,11 +2948,21 @@ const WA={
         link:       link            || '—',
         datos_pago: '—'
       };
-      return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
+      let result = plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
         key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
       );
+      // Inyectar link después de la línea "👤 Usuario" cuando hay link y la plantilla no lo incluye
+      if (link && !plantilla.contenido.includes('{link}')) {
+        const pos = result.indexOf('\n👤 Usuario:');
+        if (pos !== -1) {
+          const endOfLine = result.indexOf('\n', pos + 1);
+          const insertAt = endOfLine !== -1 ? endOfLine : result.length;
+          result = result.slice(0, insertAt) + `\n🔗 Link: <span class="wav">${link}</span>` + result.slice(insertAt);
+        }
+      }
+      return result;
     }
-    return `Hola <span class="wav">${n}</span> 🎉\n\nTe reenviamos los accesos de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.perfil||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n📅 Vence: <span class="wav">${ctx?.fecha_vcto||'—'}</span>\n💰 Monto: <span class="wav">${m}</span> 🍿`;
+    return `Hola <span class="wav">${n}</span> 🎉\n\nTe reenviamos los accesos de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.perfil||'—'}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n📌 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n📅 Vence: <span class="wav">${ctx?.fecha_vcto||'—'}</span>\n💰 Monto: <span class="wav">${m}</span>`;
   },
 };
 // Fecha dinámica en el header
@@ -7387,7 +7397,7 @@ function renderSubs(data) {
   }).join('');
 }
 
-function reenviarAccesos(subId) {
+async function reenviarAccesos(subId) {
   const s = SUBS_FULL.find(x => x.id === subId);
   if (!s) { toast('Suscripción no encontrada', 'warn'); return; }
   const cli  = CLIENTES.find(c => c.id === s.clienteId);
@@ -7421,9 +7431,21 @@ function reenviarAccesos(subId) {
     // Individual
     const platNom = (PLATAFORMAS||[]).find(p => p.codigo === s.plat)?.nombre || s.plat;
     const monto   = '$' + Number(s.monto).toFixed(2);
-    const cuentaIdRenv = s.perfil && s.perfil !== '—' ? s.perfil.slice(0, -1) : null;
-    const invEntry = cuentaIdRenv ? INV_CACHE.find(x => x.id === cuentaIdRenv) : null;
-    const linkRenv = (s.plat === 'IP') ? (invEntry?.link || '') : '';
+    let linkRenv = '';
+    if (s.plat === 'IP') {
+      const cuentaIdRenv = s.perfil && s.perfil !== '—' ? s.perfil.slice(0, -1) : null;
+      if (cuentaIdRenv) {
+        // Buscar en INV_CACHE primero; si no está (aún no cargado), consultar Supabase
+        const cached = INV_CACHE.find(x => x.id === cuentaIdRenv);
+        if (cached?.link) {
+          linkRenv = cached.link;
+        } else {
+          const { data: ctaDB } = await supa.from('cuentas_inventario')
+            .select('link').eq('codigo', cuentaIdRenv).maybeSingle();
+          linkRenv = ctaDB?.link || '';
+        }
+      }
+    }
     abrirWA(
       s.nombre, platNom, monto, 'reenvio_accesos',
       { correo: s.correo||'—', clave: s.clave||'—', perfil: s.perfil||'—',
