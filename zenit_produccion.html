@@ -8898,12 +8898,13 @@ function vctSplitTel(tel) {
 
 function vctGenerar() {
   const tipo = document.getElementById('vct-tipo')?.value || 'vencer';
-  const dias = parseInt(document.getElementById('vct-dias')?.value) || 7;
+  const diasRaw = parseInt(document.getElementById('vct-dias')?.value);
+  const dias = isNaN(diasRaw) ? 7 : diasRaw;
   const plat = document.getElementById('vct-plat')?.value || '';
 
   let data = SUBS_FULL.filter(s => s.est === 'activo' || s.est === 'sin_renovar');
   if (plat) data = data.filter(s => s.plat === plat);
-  if (tipo === 'vencer')   data = data.filter(s => s.dias === dias);
+  if (tipo === 'vencer')        data = data.filter(s => s.dias === dias);
   else if (tipo === 'vencidos') data = data.filter(s => s.dias === -dias);
   data = [...data].sort((a, b) => a.dias - b.dias);
 
@@ -8927,9 +8928,9 @@ function vctGenerar() {
   });
 
   const tipoLabel = tipo === 'vencer'
-    ? `Por vencer en los próximos ${dias} días`
+    ? (dias === 0 ? 'Vencen hoy' : `Por vencer en exactamente ${dias} día${dias !== 1 ? 's' : ''}`)
     : tipo === 'vencidos'
-      ? `Vencidos hace ${dias} días o menos`
+      ? (dias === 0 ? 'Vencidos hoy' : `Vencidos hace exactamente ${dias} día${dias !== 1 ? 's' : ''}`)
       : 'Todos';
   const platLabel = plat
     ? (PLATAFORMAS || []).find(p => p.codigo === plat)?.nombre || plat
