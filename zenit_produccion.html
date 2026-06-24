@@ -264,20 +264,31 @@ function renderVentasDB() {
 
 // Cargar suscripciones al iniciar
 async function dbCargarSuscripciones() {
-  const { data, error } = await supa.from('suscripciones')
-    .select('*, clientes(nombre, apellido, telefono)')
-    .order('created_at', { ascending: false })
-    .limit(2000);
+  const [{ data, error }, { data: cuentasClaves }] = await Promise.all([
+    supa.from('suscripciones')
+      .select('*, clientes(nombre, apellido, telefono)')
+      .order('created_at', { ascending: false })
+      .limit(2000),
+    supa.from('cuentas_inventario').select('codigo,clave,link')
+  ]);
   if (error) { console.error('Error cargando suscripciones:', error); return; }
+
+  // Mapa código_cuenta → clave para enriquecer suscripciones sin clave
+  const _claveMap = {};
+  (cuentasClaves || []).forEach(c => { if (c.codigo && c.clave) _claveMap[c.codigo] = c.clave; });
+
   if (data && data.length > 0) {
     SUBS_FULL.length = 0; // limpiar solo cuando hay datos nuevos
     data.forEach(s => {
+      // Si suscripciones.clave está vacío, derivarlo desde cuentas_inventario
+      const cuentaId = s.perfil_id && s.perfil_id.length > 1 ? s.perfil_id.slice(0, -1) : null;
+      const clave = s.clave || (cuentaId ? _claveMap[cuentaId] : null) || '—';
       SUBS_FULL.push({
         id: s.id,
         clienteId: s.cliente_id,
         perfil: s.perfil_id || '—',
         correo: s.correo || '—',
-        clave: s.clave || '—',
+        clave,
         nombre: s.clientes ? (s.clientes.nombre + ' ' + (s.clientes.apellido||'')).trim() : (s.nombre || '—'),
         tel: s.clientes ? normalizeTel(s.clientes.telefono) : normalizeTel(s.telefono||''),
         usuario: s.usuario || '—',
@@ -286,7 +297,6 @@ async function dbCargarSuscripciones() {
         fVcto: s.fecha_vcto ? s.fecha_vcto.split('-').reverse().join('/') : '—',
         dias: (() => {
           if (!s.fecha_vcto) return 0;
-          // 🚀 Tratamiento seguro de fechas: soporta YYYY-MM-DD, DD/MM/YYYY y formatos de combos sin romperse
           let partes = s.fecha_vcto.includes('-') ? s.fecha_vcto.split('-') : s.fecha_vcto.split('/');
           let anio = partes[0].length === 4 ? parseInt(partes[0]) : parseInt(partes[2]);
           let mes = partes[0].length === 4 ? parseInt(partes[1]) : parseInt(partes[1]);
@@ -303,7 +313,6 @@ async function dbCargarSuscripciones() {
         est: s.estado
       });
     });
-    console.log('Suscripciones cargadas desde Supabase:', data.length);
     // Poblar plats y dias en CLIENTES desde suscripciones activas
     sincronizarPlatsClientes();
   }
@@ -1962,6 +1971,7 @@ async function intentarLogin() {
     <div class="fsec"><div class="fst">Datos de la cuenta</div>
       <div class="fr c3"><div class="fg"><label>Plataforma<span class="req">*</span></label><select id="cuenta-plat" onchange="updCuentaCodigo()"></select></div><div class="fg"><label>Proveedor<span class="req">*</span></label><select id="cuenta-prov"><option value="">— Cargando... —</option></select></div><div class="fg"><label>Código<span class="req">*</span></label><input type="text" id="cuenta-codigo" placeholder="NF0001" oninput="validarCodigoCuenta(this)" style="text-transform:uppercase"><div class="hint ok" id="cuenta-codigo-hint">Selecciona plataforma para ver el siguiente disponible</div></div></div>
       <div class="fr c2"><div class="fg"><label>Correo de acceso<span class="req">*</span></label><input type="text" id="cuenta-correo" placeholder="cuenta@gmail.com"></div><div class="fg"><label>Clave de acceso<span class="req">*</span></label><input type="text" id="cuenta-clave" placeholder="Contraseña de la cuenta"></div></div>
+      <div class="fg" id="grp-cuenta-link" style="display:none;margin-top:8px"><label>Link de acceso (IPTV)</label><input type="url" id="cuenta-link" placeholder="https://panel.iptv.com/..."></div>
     </div>
     <div class="fsec"><div class="fst">Fechas y costo</div>
       <div class="fr c3"><div class="fg"><label>Fecha de compra<span class="req">*</span></label><input type="date" id="cuenta-fecha-compra2"></div><div class="fg"><label>Vencimiento proveedor<span class="req">*</span></label><input type="date" id="cuenta-vcto-prov"></div><div class="fg"><label>Días para alerta</label><input type="number" value="7" min="1" max="30"></div></div>
@@ -2880,13 +2890,13 @@ const WA={
     if (entries.length <= 1) {
       // Individual
       const {pl, perf, pin, usr} = entries[0] || {pl:p,perf:{},pin:'—',usr:'—'};
-      const link = getLink(pl);
+      const link = perf?.link || ctx?.link || getLink(pl);
       return `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu <span class="wav">${getPNom(pl)}</span> ya está activa:\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👁️ Usuario: <span class="wav">${usr}</span>\n🔢 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''} 🍿\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
     }
     // Multi-perfil o combo
     let msg = `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu combo ya está activo:\n`;
     entries.forEach(({pl, perf, pin, usr}) => {
-      const link = getLink(pl);
+      const link = perf?.link || getLink(pl);
       msg += `\n${PICO[pl]||'▶️'} <span class="wav">${getPNom(pl)}</span>\n`;
       msg += `📧 Correo: <span class="wav">${perf?.correo||'—'}</span>\n`;
       msg += `🔑 Clave: <span class="wav">${perf?.clave||'—'}</span>\n`;
@@ -2899,7 +2909,7 @@ const WA={
     return msg;
   },
   cambio:(n,p,m,ctx)=>{
-    const link = (PLATAFORMAS||[]).find(x => x.codigo === ctx?.platCod)?.link || '';
+    const link = ctx?.link || (PLATAFORMAS||[]).find(x => x.codigo === ctx?.platCod)?.link || '';
     const plantilla = (PLANTILLAS_WA||[]).find(t => t.tipo === 'Cambio');
     if (plantilla) {
       const vars = {
@@ -2923,7 +2933,7 @@ const WA={
     // Combo: ctx tiene plats[] — delegar a WA.entrega que ya maneja multi-perfil
     if (ctx?.plats?.length) return WA.entrega(n, p, m, ctx);
     // Individual: usar plantilla de tipo 'Venta' de PLANTILLAS_WA
-    const link = (PLATAFORMAS||[]).find(x => x.codigo === ctx?.platCod)?.link || '';
+    const link = ctx?.link || (PLATAFORMAS||[]).find(x => x.codigo === ctx?.platCod)?.link || '';
     const plantilla = (PLANTILLAS_WA||[]).find(t => t.tipo === 'Venta');
     if (plantilla) {
       const vars = {
@@ -3427,8 +3437,12 @@ function abrirWA(n,p,m,tipo,ctx,meta){
   document.getElementById('wa-sub').textContent=p+' · '+m;
   const sel=document.querySelector('#m-wa select');if(sel)sel.value=tipo;
   const fn = WA[tipo]||WA.vencimiento;
-  document.getElementById('wa-txt').innerHTML = fn(n,p,m,ctx);
-  guardarMensajeWA(meta?.clienteId||'', n, meta?.tel||'', tipo, document.getElementById('wa-txt').innerText);
+  const _waHtml = fn(n,p,m,ctx);
+  document.getElementById('wa-txt').innerHTML = _waHtml;
+  // textContent sobre div desconectado preserva \n reales sin depender del layout CSS
+  const _tmpDiv = document.createElement('div');
+  _tmpDiv.innerHTML = _waHtml;
+  guardarMensajeWA(meta?.clienteId||'', n, meta?.tel||'', tipo, _tmpDiv.textContent);
   openModal('m-wa');
 }
 function cambPlant(v){document.getElementById('wa-txt').innerHTML=(WA[v]||WA.vencimiento)(waCtx.n,waCtx.p,waCtx.m,waCtx.ctx);}
@@ -3656,6 +3670,7 @@ async function confirmarVenta(){
         {
           correo:      firstEntry.perf?.correo,
           clave:       firstEntry.perf?.clave,
+          link:        firstEntry.perf?.link || '',
           vcto:        vctoStr,
           perfilesSel: ventaData.perfilesSel,
           plats:       ventaData.plats,
@@ -4001,6 +4016,7 @@ async function confirmarCambio(){
     setTimeout(() => abrirWA(clienteNombreWA, platNom, '$'+monto.toFixed(2), 'cambio', {
       correo:  correoNuevo,
       clave:   claveNueva,
+      link:    perfilNuevoEl.dataset.link || '',
       perfil:  perfilNuevoCod,
       usuario: subActual.usuario || '—',
       pin:     pinNuevo || subActual.pin,
@@ -4142,6 +4158,7 @@ async function guardarCuenta(){
   const costoRaw = document.getElementById('cuenta-costo')?.value?.trim() || '';
   const costo    = parseFloat(costoRaw.replace('$','').replace(',','.')) || null;
   const notas    = document.getElementById('cuenta-notas')?.value?.trim() || '';
+  const link     = document.getElementById('cuenta-link')?.value?.trim() || null;
   const provSel  = document.getElementById('cuenta-prov');
       const provNom  = provSel?.options[provSel?.selectedIndex]?.text?.split(' ·')[0] || '';
 
@@ -4165,6 +4182,7 @@ async function guardarCuenta(){
         // 1. Guardar o actualizar en cuentas_inventario
         const {error: e1} = await supa.from('cuentas_inventario').upsert({
           codigo, plataforma: platVal, correo, clave,
+          link: platVal === 'IP' ? (link || null) : null,
           max_perfiles: maxPerf,
           proveedor: provNom || null,
           fecha_vcto_proveedor: fechaV ? fechaV.split('-').reverse().join('/') : null,
@@ -4201,7 +4219,8 @@ async function guardarCuenta(){
     if (!PERFILES_DISP[platVal]) PERFILES_DISP[platVal] = [];
     perfiles.forEach(p => PERFILES_DISP[platVal].push({
       codigo: p.id, num: p.numero, cuenta: codigo,
-      correo, clave, origen: codigo + ' · perfil ' + p.numero
+      correo, clave, link: platVal === 'IP' ? (link || '') : '',
+      origen: codigo + ' · perfil ' + p.numero
     }));
 
     // 5. Actualizar código siguiente
@@ -4214,6 +4233,7 @@ async function guardarCuenta(){
     document.getElementById('cuenta-codigo').value = '';
     document.getElementById('cuenta-correo').value = '';
     document.getElementById('cuenta-clave').value  = '';
+    const elLink = document.getElementById('cuenta-link'); if (elLink) elLink.value = '';
     if (document.getElementById('cuenta-vcto-prov')) document.getElementById('cuenta-vcto-prov').value = '';
     document.getElementById('cuenta-costo').value  = '';
     document.getElementById('cuenta-notas').value  = '';
@@ -4238,20 +4258,23 @@ function abrirEditarCuenta(btn) {
   // 4=perfiles, 5=disp, 6=ocup, 7=f.compra, 8=vcto prov, 9=costo, 10=estado, 11=acciones
   const codigo   = cells[0]?.textContent?.trim();
   const platNom  = cells[1]?.textContent?.trim();
-  const correo   = cells[2]?.textContent?.trim();
+  const correo   = (cells[2]?.textContent?.trim() || '').split('\n')[0].trim();
   const clave    = tr.dataset.clave || '';
   const fcCompra = tr.dataset.fechaCompra || '';
   const fcVcto   = tr.dataset.fechaVcto || '';
   const costo    = cells[9]?.textContent?.trim().replace('$','') || '';
   const notas    = tr.dataset.notas || '';
+  const linkVal  = tr.dataset.link || '';
 
   // Plataforma
   const platSel = document.getElementById('cuenta-plat');
+  let platCode2 = '';
   if (platSel) {
-    const platCode = {Netflix:'NF','Disney+':'DS','HBO Max':'HB','Prime Video':'PV'};
+    const platCode = {Netflix:'NF','Disney+':'DS','HBO Max':'HB','Prime Video':'PV', IPTV:'IP', IP:'IP'};
     Object.entries(platCode).forEach(([nom, cod]) => {
-      if (platNom?.includes(nom)) platSel.value = cod;
+      if (platNom?.includes(nom)) { platSel.value = cod; platCode2 = cod; }
     });
+    if (!platCode2) platCode2 = platSel.value;
   }
   // Campos de texto
   const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
@@ -4260,6 +4283,9 @@ function abrirEditarCuenta(btn) {
   setVal('cuenta-clave',     clave);
   setVal('cuenta-costo',     costo);
   setVal('cuenta-notas',     notas);
+  setVal('cuenta-link',      linkVal);
+  const grpLink2 = document.getElementById('grp-cuenta-link');
+  if (grpLink2) grpLink2.style.display = platCode2 === 'IP' ? '' : 'none';
 
   // 🚀 MOSTRAR EL SELECTOR DE ESTADO (Solo al editar)
   const grpEst = document.getElementById('grp-cuenta-estado');
@@ -4824,7 +4850,7 @@ async function dbCargarPerfilesDisp() {
     // 1. Traer cuentas con estado='Activa' (excluye bloqueada/suspendida/inactiva)
     const {data: cuentas, error: e1} = await supa
       .from('cuentas_inventario')
-      .select('codigo, plataforma, correo, clave, estado')
+      .select('codigo, plataforma, correo, clave, estado, link')
       .eq('estado', 'Activa');
     if (e1) throw e1;
     const cuentaMap = {};
@@ -4863,6 +4889,7 @@ async function dbCargarPerfilesDisp() {
         cuenta: p.inventario_id,
         correo: inv.correo || '—',
         clave:  inv.clave  || '—',
+        link:   inv.link   || '',
         origen: p.inventario_id + ' · perfil ' + p.numero
       });
     });
@@ -5667,7 +5694,7 @@ function selPerfilVenta(el, codigo, num, plat) {
     allPi.forEach(p => { const c = p.id?.replace('perf-',''); if (platPerfs.includes(c)) p.classList.remove('on'); });
     el.classList.add('on');
     const perfData = (PERFILES_DISP[plat]||[]).find(x => x.codigo === codigo);
-    ventaData.perfilesSel[plat] = {codigo, num, plat, correo: perfData?.correo || '—', clave: perfData?.clave || '—'};
+    ventaData.perfilesSel[plat] = {codigo, num, plat, correo: perfData?.correo || '—', clave: perfData?.clave || '—', link: perfData?.link || ''};
     if (!ventaData.pins) ventaData.pins = {};
     ventaData.pins[plat] = generarPIN(ventaData.clienteId, plat, num);
   } else {
@@ -5689,7 +5716,7 @@ function selPerfilVenta(el, codigo, num, plat) {
     const key = maxPerfs === 1 ? plat : plat + '_' + idx;
     el.classList.add('on');
     const perfData = (PERFILES_DISP[plat]||[]).find(x => x.codigo === codigo);
-    ventaData.perfilesSel[key] = {codigo, num, plat, correo: perfData?.correo || '—', clave: perfData?.clave || '—'};
+    ventaData.perfilesSel[key] = {codigo, num, plat, correo: perfData?.correo || '—', clave: perfData?.clave || '—', link: perfData?.link || ''};
     if (!ventaData.pins) ventaData.pins = {};
     ventaData.pins[key] = generarPIN(ventaData.clienteId, plat, num);
   }
@@ -6031,6 +6058,8 @@ async function updCuentaCodigo() {
     hint.className = 'hint w';
     inp.value = next; // 🚀 Escribe el código sugerido incluso sin conexión
   }
+  const grpLink = document.getElementById('grp-cuenta-link');
+  if (grpLink) grpLink.style.display = v === 'IP' ? '' : 'none';
 }
 
 // Validar en tiempo real que el código ingresado no esté duplicado
@@ -6858,7 +6887,7 @@ function poblarPerfilesDisponiblesCambio(plat) {
   lista.innerHTML = Object.entries(grupos).map(([cuenta, {correo, items}]) =>
     '<div style="font-size:10px;color:var(--text3);margin:4px 0 2px">' + cuenta + ' · ' + correo + '</div>' +
     items.map(p =>
-      '<div class="pi" data-codigo="' + p.codigo + '" data-correo="' + (p.correo||'') + '" data-clave="' + (p.clave||'') + '" onclick="selPerfilCambio(this)" style="margin-bottom:3px">' +
+      '<div class="pi" data-codigo="' + p.codigo + '" data-correo="' + (p.correo||'') + '" data-clave="' + (p.clave||'') + '" data-link="' + (p.link||'') + '" onclick="selPerfilCambio(this)" style="margin-bottom:3px">' +
       '<span class="pcode">' + p.codigo + '</span>' +
       '<span class="porig">' + p.origen + '</span>' +
       '<span class="b bg">Disponible</span></div>'
@@ -7361,7 +7390,9 @@ function reenviarAccesos(subId) {
     comboSubs.forEach((x, i) => {
       const idxEnPlat = comboSubs.slice(0, i).filter(y => y.plat === x.plat).length;
       const key = typeof getPerfKey === 'function' ? getPerfKey(plats, x.plat, idxEnPlat) : x.plat;
-      perfilesSel[key] = { correo: x.correo || '—', clave: x.clave || '—', codigo: x.perfil };
+      const _cIdC = x.perfil && x.perfil !== '—' ? x.perfil.slice(0, -1) : null;
+      const _invC = _cIdC ? INV_CACHE.find(c => c.id === _cIdC) : null;
+      perfilesSel[key] = { correo: x.correo || '—', clave: x.clave || '—', codigo: x.perfil, link: x.plat === 'IP' ? (_invC?.link || '') : '' };
       pins[key]     = x.pin     || '—';
       usuarios[key] = x.usuario || '—';
     });
@@ -7377,10 +7408,13 @@ function reenviarAccesos(subId) {
     // Individual
     const platNom = (PLATAFORMAS||[]).find(p => p.codigo === s.plat)?.nombre || s.plat;
     const monto   = '$' + Number(s.monto).toFixed(2);
+    const cuentaIdRenv = s.perfil && s.perfil !== '—' ? s.perfil.slice(0, -1) : null;
+    const invEntry = cuentaIdRenv ? INV_CACHE.find(x => x.id === cuentaIdRenv) : null;
+    const linkRenv = (s.plat === 'IP') ? (invEntry?.link || '') : '';
     abrirWA(
       s.nombre, platNom, monto, 'reenvio_accesos',
       { correo: s.correo||'—', clave: s.clave||'—', perfil: s.perfil||'—',
-        pin: s.pin||'—', fecha_vcto: s.fVcto||'—', monto, platCod: s.plat },
+        pin: s.pin||'—', fecha_vcto: s.fVcto||'—', monto, platCod: s.plat, link: linkRenv },
       meta
     );
   }
@@ -10132,22 +10166,36 @@ async function cargarInventario() {
       if (!INV_SUBS_MAP[cuentaId]) INV_SUBS_MAP[cuentaId] = 0;
       if ((s.estado||'').toLowerCase() === 'activo') INV_SUBS_MAP[cuentaId]++;
     });
-    // Debug: verificar NF0057
-    // Log diagnóstico completo
-    const primerasClaves = Object.keys(INV_SUBS_MAP).slice(0, 5);
-    // Poblar clave en SUBS_FULL desde el mapa de inventario
-    SUBS_FULL.forEach(s => {
-      if (!s.clave || s.clave === '—') {
-        const cuentaId = s.perfil ? s.perfil.slice(0,6) : null;
-        if (cuentaId && INV_SUBS_MAP[cuentaId]) {
-          s.clave = INV_SUBS_MAP[cuentaId].clave || '—';
-        }
+
+    // Cargar claves y links desde cuentas_inventario
+    const { data: cuentasClaves } = await supa.from('cuentas_inventario').select('codigo,clave,link,notas,fecha_compra,fecha_vcto_proveedor,proveedor');
+    const _invClaveMap = {};
+    const _invLinkMap = {};
+    const _invMetaMap = {};
+    (cuentasClaves || []).forEach(c => {
+      if (c.codigo) {
+        if (c.clave) _invClaveMap[c.codigo] = c.clave;
+        if (c.link)  _invLinkMap[c.codigo]  = c.link;
+        _invMetaMap[c.codigo] = { notas: c.notas||'', fecha_compra: c.fecha_compra||'', fecha_vcto_prov: c.fecha_vcto_proveedor||'', proveedor: c.proveedor||'' };
       }
     });
-    console.log('[INV] Total claves en mapa:', Object.keys(INV_SUBS_MAP).length);
-    console.log('[INV] Primeras 5 claves:', primerasClaves);
-    console.log('[INV] Ejemplo NF0057:', INV_SUBS_MAP['NF0057']);
-    console.log('[INV] Muestra subs raw (primeras 3):', subs.slice(0,3));
+    // Enriquecer INV_CACHE con link y metadatos de cuentas_inventario
+    INV_CACHE.forEach(inv => {
+      if (_invLinkMap[inv.id]) inv.link = _invLinkMap[inv.id];
+      const meta = _invMetaMap[inv.id];
+      if (meta) {
+        if (!inv.notas) inv.notas = meta.notas;
+        if (!inv.fecha_compra) inv.fecha_compra = meta.fecha_compra;
+        if (!inv.fecha_vcto_prov) inv.fecha_vcto_prov = meta.fecha_vcto_prov;
+        if (!inv.proveedor) inv.proveedor = meta.proveedor;
+      }
+    });
+    SUBS_FULL.forEach(s => {
+      if (!s.clave || s.clave === '—') {
+        const cuentaId = s.perfil && s.perfil !== '—' ? s.perfil.slice(0, -1) : null;
+        if (cuentaId && _invClaveMap[cuentaId]) s.clave = _invClaveMap[cuentaId];
+      }
+    });
 
     filtrarInventario();
   } catch(e) {
@@ -10210,10 +10258,18 @@ function renderInventario(lista) {
         const ocupP = INV_SUBS_MAP[inv.id] || 0;
         const dispP = Math.max(0, maxP - ocupP);
         const tr2 = document.createElement('tr');
+        tr2.dataset.clave = inv.clave || '';
+        tr2.dataset.notas = inv.notas || '';
+        tr2.dataset.fechaCompra = inv.fecha_compra || '';
+        tr2.dataset.fechaVcto = inv.fecha_vcto_prov || '';
+        tr2.dataset.link = inv.link || '';
+        const correoCell = inv.plataforma === 'IP' && inv.link
+          ? `${inv.correo||'—'}<br><a href="${inv.link}" target="_blank" rel="noopener" style="font-size:10px;color:var(--accent);word-break:break-all">${inv.link}</a>`
+          : (inv.correo||'—');
         tr2.innerHTML = `
           <td><strong>${inv.id}</strong></td>
           <td>${PLAT_NAMES[inv.plataforma]||inv.plataforma||'—'}</td>
-          <td style="font-size:11px">${inv.correo||'—'}</td>
+          <td style="font-size:11px">${correoCell}</td>
           <td style="font-size:11px;color:var(--text3)">${inv.clave||'—'}</td>
           <td style="text-align:center">${maxP||'—'}</td>
           <td style="text-align:center;color:var(--green);font-weight:600">${maxP ? dispP : '—'}</td>
@@ -10396,7 +10452,7 @@ function _renderMensajesWA(data) {
           ? `<a href="${waUrl}" target="_blank" class="btn btn-sm btn-a btn-ic" title="Reenviar por WhatsApp"><i class="ti ti-brand-whatsapp"></i></a>`
           : `<button class="btn btn-sm btn-ic" disabled title="Sin teléfono registrado"><i class="ti ti-brand-whatsapp"></i></button>`}
         <button class="btn btn-sm btn-ic" onclick="marcarWAEnviado('${m.id}')" title="Marcar como enviado"${m.estado==='enviado'?' disabled':''}><i class="ti ti-check"></i></button>
-        <button class="btn btn-sm btn-ic" onclick="copiarMensajeWA(this)" data-contenido="${(m.contenido||'').replace(/"/g,'&quot;')}" title="Copiar mensaje"><i class="ti ti-copy"></i></button>
+        <button class="btn btn-sm btn-ic" onclick="copiarMensajeWA(this)" data-contenido="${(m.contenido||'').replace(/\n/g,'&#10;').replace(/"/g,'&quot;')}" title="Copiar mensaje"><i class="ti ti-copy"></i></button>
       </td>
     </tr>`;
   }).join('');
