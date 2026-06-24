@@ -2891,7 +2891,7 @@ const WA={
       // Individual
       const {pl, perf, pin, usr} = entries[0] || {pl:p,perf:{},pin:'—',usr:'—'};
       const link = perf?.link || ctx?.link || getLink(pl);
-      return `Hola <span class="wav">${n}</span> 🎉 Tu <span class="wav">${getPNom(pl)}</span> ya está activa.\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👤 Usuario: <span class="wav">${usr}</span>\n📌 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
+      return `Hola <span class="wav">${n}</span> 🎉 Tu <span class="wav">${getPNom(pl)}</span> ya está activa.\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👤 Usuario: <span class="wav">${usr}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n📌 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span>\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
     }
     // Multi-perfil o combo
     let msg = `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu combo ya está activo:\n`;
@@ -3661,26 +3661,39 @@ async function confirmarVenta(){
 
     // 6. Abrir WA con datos del primer perfil y luego resetear formulario
     const firstEntry = entries[0];
+    // Link de cuenta para IP: fallback a INV_CACHE si PERFILES_DISP no tiene link
+    let _waLink = firstEntry.perf?.link || '';
+    if (!_waLink && firstEntry.p === 'IP') {
+      const _cuentaId = firstEntry.perf?.codigo?.slice(0, -1);
+      _waLink = _cuentaId ? (INV_CACHE.find(x => x.id === _cuentaId)?.link || '') : '';
+    }
+    // Ref: códigos de perfil reales; calculado aquí mientras entries está en scope
+    const _waPerfilRef = tipo === 'combo'
+      ? entries.map(e => e.perf?.codigo).filter(Boolean).join(' | ') || '—'
+      : (firstEntry.perf?.codigo || '—');
+    const _waNombre    = ventaData.clienteNombre;
+    const _waClienteId = ventaData.clienteId;
+    const _waTel       = ventaData.clienteTel;
+    const _waPerfiles  = Object.assign({}, ventaData.perfilesSel);
+    const _waPlats     = ventaData.plats.slice();
     setTimeout(() => {
       abrirWA(
-        ventaData.clienteNombre,
+        _waNombre,
         PLATS[firstEntry.p]?.nombre || firstEntry.p,
         '$' + monto.toFixed(2),
         'entrega',
         {
           correo:      firstEntry.perf?.correo,
           clave:       firstEntry.perf?.clave,
-          link:        firstEntry.perf?.link || '',
+          link:        _waLink,
           vcto:        vctoStr,
-          perfilesSel: ventaData.perfilesSel,
-          plats:       ventaData.plats,
+          perfilesSel: _waPerfiles,
+          plats:       _waPlats,
           usuarios:    usuarios,
           pins:        pins,
-          perfil:      tipo === 'combo'
-            ? entries.map(e => e.perf?.codigo || '—').join(' | ')
-            : (firstEntry.perf?.codigo || '—')
+          perfil:      _waPerfilRef
         },
-        { clienteId: ventaData.clienteId, tel: ventaData.clienteTel }
+        { clienteId: _waClienteId, tel: _waTel }
       );
       // Reset completo del modal para la siguiente venta
       const hoy2 = new Date();
