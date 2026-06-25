@@ -582,6 +582,11 @@ async function validarCliente() {
     _cliente = cli;
     _subs = subs;
 
+    // Derivar plataforma real desde perfil_id (primeros 2 caracteres: NF, DS, HB, PV, IP)
+    _subs.forEach(s => {
+      s.plataformaReal = s.perfil_id ? s.perfil_id.substring(0, 2) : s.plataforma;
+    });
+
     // Enriquecer correos desde cuentas_inventario (siempre, usando perfil_id)
     for (let s of _subs) {
       const cuentaId = s.perfil_id ? s.perfil_id.slice(0, -1) : null;
@@ -629,10 +634,8 @@ function renderizarPlataformas() {
 
   const platMap = {};
   _subs.forEach(s => {
-    (s.plataforma || '').split('+').forEach(p => {
-      const plat = p.trim();
-      if (plat && !platMap[plat]) platMap[plat] = s;
-    });
+    const plat = s.plataformaReal || s.plataforma;
+    if (plat && !platMap[plat]) platMap[plat] = s;
   });
 
   Object.entries(platMap).forEach(([plat, sub]) => {
