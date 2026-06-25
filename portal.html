@@ -582,18 +582,16 @@ async function validarCliente() {
     _cliente = cli;
     _subs = subs;
 
-    // Enriquecer correos desde cuentas_inventario si faltan
+    // Enriquecer correos desde cuentas_inventario (siempre, usando perfil_id)
     for (let s of _subs) {
-      if (!s.correo || s.correo === '—') {
-        const cuentaId = s.perfil_id ? s.perfil_id.slice(0, -1) : null;
-        if (cuentaId) {
-          const { data: ct } = await supa
-            .from('cuentas_inventario')
-            .select('correo')
-            .eq('codigo', cuentaId)
-            .maybeSingle();
-          if (ct) s.correo = ct.correo;
-        }
+      const cuentaId = s.perfil_id ? s.perfil_id.slice(0, -1) : null;
+      if (cuentaId) {
+        const { data: ct } = await supa
+          .from('cuentas_inventario')
+          .select('correo')
+          .eq('codigo', cuentaId)
+          .maybeSingle();
+        if (ct && ct.correo) s.correo = ct.correo;
       }
     }
 
