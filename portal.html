@@ -501,13 +501,16 @@ const PLAT_TIPOS = {
     { label: 'Verificar dispositivo nuevo', tipo: 'VERIFICACION', full: true  },
   ],
   DS: [
-    { label: 'Código de acceso',        tipo: 'LOGIN',        full: true  },
+    { label: 'Código de acceso',       tipo: 'LOGIN', full: true },
+    { label: 'Restablecer contraseña', tipo: 'RESET', full: true }
   ],
   HB: [
-    { label: 'Código de acceso',        tipo: 'LOGIN',        full: true  },
+    { label: 'Código de acceso',       tipo: 'LOGIN', full: true },
+    { label: 'Restablecer contraseña', tipo: 'RESET', full: true }
   ],
   PV: [
-    { label: 'Código de verificación',  tipo: 'LOGIN',        full: true  },
+    { label: 'Código de verificación', tipo: 'LOGIN', full: true },
+    { label: 'Restablecer contraseña', tipo: 'RESET', full: true }
   ],
   IP: null // Sin código
 };
@@ -517,9 +520,12 @@ const INSTRUCCIONES = {
   NF_LOGIN:        '💡 <b>¿Cómo pedirlo?</b><br>En tu <b>TV:</b> selecciona "Obtener ayuda para iniciar sesión" y elige enviar el código al correo.<br>En tu <b>celular o tablet:</b> abre Netflix, toca "Iniciar sesión", ingresa el correo y selecciona "Enviarme un código por correo".',
   NF_VIAJE:        '💡 <b>¿Cómo pedirlo?</b><br>En tu <b>TV:</b> cuando aparezca el aviso, selecciona "Estoy de viaje" o "Ver temporalmente" y elige enviar el código al correo.<br>En tu <b>celular:</b> si Netflix te pide verificación al estar fuera de casa, selecciona enviar código al correo.',
   NF_VERIFICACION: '💡 <b>¿Cómo pedirlo?</b><br>Netflix solicita este código de <b>6 dígitos</b> la primera vez que inicias sesión en un dispositivo nuevo.<br>Ingresa tu correo en Netflix, selecciona "Enviarme un código" y búscalo aquí.',
-  DS_LOGIN:        '💡 <b>¿Cómo pedirlo?</b> En tu TV o app de Disney+ selecciona la opción de verificación y elige enviar el código al correo.',
-  HB_LOGIN:        '💡 <b>¿Cómo pedirlo?</b> En HBO Max selecciona <b>"Obtener código de un solo uso"</b> y revisa tu correo.',
-  PV_LOGIN:        '💡 <b>¿Cómo pedirlo?</b> En Prime Video selecciona la opción de verificación y elige recibir el código por correo.',
+  DS_LOGIN:        '💡 <b>¿Cómo pedirlo?</b><br>En tu <b>TV o celular:</b> abre Disney+, intenta iniciar sesión y selecciona enviar el código de 6 dígitos al correo.',
+  DS_RESET:        '💡 Solicita restablecer contraseña en Disney+ y busca el enlace aquí.',
+  HB_LOGIN:        '💡 <b>¿Cómo pedirlo?</b><br>En tu <b>TV o celular:</b> abre HBO Max, selecciona "Obtener código de un solo uso" y revisa el correo.',
+  HB_RESET:        '💡 Solicita restablecer contraseña en HBO Max y busca el enlace aquí.',
+  PV_LOGIN:        '💡 <b>¿Cómo pedirlo?</b><br>En tu <b>TV o celular:</b> abre Prime Video, intenta iniciar sesión y selecciona enviar el código de verificación al correo.',
+  PV_RESET:        '💡 Solicita restablecer contraseña en Amazon y busca el enlace aquí.',
 };
 
 // Estado
