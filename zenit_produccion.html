@@ -11049,10 +11049,10 @@ function tabAccesos(el, panelId) {
 const _GAS_URL = 'https://script.google.com/macros/s/AKfycbx0L9wcVFGoinn3MMTDsFNZTQZlZcFRlaZWpOQFdGtKA3vRb12BituUqeOlKI5TcHw7og/exec';
 const _COD_DOT = { NF:'--nf', DS:'--ds', HB:'--hb', PV:'--pv', IP:'--teal' };
 const _COD_TIPOS = {
-  NF: ['Inicio sesión', 'Actualizar hogar', 'Ver temporalmente', 'Verificación cuenta'],
-  DS: ['Inicio sesión', 'Verificación'],
-  HB: ['Inicio sesión', 'Verificación email'],
-  PV: ['Inicio sesión', 'Verificación email']
+  NF: ['Inicio de sesión', 'Ver temporalmente', 'Actualizar hogar', 'Verificar dispositivo nuevo', 'Restablecer contraseña'],
+  DS: ['Código de acceso', 'Restablecer contraseña'],
+  HB: ['Código de acceso', 'Restablecer contraseña'],
+  PV: ['Código de verificación', 'Restablecer contraseña']
 };
 let _cod = {};
 
@@ -11171,8 +11171,11 @@ async function codSelPlat(btn, subId) {
         <span style="color:var(--text3)">Método</span><span style="color:${_TIP_COLOR[tipBot]||'var(--text3)'};font-weight:600">${_TIP_LABEL[tipBot]||tipBot}</span>
       </div>
       <div class="ct" style="font-size:11px;margin-bottom:10px"><i class="ti ti-key" style="color:var(--amber)"></i>¿Qué tipo de código necesitas?</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${tipos.map(t=>`<button class="btn cod-tipo-btn" onclick="codSelTipo(this,'${t.replace(/'/g,"&#39;")}')">${t}</button>`).join('')}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        ${tipos.map(t => {
+          const full = t === 'Restablecer contraseña' ? 'grid-column:1/-1;' : '';
+          return `<button class="cod-tipo-btn" onclick="codSelTipo(this,'${t.replace(/'/g,"&#39;")}')" style="${full}padding:11px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;text-align:center">${t}</button>`;
+        }).join('')}
       </div>
     </div>`;
   }
@@ -11183,16 +11186,51 @@ async function codSelPlat(btn, subId) {
 function codSelTipo(el, tipo) {
   _cod.tipo   = tipo;
   _cod.codigo = null;
-  document.querySelectorAll('.cod-tipo-btn').forEach(b => b.classList.remove('btn-p'));
-  el.classList.add('btn-p');
+
+  const plat = _cod.sub?.plat;
+  const dc   = _COD_DOT[plat] || '--accent';
+
+  // Estado activo en botones de tipo
+  document.querySelectorAll('.cod-tipo-btn').forEach(b => {
+    b.style.background  = 'var(--bg3)';
+    b.style.borderColor = 'var(--border)';
+    b.style.color       = 'var(--text2)';
+  });
+  el.style.background  = `var(${dc})`;
+  el.style.borderColor = `var(${dc})`;
+  el.style.color       = '#fff';
 
   const acceso = _cod.acceso;
   const tipBot = acceso?.tipo_bot || 'manual';
-  const plat   = _cod.sub?.plat;
-  const dc     = _COD_DOT[plat] || '--accent';
   const resDiv = document.getElementById('ac-cod-resultado');
   const waWrap = document.getElementById('ac-cod-wa-wrap');
   if (waWrap) waWrap.innerHTML = '';
+
+  const _COD_INSTRUC = {
+    NF: {
+      'Inicio de sesión':           '💡 En la TV o celular selecciona "Obtener ayuda para iniciar sesión" y elige enviar el código al correo.',
+      'Ver temporalmente':          '💡 En el aviso de la TV selecciona "Estoy de viaje" o "Ver temporalmente" y envía el código al correo.',
+      'Actualizar hogar':           '💡 En la TV solicita actualizar hogar y envía el enlace al correo.',
+      'Verificar dispositivo nuevo':'💡 Netflix solicita este código de 6 dígitos la primera vez en un dispositivo nuevo.',
+      'Restablecer contraseña':     '💡 Se buscará el enlace de restablecimiento de contraseña de Netflix en el correo.'
+    },
+    DS: {
+      'Código de acceso':       '💡 En Disney+ selecciona verificación y elige enviar el código de 6 dígitos al correo.',
+      'Restablecer contraseña': '💡 Se buscará el enlace de restablecimiento de contraseña de Disney+ en el correo.'
+    },
+    HB: {
+      'Código de acceso':       '💡 En HBO Max selecciona "Obtener código de un solo uso" y revisa el correo.',
+      'Restablecer contraseña': '💡 Se buscará el enlace de restablecimiento de contraseña de HBO Max en el correo.'
+    },
+    PV: {
+      'Código de verificación': '💡 En Prime Video selecciona verificación y elige recibir el código de 6 dígitos al correo.',
+      'Restablecer contraseña': '💡 Se buscará el enlace de restablecimiento de contraseña de Amazon en el correo.'
+    }
+  };
+  const instrucText = (_COD_INSTRUC[plat] || {})[tipo] || '';
+  const instrucHtml = instrucText
+    ? `<div style="background:rgba(99,102,241,0.08);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 14px;font-size:12px;color:var(--text2);margin-bottom:12px">${instrucText}</div>`
+    : '';
 
   const manualField = `<div style="display:flex;gap:8px">
     <input type="text" id="cod-manual-inp" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg3);color:var(--text);font-family:var(--mono);font-size:16px;letter-spacing:2px" placeholder="Ej: 123456">
@@ -11205,7 +11243,7 @@ function codSelTipo(el, tipo) {
     <button class="btn btn-sm btn-ic" data-copy="${val.replace(/"/g,'&quot;')}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>
   </div>`;
 
-  let html = `<div class="card">`;
+  let html = instrucHtml + `<div class="card">`;
 
   if (tipBot === 'correo_propio') {
     html += `<button id="cod-fetch-btn" class="btn" style="width:100%;justify-content:center;padding:13px;font-size:14px;background:var(${dc});border-color:var(${dc});color:#fff;margin-bottom:14px" onclick="codObtenerAuto()">
@@ -11247,18 +11285,32 @@ async function codObtenerAuto() {
   if (resBox) resBox.innerHTML = '';
   try {
     const usuario = _cod.acceso?.usuario || '';
-    const resp = await fetch(`${_GAS_URL}?correo=${encodeURIComponent(correo)}&plataforma=${encodeURIComponent(plat)}&usuario=${encodeURIComponent(usuario)}`);
+    const resp = await fetch(`${_GAS_URL}?correo=${encodeURIComponent(correo)}&plataforma=${encodeURIComponent(plat)}&usuario=${encodeURIComponent(usuario)}&tipo=${encodeURIComponent(_cod.tipo||'')}`);
     const data = await resp.json();
     if (data.error || !data.codigo) {
       if (resBox) resBox.innerHTML = `<div style="padding:11px 14px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);border-radius:var(--rsm);font-size:13px;color:var(--amber)"><i class="ti ti-mail-off"></i> No se encontraron emails recientes. Usa el campo manual.</div>`;
     } else {
       _cod.codigo = data.codigo;
-      if (resBox) resBox.innerHTML = `<div style="padding:18px;background:var(--bg4);border:2px solid var(${dc});border-radius:var(--r);text-align:center;margin-bottom:4px">
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Código encontrado</div>
-        <div style="font-size:38px;font-weight:700;font-family:var(--mono);color:var(${dc});letter-spacing:5px;word-break:break-all">${data.codigo}</div>
-        ${data.asunto ? `<div style="font-size:11px;color:var(--text3);margin-top:8px">📧 ${data.asunto}</div>` : ''}
-        ${data.fecha  ? `<div style="font-size:11px;color:var(--text3)">🕐 ${data.fecha}</div>` : ''}
-      </div>`;
+      let _resHtml;
+      if (data.codigo.startsWith('http')) {
+        _resHtml = `<div style="padding:18px;background:var(--bg4);border:2px solid var(${dc});border-radius:var(--r);text-align:center;margin-bottom:4px">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Enlace de restablecimiento encontrado</div>
+          ${data.asunto ? `<div style="font-size:11px;color:var(--text3);margin-bottom:6px">📧 ${data.asunto}</div>` : ''}
+          ${data.fecha  ? `<div style="font-size:11px;color:var(--text3);margin-bottom:12px">🕐 ${data.fecha}</div>` : ''}
+          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+            <a href="${data.codigo}" target="_blank" rel="noopener" class="btn" style="background:var(${dc});border-color:var(${dc});color:#fff;padding:10px 16px;text-decoration:none">🔗 Abrir enlace</a>
+            <button class="btn" data-url="${data.codigo.replace(/"/g,'&quot;')}" onclick="navigator.clipboard.writeText(this.dataset.url).then(()=>toast('Enlace copiado','ok'))">📋 Copiar enlace</button>
+          </div>
+        </div>`;
+      } else {
+        _resHtml = `<div style="padding:18px;background:var(--bg4);border:2px solid var(${dc});border-radius:var(--r);text-align:center;margin-bottom:4px">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Código encontrado</div>
+          <div style="font-size:38px;font-weight:700;font-family:var(--mono);color:var(${dc});letter-spacing:5px;word-break:break-all">${data.codigo}</div>
+          ${data.asunto ? `<div style="font-size:11px;color:var(--text3);margin-top:8px">📧 ${data.asunto}</div>` : ''}
+          ${data.fecha  ? `<div style="font-size:11px;color:var(--text3)">🕐 ${data.fecha}</div>` : ''}
+        </div>`;
+      }
+      if (resBox) resBox.innerHTML = _resHtml;
       codMostrarWABtn();
     }
   } catch(e) {
