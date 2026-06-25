@@ -5102,8 +5102,9 @@ function buscarClientes(q) {
   return CLIENTES.filter(c => {
     const n = (c.n||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     const a = (c.a||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    const telMatch = hasDigits && rn && (c.tel||'').includes(rn);
-    const telDigits = hasDigits && (c.tel||'').replace(/[^0-9]/g,'').includes(digits);
+    const cTelD = (c.tel||'').replace(/[^0-9]/g,'');
+    const telMatch = hasDigits && rn && ((c.tel||'').includes(rn) || rn.includes(cTelD));
+    const telDigits = hasDigits && (cTelD.includes(digits) || digits.includes(cTelD));
     return n.includes(r) || a.includes(r) || telMatch || telDigits ||
            c.id.toLowerCase().includes(r);
   });
@@ -5902,7 +5903,7 @@ function buscarClientePago(q) {
   }
 }
 
-function selClientePago(id, nombre, tel) {
+async function selClientePago(id, nombre, tel) {
   pagoData.clienteId = id;
   pagoData.clienteNombre = nombre;
   const cont = document.getElementById('pago-resultados');
@@ -5915,7 +5916,7 @@ function selClientePago(id, nombre, tel) {
   if (inp) inp.value = '';
   document.getElementById('pago-sub').textContent = nombre + ' · ' + id;
   // Mostrar suscripciones
-  renderSubsPago(id);
+  await renderSubsPago(id);
   document.getElementById('pago-subs-sec').style.display = 'block';
   document.getElementById('btn-registrar-pago').style.display = 'inline-flex';
 }
@@ -5930,10 +5931,48 @@ function limpiarClientePago() {
 
 let pagoSubsActuales = [];
 
-function renderSubsPago(clienteId) {
-  const subsRaw = SUBS_FULL.filter(s =>
+async function renderSubsPago(clienteId) {
+  let subsRaw = SUBS_FULL.filter(s =>
     s.clienteId === clienteId && ['activo', 'sin_renovar'].includes((s.est || '').toLowerCase())
   );
+
+  if (subsRaw.length === 0) {
+    const { data } = await supa.from('suscripciones')
+      .select('*, clientes(nombre, apellido, telefono)')
+      .eq('cliente_id', clienteId)
+      .eq('estado', 'activo');
+    if (data && data.length > 0) {
+      subsRaw = data.map(s => ({
+        id:          s.id,
+        clienteId:   s.cliente_id,
+        perfil:      s.perfil_id || '—',
+        correo:      s.correo || '—',
+        clave:       s.clave || '—',
+        nombre:      s.clientes ? (s.clientes.nombre + ' ' + (s.clientes.apellido||'')).trim() : (s.nombre || '—'),
+        tel:         s.clientes ? normalizeTel(s.clientes.telefono) : normalizeTel(s.telefono||''),
+        usuario:     s.usuario || '—',
+        pin:         s.pin || '—',
+        fIni:        s.fecha_inicio ? s.fecha_inicio.split('-').reverse().join('/') : '—',
+        fVcto:       s.fecha_vcto   ? s.fecha_vcto.split('-').reverse().join('/')   : '—',
+        dias: (() => {
+          if (!s.fecha_vcto) return 0;
+          const p = s.fecha_vcto.includes('-') ? s.fecha_vcto.split('-') : s.fecha_vcto.split('/');
+          const anio = p[0].length === 4 ? +p[0] : +p[2];
+          const mes  = +p[1];
+          const dia  = p[0].length === 4 ? +p[2] : +p[0];
+          if (isNaN(anio) || isNaN(mes) || isNaN(dia)) return 0;
+          const hoy = new Date(); hoy.setHours(0,0,0,0);
+          return Math.ceil((new Date(anio, mes-1, dia) - hoy) / 86400000);
+        })(),
+        monto:       parseFloat(s.monto) || 0,
+        tipo:        s.tipo || 'Individual',
+        plat:        s.plataforma,
+        combo:       s.combo_id && s.combo_id !== 'undefined' ? s.combo_id : '—',
+        est:         s.estado,
+        tipoCliente: s.tipo_cliente || 'Nuevo',
+      }));
+    }
+  }
 
   // Agrupar combos (misma lógica de dedup)
   const grupoMap = new Map();
