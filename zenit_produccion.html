@@ -7605,9 +7605,9 @@ function toggleClaveSub(btn, clave) {
   btn.title = visible ? 'Ver clave' : 'Ocultar clave';
 }
 
-function filtSubs(q) { _aplicarFiltrosSubs(); }
+async function filtSubs(q) { await _aplicarFiltrosSubs(); }
 // Filtros de suscripciones — se combinan todos activos
-function _aplicarFiltrosSubs() {
+async function _aplicarFiltrosSubs() {
   const busca = (document.getElementById('subs-busq') || document.querySelector('#v-suscripciones input[oninput*="filtSubs"]'))?.value?.toLowerCase().trim() || '';
   const plat  = document.getElementById('subs-filtro-plat')?.value || '';
   const est   = document.getElementById('subs-filtro-est')?.value || '';
@@ -7645,6 +7645,46 @@ function _aplicarFiltrosSubs() {
         (s.pin||'').includes(busca);
     });
   }
+
+  // Fallback a Supabase si no hay resultados en memoria y hay término de búsqueda
+  if (data.length === 0 && busca) {
+    const { data: dbData } = await supa.from('suscripciones')
+      .select('*, clientes(nombre, apellido, telefono)')
+      .or(`perfil_id.ilike.%${busca}%,cliente_id.ilike.%${busca}%`)
+      .limit(50);
+    if (dbData && dbData.length > 0) {
+      data = dbData.map(s => ({
+        id:          s.id,
+        clienteId:   s.cliente_id,
+        perfil:      s.perfil_id || '—',
+        correo:      s.correo || '—',
+        clave:       s.clave || '—',
+        nombre:      s.clientes ? (s.clientes.nombre + ' ' + (s.clientes.apellido||'')).trim() : (s.nombre || '—'),
+        tel:         s.clientes ? normalizeTel(s.clientes.telefono) : normalizeTel(s.telefono||''),
+        usuario:     s.usuario || '—',
+        pin:         s.pin || '—',
+        fIni:        s.fecha_inicio ? s.fecha_inicio.split('-').reverse().join('/') : '—',
+        fVcto:       s.fecha_vcto   ? s.fecha_vcto.split('-').reverse().join('/')   : '—',
+        dias: (() => {
+          if (!s.fecha_vcto) return 0;
+          const p = s.fecha_vcto.includes('-') ? s.fecha_vcto.split('-') : s.fecha_vcto.split('/');
+          const anio = p[0].length === 4 ? +p[0] : +p[2];
+          const mes  = +p[1];
+          const dia  = p[0].length === 4 ? +p[2] : +p[0];
+          if (isNaN(anio) || isNaN(mes) || isNaN(dia)) return 0;
+          const hoy = new Date(); hoy.setHours(0,0,0,0);
+          return Math.ceil((new Date(anio, mes-1, dia) - hoy) / 86400000);
+        })(),
+        tipoCliente: s.tipo_cliente || 'Nuevo',
+        monto:       parseFloat(s.monto) || 0,
+        tipo:        s.tipo || 'Individual',
+        plat:        s.plataforma,
+        combo:       s.combo_id && s.combo_id !== 'undefined' ? s.combo_id : '—',
+        est:         s.estado,
+      }));
+    }
+  }
+
   renderSubs(data);
 }
 function filtSubsPlat(v) { _aplicarFiltrosSubs(); }
