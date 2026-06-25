@@ -934,6 +934,7 @@ async function intentarLogin() {
       <div id="vct-export-bar" style="display:none;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
         <button onclick="vctExportar('excel')" style="background:#1D6F42;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
         <button onclick="vctExportar('pdf')"   style="background:#DC2626;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('vct-tbody','Vencimientos','print')" style="background:#6B7280;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
         <button onclick="vctExportar('word')"  style="background:#2B579A;color:#fff;border:none;padding:7px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
       </div>
     </div>
@@ -960,10 +961,17 @@ async function intentarLogin() {
       <div class="tab" onclick="tabRpts(this,'rpts-nuevos')">Clientes nuevos</div>
       <div class="tab" onclick="tabRpts(this,'rpts-perdidos')">Clientes perdidos</div>
       <div class="tab" onclick="tabRpts(this,'rpts-retencion')">Tasa de retención</div>
+      <div class="tab" onclick="tabRpts(this,'rpts-perfiles');rptsPerfilesGenerar()">Perfiles</div>
     </div>
 
     <!-- Sub-tab 1: Activas por plataforma y operador -->
     <div class="pp on" id="rpts-activas">
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rpts-activas-cuerpo','Activas_por_plataforma','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rpts-activas-cuerpo','Activas_por_plataforma','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rpts-activas-cuerpo','Activas_por_plataforma','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rpts-activas-cuerpo','Activas_por_plataforma','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+      </div>
       <div id="rpts-activas-cuerpo">
         <div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Cargando...</div>
       </div>
@@ -984,6 +992,12 @@ async function intentarLogin() {
         </select>
         <button class="btn" onclick="rptsNuevosGenerar()"><i class="ti ti-refresh"></i> Generar</button>
       </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rpts-nuevos-res','Clientes_nuevos','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rpts-nuevos-res','Clientes_nuevos','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rpts-nuevos-res','Clientes_nuevos','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rpts-nuevos-res','Clientes_nuevos','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+      </div>
       <div id="rpts-nuevos-res"></div>
     </div>
 
@@ -1001,6 +1015,12 @@ async function intentarLogin() {
           <option value="anio">Año actual</option>
         </select>
         <button class="btn" onclick="rptsPerdidosGenerar()"><i class="ti ti-refresh"></i> Generar</button>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rpts-perdidos-res','Clientes_perdidos','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rpts-perdidos-res','Clientes_perdidos','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rpts-perdidos-res','Clientes_perdidos','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rpts-perdidos-res','Clientes_perdidos','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
       </div>
       <div id="rpts-perdidos-res"></div>
     </div>
@@ -1020,7 +1040,43 @@ async function intentarLogin() {
         </select>
         <button class="btn" onclick="rptsRetencionGenerar()"><i class="ti ti-refresh"></i> Generar</button>
       </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rpts-retencion-res','Tasa_retencion','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rpts-retencion-res','Tasa_retencion','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rpts-retencion-res','Tasa_retencion','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rpts-retencion-res','Tasa_retencion','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+      </div>
       <div id="rpts-retencion-res"></div>
+    </div>
+
+    <!-- Sub-tab 5: Perfiles -->
+    <div class="pp" id="rpts-perfiles" style="display:none">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn rpts-pf-btn on" onclick="rptsPerfilesFiltrar('todos',this)">Todos</button>
+        <button class="btn rpts-pf-btn" onclick="rptsPerfilesFiltrar('ocupados',this)">Ocupados</button>
+        <button class="btn rpts-pf-btn" onclick="rptsPerfilesFiltrar('disponibles',this)">Disponibles</button>
+        <button class="btn rpts-pf-btn" onclick="rptsPerfilesFiltrar('inactivos',this)">Inactivos</button>
+        <span id="rpts-pf-total" style="font-size:12px;color:var(--text3);margin-left:auto"></span>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptsPerfilesExportar('excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptsPerfilesExportar('pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptsPerfilesExportar('print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptsPerfilesExportar('word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+      </div>
+      <div class="card">
+        <div class="tw">
+          <table id="tb-rpts-perfiles">
+            <thead><tr>
+              <th>Perfil</th><th>Plataforma</th><th>Cuenta (correo)</th><th>Proveedor</th>
+              <th>Cliente</th><th>Teléfono</th><th>Estado suscripción</th><th>Estado cuenta</th>
+            </tr></thead>
+            <tbody id="rpts-perfiles-tbody">
+              <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3)">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1034,6 +1090,12 @@ async function intentarLogin() {
 
     <!-- Sub-tab 1: Perfiles disponibles por plataforma -->
     <div class="pp on" id="rpti-perfiles">
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rpti-perfiles-cuerpo','Perfiles_disponibles','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rpti-perfiles-cuerpo','Perfiles_disponibles','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rpti-perfiles-cuerpo','Perfiles_disponibles','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rpti-perfiles-cuerpo','Perfiles_disponibles','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+      </div>
       <div id="rpti-perfiles-cuerpo">
         <div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Cargando...</div>
       </div>
@@ -1041,6 +1103,12 @@ async function intentarLogin() {
 
     <!-- Sub-tab 2: Ocupación de cuentas -->
     <div class="pp" id="rpti-ocupacion" style="display:none">
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rpti-ocupacion-cuerpo','Ocupacion_cuentas','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rpti-ocupacion-cuerpo','Ocupacion_cuentas','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rpti-ocupacion-cuerpo','Ocupacion_cuentas','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rpti-ocupacion-cuerpo','Ocupacion_cuentas','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+      </div>
       <div id="rpti-ocupacion-cuerpo">
         <div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Cargando...</div>
       </div>
@@ -1055,6 +1123,12 @@ async function intentarLogin() {
           <option value="30">30 días</option>
         </select>
         <button class="btn" onclick="rptiVencProvGenerar()"><i class="ti ti-refresh"></i> Generar</button>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rpti-vp-res','Cuentas_por_vencer','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rpti-vp-res','Cuentas_por_vencer','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rpti-vp-res','Cuentas_por_vencer','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rpti-vp-res','Cuentas_por_vencer','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
       </div>
       <div id="rpti-vp-res"></div>
     </div>
@@ -1084,6 +1158,12 @@ async function intentarLogin() {
         </select>
         <button class="btn" onclick="rptfIngresosGenerar()"><i class="ti ti-refresh"></i> Generar</button>
       </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rptf-ie-res','Ingresos_vs_Egresos','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rptf-ie-res','Ingresos_vs_Egresos','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rptf-ie-res','Ingresos_vs_Egresos','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rptf-ie-res','Ingresos_vs_Egresos','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+      </div>
       <div id="rptf-ie-res"></div>
     </div>
 
@@ -1101,6 +1181,12 @@ async function intentarLogin() {
           <option value="anio">Año actual</option>
         </select>
         <button class="btn" onclick="rptfRentabilidadGenerar()"><i class="ti ti-refresh"></i> Generar</button>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rptf-ren-res','Rentabilidad_plataforma','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rptf-ren-res','Rentabilidad_plataforma','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rptf-ren-res','Rentabilidad_plataforma','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rptf-ren-res','Rentabilidad_plataforma','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
       </div>
       <div id="rptf-ren-res"></div>
     </div>
@@ -1120,6 +1206,12 @@ async function intentarLogin() {
         </select>
         <button class="btn" onclick="rptfTopClientesGenerar()"><i class="ti ti-refresh"></i> Generar</button>
       </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rptf-top-res','Clientes_top','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rptf-top-res','Clientes_top','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rptf-top-res','Clientes_top','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rptf-top-res','Clientes_top','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+      </div>
       <div id="rptf-top-res"></div>
     </div>
 
@@ -1128,6 +1220,12 @@ async function intentarLogin() {
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
         <span style="font-size:13px;color:var(--text2)">Mes en curso</span>
         <button class="btn" onclick="rptfProyeccionGenerar()"><i class="ti ti-refresh"></i> Generar</button>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rptf-proy-res','Proyeccion_ingresos','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rptf-proy-res','Proyeccion_ingresos','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rptf-proy-res','Proyeccion_ingresos','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rptf-proy-res','Proyeccion_ingresos','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
       </div>
       <div id="rptf-proy-res"></div>
     </div>
@@ -8702,6 +8800,57 @@ setTimeout(() => {
 }, 300);
 
 // ═══════════════════════════════════════════════════════════
+// MÓDULO REPORTES — EXPORTACIÓN GENÉRICA
+// ═══════════════════════════════════════════════════════════
+
+function rptBuildPrintHtml(headers, rows, titulo, thColor) {
+  const fecha = new Date().toLocaleDateString('es-PA');
+  return `<html><head><meta charset="utf-8"><style>
+    body{font-family:Arial,sans-serif;font-size:11px;margin:20px}
+    h2{margin:0 0 4px;font-size:14px}p{margin:0 0 14px;font-size:10px;color:#555}
+    table{border-collapse:collapse;width:100%}
+    th{background:${thColor};color:#fff;padding:6px 8px;text-align:left;font-size:10px}
+    td{padding:5px 8px;border-bottom:1px solid #eee;font-size:10px}
+    tr:nth-child(even) td{background:#f9f9f9}
+    @media print{@page{size:landscape;margin:12mm}}
+  </style></head><body>
+    <h2>ZENIT — ${titulo.replace(/_/g,' ')}</h2>
+    <p>Fecha: ${fecha} &nbsp;|&nbsp; Registros: ${rows.length}</p>
+    <table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r=>'<tr>'+r.map(v=>`<td>${v??''}</td>`).join('')+'</tr>').join('')}</tbody>
+  </table></body></html>`;
+}
+
+function rptExportarPanel(contenedorId, nombre, formato) {
+  const cont = document.getElementById(contenedorId);
+  let table = null;
+  if (cont) {
+    if (cont.tagName === 'TABLE') table = cont;
+    else if (cont.tagName === 'TBODY') table = cont.closest('table');
+    else table = cont.querySelector('table');
+  }
+  if (!table) { toast('Sin datos para exportar', 'warn'); return; }
+  const headers = [...table.querySelectorAll('thead th')].map(th => th.textContent.trim());
+  const rows = [...table.querySelectorAll('tbody tr')]
+    .map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent.trim()))
+    .filter(r => r.length >= 2 && r.some(v => v));
+  if (!rows.length) { toast('Sin datos para exportar', 'warn'); return; }
+  const w = v => String(v ?? '');
+  if (formato === 'excel') {
+    const lines = [headers.map(w).join('\t'), ...rows.map(r => r.map(w).join('\t'))];
+    descargar(new Blob([lines.join('\n')], {type:'text/tab-separated-values;charset=utf-8'}), `zenit_${nombre}_${hoy()}.xls`);
+  } else if (formato === 'pdf' || formato === 'print') {
+    const win = window.open('', '_blank');
+    win.document.write(rptBuildPrintHtml(headers, rows, nombre, '#1F4E79'));
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 400);
+  } else if (formato === 'word') {
+    descargar(new Blob([rptBuildPrintHtml(headers, rows, nombre, '#2B579A')], {type:'application/msword'}), `zenit_${nombre}_${hoy()}.doc`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // MÓDULO REPORTES
 // ═══════════════════════════════════════════════════════════
 let RPT_DATA = [];
@@ -9071,6 +9220,129 @@ function vctExportar(formato) {
       win.focus();
       setTimeout(() => win.print(), 400);
     }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// REPORTES — SUSCRIPCIONES: TAB PERFILES
+// ═══════════════════════════════════════════════════════════
+let RPT_PERFILES_DATA = [];
+let RPT_PERFILES_FILTERED = [];
+let RPT_PERFILES_FILTRO = 'todos';
+
+async function rptsPerfilesGenerar() {
+  const tbody = document.getElementById('rpts-perfiles-tbody');
+  const totalEl = document.getElementById('rpts-pf-total');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3)"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
+  try {
+    const {data: perfs, error: e1} = await supa.from('perfiles').select('id, inventario_id, numero, estado');
+    if (e1) throw e1;
+    const {data: cuentas, error: e2} = await supa.from('cuentas_inventario').select('codigo, plataforma, correo, estado, proveedor');
+    if (e2) throw e2;
+    const cuentaMap = {};
+    (cuentas || []).forEach(c => { cuentaMap[c.codigo] = c; });
+
+    // Mapa de suscripciones activas/última por perfil desde SUBS_FULL
+    const subMap = {};
+    SUBS_FULL.forEach(s => {
+      if (!subMap[s.perfil] || s.est === 'activo') subMap[s.perfil] = s;
+    });
+
+    // Mapa de nombres de plataforma
+    const platNom = {};
+    (PLATAFORMAS || []).forEach(p => { platNom[p.codigo] = p.nombre; });
+
+    RPT_PERFILES_DATA = (perfs || []).map(p => {
+      const cuenta = cuentaMap[p.inventario_id] || {};
+      const sub = subMap[p.id];
+      const plat = cuenta.plataforma || (p.id ? p.id.replace(/[0-9]/g, '').slice(0, 2) : '—');
+      return {
+        perfilId:  p.id || '—',
+        num:       p.numero || '—',
+        plat,
+        platNom:   platNom[plat] || plat,
+        correo:    cuenta.correo || '—',
+        proveedor: cuenta.proveedor || '—',
+        cliente:   sub?.nombre || '—',
+        telefono:  sub?.tel || '—',
+        estSub:    sub?.est || '—',
+        estCuenta: cuenta.estado || '—',
+        perfilEst: p.estado || '—',
+      };
+    }).sort((a, b) => {
+      const pc = a.plat.localeCompare(b.plat);
+      return pc !== 0 ? pc : a.perfilId.localeCompare(b.perfilId);
+    });
+
+    rptsPerfilesFiltrar(RPT_PERFILES_FILTRO);
+  } catch(e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red);padding:24px">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function rptsPerfilesFiltrar(filtro, btnEl) {
+  RPT_PERFILES_FILTRO = filtro;
+  document.querySelectorAll('.rpts-pf-btn').forEach(b => b.classList.remove('on'));
+  if (btnEl) btnEl.classList.add('on');
+  else {
+    const btns = document.querySelectorAll('.rpts-pf-btn');
+    btns.forEach(b => { if (b.getAttribute('onclick')?.includes(`'${filtro}'`)) b.classList.add('on'); });
+  }
+  let data = RPT_PERFILES_DATA;
+  if (filtro === 'ocupados')    data = data.filter(r => r.estSub === 'activo');
+  else if (filtro === 'disponibles') data = data.filter(r => r.estSub !== 'activo' && r.estCuenta === 'Activa');
+  else if (filtro === 'inactivos')   data = data.filter(r => r.perfilEst === 'inactivo' || !['Activa'].includes(r.estCuenta));
+  RPT_PERFILES_FILTERED = data;
+  rptsPerfilesRender(data);
+}
+
+function rptsPerfilesRender(data) {
+  const tbody = document.getElementById('rpts-perfiles-tbody');
+  const totalEl = document.getElementById('rpts-pf-total');
+  if (!tbody) return;
+  if (totalEl) totalEl.textContent = `${data.length} registro${data.length !== 1 ? 's' : ''}`;
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3)">Sin resultados para este filtro</td></tr>';
+    return;
+  }
+  const estSubBadge = est => {
+    if (est === 'activo')      return `<span class="b bg" style="font-size:11px">${est}</span>`;
+    if (est === 'sin_renovar') return `<span class="b ba" style="font-size:11px">${est}</span>`;
+    if (est === 'inactivo')    return `<span class="b br" style="font-size:11px">${est}</span>`;
+    return `<span style="color:var(--text3);font-size:11px">${est}</span>`;
+  };
+  const estCtaBadge = est => est === 'Activa'
+    ? `<span class="b bg" style="font-size:11px">${est}</span>`
+    : `<span class="b br" style="font-size:11px">${est}</span>`;
+  tbody.innerHTML = data.map(r => `<tr>
+    <td style="font-family:var(--mono);font-size:12px">${r.perfilId}</td>
+    <td><span class="pd"><span class="dot ${r.plat.toLowerCase()}"></span>${r.platNom}</span></td>
+    <td style="font-size:12px">${r.correo}</td>
+    <td style="font-size:12px">${r.proveedor}</td>
+    <td>${r.cliente}</td>
+    <td style="font-size:12px">${r.telefono}</td>
+    <td>${estSubBadge(r.estSub)}</td>
+    <td>${estCtaBadge(r.estCuenta)}</td>
+  </tr>`).join('');
+}
+
+function rptsPerfilesExportar(formato) {
+  if (!RPT_PERFILES_FILTERED.length) { toast('Sin datos para exportar', 'warn'); return; }
+  const cols = ['Perfil','Plataforma','Cuenta (correo)','Proveedor','Cliente','Teléfono','Estado suscripción','Estado cuenta'];
+  const rowFn = r => [r.perfilId, r.platNom, r.correo, r.proveedor, r.cliente, r.telefono, r.estSub, r.estCuenta];
+  const nombre = `Perfiles_${RPT_PERFILES_FILTRO}`;
+  const w = v => String(v ?? '');
+  if (formato === 'excel') {
+    const lines = [cols.join('\t'), ...RPT_PERFILES_FILTERED.map(r => rowFn(r).map(w).join('\t'))];
+    descargar(new Blob([lines.join('\n')], {type:'text/tab-separated-values;charset=utf-8'}), `zenit_${nombre}_${hoy()}.xls`);
+  } else if (formato === 'pdf' || formato === 'print') {
+    const win = window.open('', '_blank');
+    win.document.write(rptBuildPrintHtml(cols, RPT_PERFILES_FILTERED.map(rowFn), nombre, '#1F4E79'));
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 400);
+  } else if (formato === 'word') {
+    descargar(new Blob([rptBuildPrintHtml(cols, RPT_PERFILES_FILTERED.map(rowFn), nombre, '#2B579A')], {type:'application/msword'}), `zenit_${nombre}_${hoy()}.doc`);
   }
 }
 
