@@ -2040,8 +2040,9 @@ async function intentarLogin() {
   <div class="mh"><div class="mico" style="background:var(--purple)"><i class="ti ti-user"></i></div><div><div class="mtit" id="u-title">Nuevo usuario</div><div class="msub">Configure acceso y permisos</div></div><button class="mcl" onclick="closeModal('m-usuario')"><i class="ti ti-x"></i></button></div>
   <div class="mb">
     <div class="fsec"><div class="fst">Datos del usuario</div>
-      <div class="fr c2"><div class="fg"><label>Nombre completo<span class="req">*</span></label><input type="text" placeholder="Ej: Juan Pérez"></div><div class="fg"><label>Email<span class="req">*</span></label><input type="email" placeholder="correo@zenit.app"></div></div>
-      <div class="fr c2"><div class="fg"><label>Contraseña<span class="req">*</span></label><input type="password" placeholder="Mínimo 8 caracteres"><div class="hint">El usuario deberá cambiarla en su primer acceso</div></div><div class="fg"><label>Estado</label><select><option>Activo</option><option>Inactivo</option></select></div></div>
+      <div class="fr c2"><div class="fg"><label>Nombre completo<span class="req">*</span></label><input id="u-nombre" type="text" placeholder="Ej: Juan Pérez"></div><div class="fg"><label>Email<span class="req">*</span></label><input id="u-email" type="email" placeholder="correo@zenit.app"></div></div>
+      <div class="fr c2"><div class="fg"><label>Usuario<span class="req">*</span></label><input id="u-usuario" type="text" placeholder="Ej: jperez"></div><div class="fg"><label>Estado</label><select id="u-estado"><option value="Activo">Activo</option><option value="Inactivo">Inactivo</option></select></div></div>
+      <div class="fr"><div class="fg"><label>Contraseña<span class="req">*</span></label><input id="u-password" type="password" placeholder="Mínimo 8 caracteres"><div class="hint">Dejar vacío para no cambiar la contraseña al editar</div></div></div>
     </div>
     <div class="fsec"><div class="fst">Rol y permisos</div>
       <div class="fg" style="margin-bottom:12px"><label>Plantilla de rol<span class="req">*</span></label>
@@ -2051,7 +2052,7 @@ async function intentarLogin() {
       <div class="ab i"><i class="ti ti-info-circle"></i>Puede sobreescribir permisos individuales sin afectar la plantilla.</div>
     </div>
     <div class="fsec"><div class="fst">Configuración de sesión</div>
-      <div class="fr c2"><div class="fg"><label>Cierre por inactividad</label><select><option>15 minutos</option><option>30 minutos</option><option>1 hora</option></select></div><div class="fg"><label>Sesión simultánea</label><select><option>Permitida</option><option>No permitida</option></select></div></div>
+      <div class="fr c2"><div class="fg"><label>Cierre por inactividad</label><select id="u-inactividad"><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option></select></div><div class="fg"><label>Sesión simultánea</label><select id="u-sesion-sim"><option value="Permitida">Permitida</option><option value="No permitida">No permitida</option></select></div></div>
     </div>
   </div>
   <div class="mf"><button class="btn" onclick="closeModal('m-usuario')">Cancelar</button><button class="btn btn-p" onclick="guardarUsuario()"><i class="ti ti-check"></i>Guardar usuario</button></div>
@@ -4285,21 +4286,40 @@ function guardarParam(){
   toast('Guardado correctamente','ok');
 }
 
-function guardarUsuario(){
-  const nombre = document.getElementById('m-usuario').querySelector('input[type=text]')?.value?.trim();
-  const email = document.getElementById('m-usuario').querySelector('input[type=email]')?.value?.trim();
-  const rolSel = document.getElementById('sel-rol-usuario')?.value || 'operador';
-  if (!nombre || !email) { toast('Nombre y email son requeridos','warn'); return; }
-  const rolMap = {master:{badge:'bpu',label:'Master'}, operador:{badge:'bi',label:'Operador'}, lectura:{badge:'bp',label:'Solo lectura'}};
-  const rol = rolMap[rolSel] || rolMap.operador;
-  const tbody = document.getElementById('tbody-usuarios');
-  if (tbody) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td><strong>${nombre}</strong></td><td>${email}</td><td><span class="b ${rol.badge}">${rol.label}</span></td><td>Ahora</td><td><span class="b bp">Sin sesión</span></td><td><span class="b bg">Activo</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="openModal('m-usuario','${nombre}')"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-ic btn-d" onclick="confirmarBloqueo('${nombre}')"><i class="ti ti-lock"></i></button></td>`;
-    tbody.appendChild(tr);
+async function guardarUsuario() {
+  const nombre    = document.getElementById('u-nombre')?.value?.trim();
+  const email     = document.getElementById('u-email')?.value?.trim();
+  const usuario   = document.getElementById('u-usuario')?.value?.trim();
+  const password  = document.getElementById('u-password')?.value?.trim();
+  const estado    = document.getElementById('u-estado')?.value || 'Activo';
+  const rolVal    = document.getElementById('sel-rol-usuario')?.value || 'operador';
+  const inacMin   = parseInt(document.getElementById('u-inactividad')?.value) || 15;
+  const sesionSim = document.getElementById('u-sesion-sim')?.value || 'Permitida';
+  const rolMap    = { master: 'Master', operador: 'Operador', lectura: 'Solo lectura' };
+  const rolLabel  = rolMap[rolVal] || 'Operador';
+
+  if (!nombre || !email || !usuario) { toast('Nombre, email y usuario son requeridos', 'warn'); return; }
+
+  if (_editUsuarioId) {
+    const fields = { nombre, email, usuario, estado, rol: rolLabel, inactividad_minutos: inacMin, sesion_simultanea: sesionSim };
+    if (password) fields.password_hash = password;
+    const { error } = await supa.from('usuarios_sistema').update(fields).eq('id', _editUsuarioId);
+    if (error) { toast('Error al actualizar: ' + error.message, 'error'); return; }
+    await cargarUsuariosSistema();
+    closeModal('m-usuario');
+    toast(`Usuario "${nombre}" actualizado ✓`, 'ok');
+  } else {
+    if (!password) { toast('La contraseña es requerida para nuevos usuarios', 'warn'); return; }
+    const { error } = await supa.from('usuarios_sistema').insert({
+      nombre, email, usuario, estado, rol: rolLabel,
+      password_hash: password, inactividad_minutos: inacMin,
+      sesion_simultanea: sesionSim, sesion_activa: false,
+    });
+    if (error) { toast('Error al crear usuario: ' + error.message, 'error'); return; }
+    await cargarUsuariosSistema();
+    closeModal('m-usuario');
+    toast(`Usuario "${nombre}" creado ✓`, 'ok');
   }
-  closeModal('m-usuario');
-  toast('Usuario "' + nombre + '" creado correctamente','ok');
 }
 async function guardarCuenta(){
   const platVal  = document.getElementById('cuenta-plat')?.value || 'NF';
@@ -4750,6 +4770,9 @@ let PLATS = {
 
 // ── USUARIOS DEL SISTEMA ─────────────────────────────────────
 let USUARIO_ACTIVO = null;
+let _idleTimer = null;
+let _idleListenersActivos = false;
+let _editUsuarioId = null;
 
 async function cargarUsuariosSistema() {
   try {
@@ -4853,7 +4876,34 @@ async function cargarUsuariosSistema() {
       if (cardCobrosTot) cardCobrosTot.style.display = esMaster ? 'block' : 'none';
     }
 
+function iniciarTimerInactividad() {
+  const mins = (USUARIO_ACTIVO?.inactividad_minutos > 0 ? USUARIO_ACTIVO.inactividad_minutos : 15);
+  if (_idleTimer) clearTimeout(_idleTimer);
+  _idleTimer = setTimeout(cerrarSesionPorInactividad, mins * 60 * 1000);
+  if (!_idleListenersActivos) {
+    ['mousemove','keydown','click','scroll'].forEach(ev =>
+      document.addEventListener(ev, resetearTimerInactividad, { passive: true })
+    );
+    _idleListenersActivos = true;
+  }
+}
+
+function resetearTimerInactividad() {
+  iniciarTimerInactividad();
+}
+
+async function cerrarSesionPorInactividad() {
+  try {
+    if (USUARIO_ACTIVO?.id) {
+      await supa.from('usuarios_sistema').update({ sesion_activa: false }).eq('id', USUARIO_ACTIVO.id);
+    }
+  } catch(_) {}
+  alert('Sesión cerrada por inactividad');
+  cerrarSesion();
+}
+
 function cerrarSesion() {
+  if (_idleTimer) { clearTimeout(_idleTimer); _idleTimer = null; }
   USUARIO_ACTIVO = null;
   sessionStorage.removeItem('zenit_usuario');
   // Limpiar datos en memoria
@@ -6353,7 +6403,35 @@ function openModal(id, title) {
   ov.classList.add('on');
   
   // Sincronizar roles al abrir modal usuario
-  if (id === 'm-usuario') { syncRolSelects(); }
+  if (id === 'm-usuario') {
+    syncRolSelects();
+    const rolRevMap = { 'Master': 'master', 'Operador': 'operador', 'Solo lectura': 'lectura' };
+    if (title) {
+      // Modo edición
+      const u = (USUARIOS_SISTEMA_DATA || []).find(x => x.nombre === title || x.usuario === title);
+      if (u) {
+        _editUsuarioId = u.id;
+        const titEl = document.getElementById('u-title'); if (titEl) titEl.textContent = 'Editar usuario';
+        const uN = document.getElementById('u-nombre');    if (uN) uN.value = u.nombre || '';
+        const uE = document.getElementById('u-email');     if (uE) uE.value = u.email  || '';
+        const uU = document.getElementById('u-usuario');   if (uU) uU.value = u.usuario || '';
+        const uP = document.getElementById('u-password');  if (uP) uP.value = '';
+        const uSt = document.getElementById('u-estado');   if (uSt) uSt.value = u.estado || 'Activo';
+        const uR  = document.getElementById('sel-rol-usuario'); if (uR) { uR.value = rolRevMap[u.rol] || 'operador'; if (typeof updRolPreview === 'function') updRolPreview(uR.value); }
+        const uI  = document.getElementById('u-inactividad');   if (uI) uI.value = u.inactividad_minutos || '15';
+        const uSs = document.getElementById('u-sesion-sim');    if (uSs) uSs.value = u.sesion_simultanea || 'Permitida';
+      }
+    } else {
+      // Modo nuevo
+      _editUsuarioId = null;
+      const titEl = document.getElementById('u-title'); if (titEl) titEl.textContent = 'Nuevo usuario';
+      ['u-nombre','u-email','u-usuario','u-password'].forEach(id2 => { const el = document.getElementById(id2); if (el) el.value = ''; });
+      const uSt = document.getElementById('u-estado');        if (uSt) uSt.value = 'Activo';
+      const uR  = document.getElementById('sel-rol-usuario'); if (uR) { uR.value = 'operador'; if (typeof updRolPreview === 'function') updRolPreview('operador'); }
+      const uI  = document.getElementById('u-inactividad');   if (uI) uI.value = '15';
+      const uSs = document.getElementById('u-sesion-sim');    if (uSs) uSs.value = 'Permitida';
+    }
+  }
   // Reset nueva cuenta
   if (id === 'm-cuenta') {
     const ids = ['cuenta-codigo','cuenta-correo','cuenta-clave','cuenta-fecha-vcto-prov','cuenta-costo','cuenta-notas'];
@@ -8879,6 +8957,21 @@ let _appIniciada = false;
 async function iniciarApp() {
   if (_appIniciada) { console.warn('[APP] iniciarApp() ya fue llamada — skip'); return; }
   _appIniciada = true;
+  // Verificación de nueva versión
+  try {
+    const res = await fetch(window.location.href, { method: 'HEAD', cache: 'no-store' });
+    const version = res.headers.get('etag') || res.headers.get('last-modified') || '';
+    if (version) {
+      const stored = sessionStorage.getItem('zenit_version');
+      if (stored && stored !== version) {
+        sessionStorage.setItem('zenit_version', version);
+        toast('Nueva versión disponible — actualizando...', 'ok');
+        setTimeout(() => window.location.reload(true), 1500);
+        return;
+      }
+      sessionStorage.setItem('zenit_version', version);
+    }
+  } catch(_) {}
   try {
     await verificarConexion();
     await cargarPlanesPrecios();
@@ -8896,6 +8989,7 @@ async function iniciarApp() {
     _aplicarFiltrosSubs();
     if (typeof updMetricasCobros === 'function') updMetricasCobros();
     iniciarRealtime();
+    iniciarTimerInactividad();
     console.log('[APP] Carga completa ✓');
   } catch(e) {
     _appIniciada = false;
