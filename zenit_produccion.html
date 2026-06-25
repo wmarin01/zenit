@@ -3508,6 +3508,12 @@ async function marcarSinRenovar() {
   let total = 0;
   try {
     for (const clienteId of clienteIds) {
+      // Recolectar perfil_ids afectados ANTES de modificar SUBS_FULL
+      const perfilIdsAfectados = SUBS_FULL
+        .filter(s => s.clienteId === clienteId && s.est === 'activo' && s.dias < 0)
+        .map(s => s.perfil)
+        .filter(p => p && p !== '—');
+
       const { error } = await supa
         .from('suscripciones')
         .update({ estado: 'sin_renovar' })
@@ -3515,10 +3521,19 @@ async function marcarSinRenovar() {
         .eq('estado', 'activo')
         .lt('fecha_vcto', hoy);
       if (error) throw error;
+
+      // Liberar perfiles en Supabase
+      for (const perfilId of perfilIdsAfectados) {
+        await supa.from('perfiles').update({ estado: 'disponible' }).eq('id', perfilId);
+      }
+
+      // Actualizar SUBS_FULL en memoria
       SUBS_FULL.forEach(s => {
         if (s.clienteId === clienteId && s.est === 'activo' && s.dias < 0) { s.est = 'sin_renovar'; total++; }
       });
     }
+    // Reconstruir PERFILES_DISP para reflejar los perfiles liberados
+    await dbCargarPerfilesDisp();
     toast(`${total} suscripci${total === 1 ? 'ón marcada' : 'ones marcadas'} como Sin renovar ✓`, 'ok');
     await dbGuardarHistorial('Marcado Sin renovar masivo', `${total} suscripciones · ${clienteIds.length} clientes`, 'var(--amber)');
     document.querySelector('#cobtabs .tab.on')?.click();
