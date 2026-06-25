@@ -5932,7 +5932,7 @@ let pagoSubsActuales = [];
 
 function renderSubsPago(clienteId) {
   const subsRaw = SUBS_FULL.filter(s =>
-    s.clienteId === clienteId && (s.est || '').toLowerCase() === 'activo'
+    s.clienteId === clienteId && ['activo', 'sin_renovar'].includes((s.est || '').toLowerCase())
   );
 
   // Agrupar combos (misma lógica de dedup)
@@ -7595,9 +7595,10 @@ function _aplicarFiltrosSubs() {
       const usuario = (s.usuario||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       const correo  = (s.correo||'').toLowerCase();
       const telNorm = normalizeTel(s.tel||'');
+      const telDigits = telNorm.replace(/[^0-9]/g,'');
       return nombre.includes(bLower) ||
-        (bHasD && bNorm && telNorm.includes(bNorm)) ||
-        (bHasD && bDigit && telNorm.replace(/[^0-9]/g,'').includes(bDigit)) ||
+        (bHasD && bNorm && (telNorm.includes(bNorm) || bNorm.includes(telDigits))) ||
+        (bHasD && bDigit && (telDigits.includes(bDigit) || bDigit.includes(telDigits))) ||
         (s.perfil||'').toLowerCase().includes(bLower) ||
         (s.clienteId||'').toLowerCase().includes(bLower) ||
         correo.includes(bLower) ||
