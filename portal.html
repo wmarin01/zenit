@@ -490,10 +490,9 @@ const PLAT_NOMBRE = { NF: 'Netflix', DS: 'Disney+', HB: 'HBO Max', PV: 'Prime Vi
 // Tipos de código por plataforma y subject para GAS
 const PLAT_TIPOS = {
   NF: [
-    { label: 'Inicio de sesión',       tipo: 'LOGIN',        full: false },
-    { label: 'Ver temporalmente',       tipo: 'VIAJE',        full: false },
-    { label: 'Actualizar hogar',        tipo: 'HOGAR',        full: true  },
-    { label: 'Verificación de cuenta',  tipo: 'VERIFICACION', full: true  },
+    { label: 'Inicio de sesión',           tipo: 'LOGIN',        full: false },
+    { label: 'Ver temporalmente',           tipo: 'VIAJE',        full: false },
+    { label: 'Verificar dispositivo nuevo', tipo: 'VERIFICACION', full: true  },
   ],
   DS: [
     { label: 'Código de acceso',        tipo: 'LOGIN',        full: true  },
@@ -509,10 +508,9 @@ const PLAT_TIPOS = {
 
 // Instrucciones por tipo
 const INSTRUCCIONES = {
-  NF_LOGIN:        '💡 <b>¿Cómo pedirlo?</b> En tu TV selecciona <b>"Obtener ayuda para iniciar sesión"</b> y elige enviar el código al correo.',
-  NF_VIAJE:        '💡 <b>¿Cómo pedirlo?</b> En el aviso de tu TV selecciona <b>"Estoy de viaje"</b> o <b>"Ver temporalmente"</b> y envía el código al correo.',
-  NF_HOGAR:        '💡 <b>Instrucción:</b> En tu TV selecciona actualizar hogar. Si la app no te lo permite, toma foto a la pantalla y envíala a soporte técnico.',
-  NF_VERIFICACION: '💡 <b>Modo verificación:</b> Se buscará el código de 6 dígitos que Netflix envía para confirmar cambios de cuenta.',
+  NF_LOGIN:        '💡 <b>¿Cómo pedirlo?</b><br>En tu <b>TV:</b> selecciona "Obtener ayuda para iniciar sesión" y elige enviar el código al correo.<br>En tu <b>celular o tablet:</b> abre Netflix, toca "Iniciar sesión", ingresa el correo y selecciona "Enviarme un código por correo".',
+  NF_VIAJE:        '💡 <b>¿Cómo pedirlo?</b><br>En tu <b>TV:</b> cuando aparezca el aviso, selecciona "Estoy de viaje" o "Ver temporalmente" y elige enviar el código al correo.<br>En tu <b>celular:</b> si Netflix te pide verificación al estar fuera de casa, selecciona enviar código al correo.',
+  NF_VERIFICACION: '💡 <b>¿Cómo pedirlo?</b><br>Netflix solicita este código de <b>6 dígitos</b> la primera vez que inicias sesión en un dispositivo nuevo.<br>Ingresa tu correo en Netflix, selecciona "Enviarme un código" y búscalo aquí.',
   DS_LOGIN:        '💡 <b>¿Cómo pedirlo?</b> En tu TV o app de Disney+ selecciona la opción de verificación y elige enviar el código al correo.',
   HB_LOGIN:        '💡 <b>¿Cómo pedirlo?</b> En HBO Max selecciona <b>"Obtener código de un solo uso"</b> y revisa tu correo.',
   PV_LOGIN:        '💡 <b>¿Cómo pedirlo?</b> En Prime Video selecciona la opción de verificación y elige recibir el código por correo.',
