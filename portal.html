@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zenit | Portal de Clientes</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #080c14;
+    --bg2:      #0e1420;
+    --bg3:      #141c2e;
+    --border:   rgba(255,255,255,0.08);
+    --text:     #f0f4ff;
+    --text2:    #8a9bc0;
+    --text3:    #4a5a7a;
+    --accent:   #6366f1;
+    --green:    #22c55e;
+    --amber:    #f59e0b;
+    --red:      #ef4444;
+    --nf:   #E50914;
+    --ds:   #FFD700;
+    --hb:   #720E9E;
+    --pv:   #00A8E1;
+    --ip:   #ffffff;
+    --r: 14px;
+    --rsm: 8px;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px 40px;
+    background-image:
+      radial-gradient(ellipse at 20% 20%, rgba(99,102,241,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(34,197,94,0.05) 0%, transparent 60%);
+  }
+
+  /* HEADER */
+  .header {
+    text-align: center;
+    margin-bottom: 28px;
+    margin-top: 10px;
+  }
+  .header-logo {
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+  .header-title {
+    font-size: 28px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #6366f1, #22c55e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+
+  /* CARD */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+  }
+
+  /* LOGIN */
+  #pantalla-login { display: block; }
+  #pantalla-codigos { display: none; }
+
+  .login-icon {
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 20px;
+  }
+  .login-title {
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  .login-sub {
+    font-size: 13px;
+    color: var(--text2);
+    text-align: center;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  .input-wrap {
+    position: relative;
+    margin-bottom: 14px;
+  }
+  .input-wrap input {
+    width: 100%;
+    padding: 14px 14px 14px 44px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text);
+    font-size: 16px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .2s;
+    letter-spacing: 1px;
+  }
+  .input-wrap input:focus { border-color: var(--accent); }
+  .input-wrap input::placeholder { color: var(--text3); letter-spacing: 0; }
+  .input-icon {
+    position: absolute;
+    left: 14px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text3);
+    font-size: 18px;
+  }
+
+  .btn-main {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    color: #fff;
+    border: none;
+    border-radius: var(--r);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: opacity .2s, transform .1s;
+    font-family: inherit;
+  }
+  .btn-main:hover { opacity: .9; }
+  .btn-main:active { transform: scale(.98); }
+  .btn-main:disabled { opacity: .5; cursor: not-allowed; }
+
+  .error-box {
+    background: rgba(239,68,68,.1);
+    border: 1px solid rgba(239,68,68,.3);
+    border-radius: var(--rsm);
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #fca5a5;
+    margin-top: 14px;
+    display: none;
+  }
+
+  /* LOADER */
+  .loader {
+    width: 28px; height: 28px;
+    border: 3px solid rgba(255,255,255,.1);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 16px auto;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* PANTALLA CODIGOS */
+  .saludo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .saludo-avatar {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; flex-shrink: 0;
+  }
+  .saludo-nombre { font-size: 17px; font-weight: 700; }
+  .saludo-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .btn-salir {
+    margin-left: auto;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 6px 12px;
+    border-radius: var(--rsm);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color .2s;
+  }
+  .btn-salir:hover { border-color: var(--red); color: var(--red); }
+
+  /* ALERTA */
+  .alerta {
+    background: rgba(99,102,241,.08);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--rsm) var(--rsm) 0;
+    padding: 14px 16px;
+    font-size: 12.5px;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-bottom: 22px;
+  }
+  .alerta b { color: var(--text); }
+
+  /* SECCION */
+  .sec-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* GRID PLATAFORMAS */
+  .plat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .plat-btn {
+    padding: 14px 12px;
+    background: var(--bg3);
+    border: 2px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+  }
+  .plat-btn:hover { border-color: rgba(255,255,255,.2); background: var(--bg3); }
+  .plat-btn.active { background: var(--bg3); }
+  .plat-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .plat-info { flex: 1; }
+  .plat-nombre { font-size: 13px; font-weight: 700; }
+  .plat-dias { font-size: 11px; margin-top: 2px; }
+
+  /* SEMAFORO */
+  .semaforo {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 18px;
+    letter-spacing: 0.5px;
+  }
+  .sem-verde { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.3); color: #4ade80; }
+  .sem-naranja { background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.3); color: #fbbf24; animation: pulse 2s infinite; }
+  .sem-rojo { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); color: #f87171; }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,.3); }
+    50% { box-shadow: 0 0 0 6px rgba(245,158,11,0); }
+  }
+
+  /* TIPO CODIGO */
+  .tipos-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .tipo-btn {
+    padding: 11px 10px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--rsm);
+    color: var(--text2);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    text-align: center;
+  }
+  .tipo-btn:hover { border-color: var(--accent); color: var(--text); }
+  .tipo-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tipo-btn.full { grid-column: 1 / -1; }
+
+  /* INSTRUCCION */
+  .instruccion {
+    background: var(--bg3);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--rsm) var(--rsm) 0;
+    padding: 12px 14px;
+    font-size: 12.5px;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-bottom: 14px;
+    display: none;
+  }
+  .instruccion b { color: var(--text); }
+
+  /* CORREO */
+  .correo-label { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+  .correo-box {
+    background: var(--bg3);
+    border: 1px solid var(--green);
+    border-radius: var(--rsm);
+    padding: 12px 14px;
+    font-size: 13px;
+    font-family: monospace;
+    color: #4ade80;
+    margin-bottom: 16px;
+    word-break: break-all;
+  }
+
+  /* MSG ESPECIAL */
+  .msg-especial {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 16px;
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.7;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .msg-especial b { color: var(--text); }
+
+  /* RESULTADO */
+  .resultado {
+    background: var(--bg3);
+    border: 2px solid var(--green);
+    border-radius: var(--r);
+    padding: 20px;
+    text-align: center;
+    margin-top: 16px;
+    display: none;
+    animation: fadeIn .3s ease;
+  }
+  .resultado.error { border-color: var(--amber); }
+  .resultado-label { font-size: 11px; color: var(--text3); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+  .resultado-codigo { font-size: 44px; font-weight: 900; letter-spacing: 6px; font-family: monospace; }
+  .resultado-hora { font-size: 11px; color: var(--text3); margin-top: 8px; }
+  .resultado-msg { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .btn-link {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 12px 20px;
+    border-radius: var(--rsm);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    color: #fff;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    width: 100%;
+    text-align: center;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* AREA DETALLE */
+  #area-detalle { display: none; }
+
+  /* FOOTER */
+  .footer {
+    margin-top: 24px;
+    font-size: 11px;
+    color: var(--text3);
+    text-align: center;
+  }
+
+  @media (max-width: 400px) {
+    .card { padding: 20px 16px; }
+    .resultado-codigo { font-size: 36px; }
+    .plat-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">Portal de acceso</div>
+  <div class="header-title">ZENIT</div>
+</div>
+
+<div class="card">
+
+  <!-- PANTALLA LOGIN -->
+  <div id="pantalla-login">
+    <div class="login-icon">🔐</div>
+    <div class="login-title">Acceso a tu cuenta</div>
+    <div class="login-sub">Ingresa tu número de WhatsApp para verificar tu membresía.</div>
+
+    <div class="input-wrap">
+      <span class="input-icon">📱</span>
+      <input type="tel" id="inp-tel" placeholder="Ej: 61234567" maxlength="15"
+        onkeydown="if(event.key==='Enter') validarCliente()">
+    </div>
+    <button class="btn-main" onclick="validarCliente()">Ingresar al portal</button>
+    <div class="loader" id="loader-login"></div>
+    <div class="error-box" id="error-login"></div>
+  </div>
+
+  <!-- PANTALLA CODIGOS -->
+  <div id="pantalla-codigos">
+
+    <div class="saludo">
+      <div class="saludo-avatar" id="saludo-avatar">?</div>
+      <div>
+        <div class="saludo-nombre" id="saludo-nombre">...</div>
+        <div class="saludo-sub">Membresía activa</div>
+      </div>
+      <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
+    </div>
+
+    <div class="alerta">
+      <b>💡 Antes de continuar:</b><br>
+      1️⃣ Inicia sesión en la app usando el <b>Correo y Contraseña</b> que te enviamos.<br>
+      2️⃣ Usa este portal <b>únicamente</b> si la app te exige un código de seguridad para entrar.
+    </div>
+
+    <div class="sec-label">✅ Tus servicios activos</div>
+    <div class="plat-grid" id="grid-plataformas"></div>
+
+    <div id="area-detalle">
+      <div id="semaforo-wrap"></div>
+      <div class="msg-especial" id="msg-especial"></div>
+
+      <div id="bloque-tipos"></div>
+      <div class="instruccion" id="instruccion-box"></div>
+
+      <div id="bloque-correo" style="display:none">
+        <div class="correo-label">Correo de tu cuenta:</div>
+        <div class="correo-box" id="correo-display">—</div>
+        <button class="btn-main" id="btn-obtener" onclick="obtenerCodigo()">🔍 Obtener código</button>
+      </div>
+
+      <div class="loader" id="loader-codigos"></div>
+      <div class="resultado" id="resultado-box">
+        <div class="resultado-label" id="res-label">Código encontrado</div>
+        <div class="resultado-codigo" id="res-codigo"></div>
+        <div class="resultado-hora" id="res-hora"></div>
+        <div class="resultado-msg" id="res-msg"></div>
+        <div id="res-link-wrap"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="footer">Zenit · Sistema de gestión streaming</div>
+
+<script>
+// ── SUPABASE ──────────────────────────────────────────────────
+const SUPA_URL = 'https://gqnvocozmdtghuaojfgo.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxbnZvY296bWR0Z2h1YW9qZmdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNTYzNDYsImV4cCI6MjA5NTkzMjM0Nn0.hLEoqJbtpdemEAK4J780QUyz5o11lTvlm8Q7cGqzI4A';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbx0L9wcVFGoinn3MMTDsFNZTQZlZcFRlaZWpOQFdGtKA3vRb12BituUqeOlKI5TcHw7og/exec';
+
+// Colores por plataforma
+const PLAT_COLOR = { NF: '#E50914', DS: '#FFD700', HB: '#720E9E', PV: '#00A8E1', IP: '#ffffff' };
+const PLAT_NOMBRE = { NF: 'Netflix', DS: 'Disney+', HB: 'HBO Max', PV: 'Prime Video', IP: 'IPTV' };
+
+// Tipos de código por plataforma y subject para GAS
+const PLAT_TIPOS = {
+  NF: [
+    { label: 'Inicio de sesión',       tipo: 'LOGIN',        full: false },
+    { label: 'Ver temporalmente',       tipo: 'VIAJE',        full: false },
+    { label: 'Actualizar hogar',        tipo: 'HOGAR',        full: true  },
+    { label: 'Verificación de cuenta',  tipo: 'VERIFICACION', full: true  },
+  ],
+  DS: [
+    { label: 'Código de acceso',        tipo: 'LOGIN',        full: true  },
+  ],
+  HB: [
+    { label: 'Código de acceso',        tipo: 'LOGIN',        full: true  },
+  ],
+  PV: [
+    { label: 'Código de verificación',  tipo: 'LOGIN',        full: true  },
+  ],
+  IP: null // Sin código
+};
+
+// Instrucciones por tipo
+const INSTRUCCIONES = {
+  NF_LOGIN:        '💡 <b>¿Cómo pedirlo?</b> En tu TV selecciona <b>"Obtener ayuda para iniciar sesión"</b> y elige enviar el código al correo.',
+  NF_VIAJE:        '💡 <b>¿Cómo pedirlo?</b> En el aviso de tu TV selecciona <b>"Estoy de viaje"</b> o <b>"Ver temporalmente"</b> y envía el código al correo.',
+  NF_HOGAR:        '💡 <b>Instrucción:</b> En tu TV selecciona actualizar hogar. Si la app no te lo permite, toma foto a la pantalla y envíala a soporte técnico.',
+  NF_VERIFICACION: '💡 <b>Modo verificación:</b> Se buscará el código de 6 dígitos que Netflix envía para confirmar cambios de cuenta.',
+  DS_LOGIN:        '💡 <b>¿Cómo pedirlo?</b> En tu TV o app de Disney+ selecciona la opción de verificación y elige enviar el código al correo.',
+  HB_LOGIN:        '💡 <b>¿Cómo pedirlo?</b> En HBO Max selecciona <b>"Obtener código de un solo uso"</b> y revisa tu correo.',
+  PV_LOGIN:        '💡 <b>¿Cómo pedirlo?</b> En Prime Video selecciona la opción de verificación y elige recibir el código por correo.',
+};
+
+// Estado
+let _cliente = null;
+let _subs = [];
+let _subSel = null;
+let _tipoSel = null;
+
+// ── NORMALIZAR TELÉFONO ───────────────────────────────────────
+function normTel(t) {
+  return t.replace(/[^0-9]/g, '');
+}
+
+// ── VALIDAR CLIENTE ───────────────────────────────────────────
+async function validarCliente() {
+  const tel = normTel(document.getElementById('inp-tel').value || '');
+  const errBox = document.getElementById('error-login');
+  const loader = document.getElementById('loader-login');
+  const btn = document.querySelector('#pantalla-login .btn-main');
+
+  errBox.style.display = 'none';
+  if (!tel || tel.length < 7) {
+    errBox.textContent = '⚠️ Ingresa tu número de WhatsApp.';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  loader.style.display = 'block';
+  btn.disabled = true;
+
+  try {
+    // Buscar cliente por teléfono (con y sin código de país)
+    const { data: clientes, error } = await supa
+      .from('clientes')
+      .select('id, nombre, apellido, telefono')
+      .ilike('telefono', `%${tel}%`);
+
+    if (error) throw error;
+    if (!clientes || !clientes.length) {
+      throw new Error('no_cliente');
+    }
+
+    const cli = clientes[0];
+
+    // Buscar suscripciones activas
+    const { data: subs, error: e2 } = await supa
+      .from('suscripciones')
+      .select('id, perfil_id, plataforma, fecha_vcto, monto, correo')
+      .eq('cliente_id', cli.id)
+      .eq('estado', 'activo');
+
+    if (e2) throw e2;
+    if (!subs || !subs.length) throw new Error('sin_subs');
+
+    // Guardar estado
+    _cliente = cli;
+    _subs = subs;
+
+    // Enriquecer correos desde cuentas_inventario si faltan
+    for (let s of _subs) {
+      if (!s.correo || s.correo === '—') {
+        const cuentaId = s.perfil_id ? s.perfil_id.slice(0, -1) : null;
+        if (cuentaId) {
+          const { data: ct } = await supa
+            .from('cuentas_inventario')
+            .select('correo')
+            .eq('codigo', cuentaId)
+            .maybeSingle();
+          if (ct) s.correo = ct.correo;
+        }
+      }
+    }
+
+    mostrarPantallaCodigos();
+
+  } catch(e) {
+    const msgs = {
+      no_cliente: '❌ No encontramos tu número. Verifica que sea el mismo de WhatsApp.',
+      sin_subs:   '❌ No tienes suscripciones activas. Contacta a soporte.',
+    };
+    errBox.textContent = msgs[e.message] || '❌ Error de conexión. Intenta de nuevo.';
+    errBox.style.display = 'block';
+  } finally {
+    loader.style.display = 'none';
+    btn.disabled = false;
+  }
+}
+
+// ── MOSTRAR PANTALLA CODIGOS ──────────────────────────────────
+function mostrarPantallaCodigos() {
+  document.getElementById('pantalla-login').style.display = 'none';
+  document.getElementById('pantalla-codigos').style.display = 'block';
+
+  const nombre = (_cliente.nombre || '') + ' ' + (_cliente.apellido || '');
+  document.getElementById('saludo-nombre').textContent = '👋 ¡Hola, ' + nombre.trim() + '!';
+  document.getElementById('saludo-avatar').textContent = (_cliente.nombre || '?')[0].toUpperCase();
+
+  renderizarPlataformas();
+}
+
+// ── RENDERIZAR PLATAFORMAS ────────────────────────────────────
+function renderizarPlataformas() {
+  const grid = document.getElementById('grid-plataformas');
+  grid.innerHTML = '';
+
+  // Agrupar por plataforma (puede haber varias subs de la misma)
+  const platMap = {};
+  _subs.forEach(s => {
+    if (!platMap[s.plataforma]) platMap[s.plataforma] = s;
+  });
+
+  Object.entries(platMap).forEach(([plat, sub]) => {
+    const color = PLAT_COLOR[plat] || '#6366f1';
+    const nombre = PLAT_NOMBRE[plat] || plat;
+    const dias = calcDias(sub.fecha_vcto);
+    const diasColor = dias <= 3 ? 'var(--red)' : dias <= 7 ? 'var(--amber)' : 'var(--text2)';
+    const diasTxt = dias < 0 ? 'Vencido' : `Vence en ${dias}d`;
+
+    const btn = document.createElement('button');
+    btn.className = 'plat-btn';
+    btn.dataset.plat = plat;
+    btn.innerHTML = `
+      <span class="plat-dot" style="background:${color}"></span>
+      <span class="plat-info">
+        <span class="plat-nombre">${nombre}</span>
+        <span class="plat-dias" style="color:${diasColor}">${diasTxt}</span>
+      </span>
+    `;
+    btn.onclick = () => seleccionarPlat(plat, sub, btn);
+    grid.appendChild(btn);
+  });
+}
+
+// ── SELECCIONAR PLATAFORMA ────────────────────────────────────
+function seleccionarPlat(plat, sub, btnEl) {
+  // Reset
+  document.querySelectorAll('.plat-btn').forEach(b => {
+    b.classList.remove('active');
+    b.style.borderColor = '';
+  });
+  const color = PLAT_COLOR[plat] || '#6366f1';
+  btnEl.classList.add('active');
+  btnEl.style.borderColor = color;
+
+  _subSel = sub;
+  _tipoSel = null;
+
+  const areaDetalle = document.getElementById('area-detalle');
+  const msgEspecial = document.getElementById('msg-especial');
+  const bloqueCorreo = document.getElementById('bloque-correo');
+  const bloqueTipos = document.getElementById('bloque-tipos');
+  const instrBox = document.getElementById('instruccion-box');
+  const resultado = document.getElementById('resultado-box');
+
+  areaDetalle.style.display = 'block';
+  msgEspecial.style.display = 'none';
+  bloqueCorreo.style.display = 'none';
+  instrBox.style.display = 'none';
+  resultado.style.display = 'none';
+  bloqueTipos.innerHTML = '';
+
+  // Semáforo
+  const dias = calcDias(sub.fecha_vcto);
+  let semHtml = '';
+  if (dias > 5) {
+    semHtml = `<div class="semaforo sem-verde">🟢 Activo · Quedan ${dias} días</div>`;
+  } else if (dias >= 0) {
+    semHtml = `<div class="semaforo sem-naranja">🟡 Por vencer · Quedan ${dias} días</div>`;
+  } else {
+    semHtml = `<div class="semaforo sem-rojo">🔴 Vencido · Contacta a soporte</div>`;
+  }
+  document.getElementById('semaforo-wrap').innerHTML = semHtml;
+
+  const tipos = PLAT_TIPOS[plat];
+
+  // IPTV — sin código
+  if (!tipos) {
+    msgEspecial.style.display = 'block';
+    msgEspecial.style.borderColor = 'var(--text3)';
+    msgEspecial.innerHTML = `ℹ️ <b>IPTV</b> no requiere código de verificación. Ingresa directamente con tu usuario y contraseña proporcionados.`;
+    return;
+  }
+
+  // Verificar si es cuenta @ntfwm.com
+  const correo = sub.correo || '';
+  const esNtfwm = correo.toLowerCase().includes('@ntfwm.com');
+
+  if (!esNtfwm) {
+    msgEspecial.style.display = 'block';
+    msgEspecial.style.borderColor = 'var(--amber)';
+    msgEspecial.innerHTML = `⚠️ Tu cuenta de <b>${PLAT_NOMBRE[plat] || plat}</b> no soporta código automático en este portal.<br><br>Contacta a soporte por WhatsApp para obtener tu código.`;
+    return;
+  }
+
+  // Mostrar tipos de código
+  const grid = document.createElement('div');
+  grid.className = 'tipos-grid';
+  grid.style.marginBottom = '14px';
+
+  const labelTipo = document.createElement('div');
+  labelTipo.className = 'sec-label';
+  labelTipo.innerHTML = '🔑 ¿Qué tipo de código necesitas?';
+  bloqueTipos.appendChild(labelTipo);
+
+  tipos.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'tipo-btn' + (t.full ? ' full' : '');
+    btn.textContent = t.label;
+    btn.onclick = () => seleccionarTipo(t, plat, correo, btn);
+    grid.appendChild(btn);
+  });
+
+  bloqueTipos.appendChild(grid);
+}
+
+// ── SELECCIONAR TIPO ──────────────────────────────────────────
+function seleccionarTipo(tipoObj, plat, correo, btnEl) {
+  document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('active'));
+  btnEl.classList.add('active');
+  _tipoSel = tipoObj.tipo;
+
+  const instrBox = document.getElementById('instruccion-box');
+  const bloqueCorreo = document.getElementById('bloque-correo');
+  const resultado = document.getElementById('resultado-box');
+  resultado.style.display = 'none';
+
+  // Instrucción
+  const key = plat + '_' + tipoObj.tipo;
+  if (INSTRUCCIONES[key]) {
+    instrBox.innerHTML = INSTRUCCIONES[key];
+    instrBox.style.display = 'block';
+  } else {
+    instrBox.style.display = 'none';
+  }
+
+  // Caso especial HOGAR — no muestra correo ni botón (solo instrucción)
+  if (tipoObj.tipo === 'HOGAR') {
+    bloqueCorreo.style.display = 'none';
+    return;
+  }
+
+  // Mostrar correo y botón obtener
+  document.getElementById('correo-display').textContent = correo;
+  bloqueCorreo.style.display = 'block';
+
+  const color = PLAT_COLOR[plat] || '#6366f1';
+  document.getElementById('btn-obtener').style.background = `linear-gradient(135deg, ${color}, ${color}cc)`;
+}
+
+// ── OBTENER CÓDIGO ────────────────────────────────────────────
+async function obtenerCodigo() {
+  if (!_subSel || !_tipoSel) return;
+
+  const loader = document.getElementById('loader-codigos');
+  const resultado = document.getElementById('resultado-box');
+  const btn = document.getElementById('btn-obtener');
+
+  loader.style.display = 'block';
+  resultado.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Buscando en el correo...';
+
+  const correo = _subSel.correo || '';
+  const plat = _subSel.plataforma;
+
+  try {
+    const url = `${GAS_URL}?correo=${encodeURIComponent(correo)}&plataforma=${encodeURIComponent(plat)}&usuario=${encodeURIComponent(correo)}&tipo=${encodeURIComponent(_tipoSel)}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    loader.style.display = 'none';
+    resultado.style.display = 'block';
+
+    if (data.error || !data.codigo) {
+      resultado.className = 'resultado error';
+      document.getElementById('res-label').textContent = 'Sin resultados';
+      document.getElementById('res-codigo').textContent = '';
+      document.getElementById('res-hora').textContent = '';
+      document.getElementById('res-link-wrap').innerHTML = '';
+      document.getElementById('res-msg').innerHTML = '⚠️ No se encontró el código. Asegúrate de haberlo solicitado en la app hace unos segundos e intenta de nuevo.';
+    } else if (data.codigo.startsWith('http')) {
+      resultado.className = 'resultado';
+      document.getElementById('res-label').textContent = 'Enlace encontrado';
+      document.getElementById('res-codigo').textContent = '';
+      document.getElementById('res-msg').textContent = 'Haz clic para completar la acción:';
+      document.getElementById('res-hora').textContent = data.hora ? 'Recibido a las ' + data.hora : '';
+      document.getElementById('res-link-wrap').innerHTML = `
+        <a href="${data.codigo}" target="_blank" class="btn-link" style="background:${PLAT_COLOR[plat]||'#6366f1'};margin-top:12px">
+          👉 Abrir enlace
+        </a>`;
+    } else {
+      resultado.className = 'resultado';
+      const color = PLAT_COLOR[plat] || '#6366f1';
+      document.getElementById('res-label').textContent = 'Tu código es';
+      document.getElementById('res-codigo').style.color = color;
+      document.getElementById('res-codigo').textContent = data.codigo;
+      document.getElementById('res-hora').textContent = data.hora ? 'Recibido a las ' + data.hora : '';
+      document.getElementById('res-msg').textContent = '⏱ Úsalo de inmediato, expira en minutos.';
+      document.getElementById('res-link-wrap').innerHTML = '';
+    }
+
+  } catch(e) {
+    loader.style.display = 'none';
+    resultado.style.display = 'block';
+    resultado.className = 'resultado error';
+    document.getElementById('res-label').textContent = 'Error';
+    document.getElementById('res-codigo').textContent = '';
+    document.getElementById('res-msg').textContent = '❌ Error de conexión. Intenta de nuevo.';
+    document.getElementById('res-hora').textContent = '';
+    document.getElementById('res-link-wrap').innerHTML = '';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Obtener código';
+  }
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function calcDias(fechaVcto) {
+  if (!fechaVcto) return 0;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const vcto = new Date(fechaVcto + 'T00:00:00');
+  return Math.ceil((vcto - hoy) / 86400000);
+}
+
+function cerrarSesion() {
+  _cliente = null; _subs = []; _subSel = null; _tipoSel = null;
+  document.getElementById('pantalla-codigos').style.display = 'none';
+  document.getElementById('pantalla-login').style.display = 'block';
+  document.getElementById('inp-tel').value = '';
+  document.getElementById('error-login').style.display = 'none';
+}
+</script>
+</body>
+</html>
