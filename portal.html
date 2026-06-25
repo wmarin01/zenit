@@ -237,31 +237,29 @@
     margin-bottom: 20px;
   }
   .plat-btn {
-    padding: 14px 12px;
-    background: var(--bg3);
-    border: 2px solid var(--border);
-    border-radius: var(--r);
+    padding: 14px 10px;
+    background: var(--bg2);
+    border: 2px solid var(--plat-color, var(--border));
+    border-radius: 10px;
     color: var(--text);
     cursor: pointer;
     font-family: inherit;
-    font-weight: 700;
-    font-size: 13px;
     transition: all .2s;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 10px;
-    text-align: left;
+    justify-content: center;
+    text-align: center;
+    gap: 4px;
   }
-  .plat-btn:hover { border-color: rgba(255,255,255,.2); background: var(--bg3); }
-  .plat-btn.active { background: var(--bg3); }
-  .plat-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
+  .plat-btn:hover { background: var(--bg3); }
+  .plat-btn.active {
+    background: var(--plat-color, var(--accent));
+    box-shadow: 0 0 18px var(--plat-color, var(--accent));
+    color: #fff;
   }
-  .plat-info { flex: 1; }
-  .plat-nombre { font-size: 13px; font-weight: 700; }
-  .plat-dias { font-size: 11px; margin-top: 2px; }
+  .plat-nombre { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; display: block; }
+  .plat-dias { font-size: 11px; margin-top: 1px; display: block; }
 
   /* SEMAFORO */
   .semaforo {
@@ -631,10 +629,12 @@ function renderizarPlataformas() {
   const grid = document.getElementById('grid-plataformas');
   grid.innerHTML = '';
 
-  // Agrupar por plataforma (puede haber varias subs de la misma)
   const platMap = {};
   _subs.forEach(s => {
-    if (!platMap[s.plataforma]) platMap[s.plataforma] = s;
+    (s.plataforma || '').split('+').forEach(p => {
+      const plat = p.trim();
+      if (plat && !platMap[plat]) platMap[plat] = s;
+    });
   });
 
   Object.entries(platMap).forEach(([plat, sub]) => {
@@ -642,17 +642,15 @@ function renderizarPlataformas() {
     const nombre = PLAT_NOMBRE[plat] || plat;
     const dias = calcDias(sub.fecha_vcto);
     const diasColor = dias <= 3 ? 'var(--red)' : dias <= 7 ? 'var(--amber)' : 'var(--text2)';
-    const diasTxt = dias < 0 ? 'Vencido' : `Vence en ${dias}d`;
+    const diasTxt = dias < 0 ? 'Vencido' : `${dias}d`;
 
     const btn = document.createElement('button');
     btn.className = 'plat-btn';
     btn.dataset.plat = plat;
+    btn.style.setProperty('--plat-color', color);
     btn.innerHTML = `
-      <span class="plat-dot" style="background:${color}"></span>
-      <span class="plat-info">
-        <span class="plat-nombre">${nombre}</span>
-        <span class="plat-dias" style="color:${diasColor}">${diasTxt}</span>
-      </span>
+      <span class="plat-nombre">${nombre}</span>
+      <span class="plat-dias" style="color:${diasColor}">${diasTxt}</span>
     `;
     btn.onclick = () => seleccionarPlat(plat, sub, btn);
     grid.appendChild(btn);
