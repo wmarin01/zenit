@@ -264,19 +264,28 @@ function renderVentasDB() {
 
 // Cargar suscripciones al iniciar
 async function dbCargarSuscripciones() {
-  const [{ data, error }, { data: cuentasClaves }] = await Promise.all([
-    supa.from('suscripciones')
+  // Paginación: traer todos los registros en bloques de 1000
+  let allSubs = [];
+  let page = 0;
+  while (true) {
+    const { data: pageData, error: pageError } = await supa.from('suscripciones')
       .select('*, clientes(nombre, apellido, telefono)')
       .order('created_at', { ascending: false })
-      .limit(2000),
-    supa.from('cuentas_inventario').select('codigo,clave,link')
-  ]);
-  if (error) { console.error('Error cargando suscripciones:', error); return; }
+      .range(page * 1000, page * 1000 + 999);
+    if (pageError) { console.error('Error cargando suscripciones:', pageError); return; }
+    if (!pageData || pageData.length === 0) break;
+    allSubs = allSubs.concat(pageData);
+    if (pageData.length < 1000) break;
+    page++;
+  }
+
+  const { data: cuentasClaves } = await supa.from('cuentas_inventario').select('codigo,clave,link');
 
   // Mapa código_cuenta → clave para enriquecer suscripciones sin clave
   const _claveMap = {};
   (cuentasClaves || []).forEach(c => { if (c.codigo && c.clave) _claveMap[c.codigo] = c.clave; });
 
+  const data = allSubs;
   if (data && data.length > 0) {
     SUBS_FULL.length = 0; // limpiar solo cuando hay datos nuevos
     data.forEach(s => {
