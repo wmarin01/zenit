@@ -786,6 +786,26 @@ async function obtenerCodigo() {
   const resultado = document.getElementById('resultado-box');
   const btn = document.getElementById('btn-obtener');
 
+  // Control de intentos (máx 3 por hora)
+  const _telKey = 'intentos_cod_' + (_cliente?.telefono || '');
+  let _intentos = JSON.parse(localStorage.getItem(_telKey) || '{"count":0,"desde":0}');
+  if (Date.now() - _intentos.desde > 60 * 60 * 1000) {
+    _intentos = { count: 0, desde: Date.now() };
+  }
+  if (_intentos.count >= 3) {
+    resultado.style.display = 'block';
+    resultado.className = 'resultado error';
+    document.getElementById('res-label').textContent = 'Acceso bloqueado';
+    document.getElementById('res-codigo').textContent = '';
+    document.getElementById('res-hora').textContent = '';
+    document.getElementById('res-msg').innerHTML = 'Has superado el número de intentos permitidos. Por seguridad, el acceso ha sido bloqueado temporalmente. Para obtener asistencia, contáctanos por WhatsApp.';
+    document.getElementById('res-link-wrap').innerHTML = `<a href="https://wa.me/50766392725" target="_blank" class="btn-link" style="background:#25D366;margin-top:12px">📲 Contactar por WhatsApp</a>`;
+    return;
+  }
+  _intentos.count++;
+  if (!_intentos.desde) _intentos.desde = Date.now();
+  localStorage.setItem(_telKey, JSON.stringify(_intentos));
+
   loader.style.display = 'block';
   resultado.style.display = 'none';
   btn.disabled = true;
@@ -829,6 +849,18 @@ async function obtenerCodigo() {
       document.getElementById('res-msg').textContent = '⏱ Úsalo de inmediato, expira en minutos.';
       document.getElementById('res-link-wrap').innerHTML = '';
     }
+
+    // Guardar en historial_codigos
+    try {
+      await supa.from('historial_codigos').insert({
+        cliente_id:  _cliente?.id || null,
+        telefono:    _cliente?.telefono || null,
+        plataforma:  _subSel?.plataformaReal || _subSel?.plataforma || null,
+        tipo:        _tipoSel || null,
+        resultado:   data.codigo ? 'exitoso' : 'sin_codigo',
+        hora_correo: data.hora || null
+      });
+    } catch(_e) {}
 
   } catch(e) {
     loader.style.display = 'none';
