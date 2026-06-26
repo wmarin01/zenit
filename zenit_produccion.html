@@ -3273,7 +3273,8 @@ function goTo(v,el){
       else if (v==='pines')         { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoLotePines()"><i class="ti ti-plus"></i>Nuevo lote</button>`; cargarPines(); cargarTarifasPin(); }
       else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); cargarPlataformas(); cargarTarifasPin(); }
       else if (v==='accesos')       {
-        ha.innerHTML = '';
+        ha.innerHTML = `<button class="hbtn p" onclick="cargarSelectoresProveedores();openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`;
+        cargarSelectoresProveedores();
         cargarMensajesWA();
       }
   else if (v==='historial')     { ha.innerHTML=''; setTimeout(()=>{ if(typeof dbCargarHistorial==='function') dbCargarHistorial(); },100); }
@@ -4442,7 +4443,7 @@ async function guardarCuenta(){
         <div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5">¿Deseas registrar ahora el acceso del proveedor para que el sistema pueda obtener códigos automáticamente?</div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="btn" onclick="document.getElementById('${ovId}').remove()">No, después</button>
-          <button class="btn btn-p" onclick="document.getElementById('${ovId}').remove();openModal('m-acceso')">Sí, registrar ahora</button>
+          <button class="btn btn-p" onclick="document.getElementById('${ovId}').remove();cargarSelectoresProveedores();openModal('m-acceso')">Sí, registrar ahora</button>
         </div>
       </div>`;
       document.body.appendChild(ov);
@@ -8192,7 +8193,7 @@ function guardarAcceso() {
 // Header accesos
 function updHeaderAccesos() {
   const ha = document.getElementById('hacts');
-  if (ha) ha.innerHTML = `<button class="hbtn p" onclick="openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`;
+  if (ha) ha.innerHTML = `<button class="hbtn p" onclick="cargarSelectoresProveedores();openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`;
 }
 
 
