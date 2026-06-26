@@ -4430,6 +4430,24 @@ async function guardarCuenta(){
     cargarInventario();
     toast(codigo + ' registrada · ' + maxPerf + ' perfiles generados ✓','ok');
 
+    // Prompt: registrar acceso del proveedor
+    setTimeout(() => {
+      const ovId = '_ov_acceso_confirm';
+      if (document.getElementById(ovId)) return;
+      const ov = document.createElement('div');
+      ov.id = ovId;
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+      ov.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:28px 24px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px">✅ Cuenta guardada</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5">¿Deseas registrar ahora el acceso del proveedor para que el sistema pueda obtener códigos automáticamente?</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn" onclick="document.getElementById('${ovId}').remove()">No, después</button>
+          <button class="btn btn-p" onclick="document.getElementById('${ovId}').remove();openModal('m-acceso')">Sí, registrar ahora</button>
+        </div>
+      </div>`;
+      document.body.appendChild(ov);
+    }, 400);
+
   } catch(e) {
     console.error('[CUENTA]', e);
     toast('Error al guardar: ' + (e.message||e), 'error');
@@ -8089,6 +8107,16 @@ async function dbCargarAccesos() {
     <td style="font-size:11px;color:var(--text3)">${a.updated_at?new Date(a.updated_at).toLocaleDateString('es-PA'):'—'}</td>
     <td class="tda"><button class="btn btn-sm btn-ic" onclick="toast('Editar próximamente','info')"><i class="ti ti-edit"></i></button></td>
   </tr>`).join('');
+
+  // Poblar select de proveedor en modal de lote
+  const loteProv = document.getElementById('lote-proveedor');
+  if (loteProv) {
+    const { data: provs } = await supa.from('proveedores').select('id, nombre').eq('estado','activo').order('nombre');
+    if (provs && provs.length) {
+      loteProv.innerHTML = '<option value="">— Seleccionar —</option>' +
+        provs.map(p => `<option value="${p.nombre}">${p.nombre}</option>`).join('');
+    }
+  }
 }
 
   const rows = document.querySelectorAll('#tb-accesos tr');
