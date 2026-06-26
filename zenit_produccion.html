@@ -1578,7 +1578,7 @@ async function intentarLogin() {
           <div class="card">
             <div style="display:flex;align-items:center;margin-bottom:12px">
               <span style="font-weight:600;font-size:14px">Registros de acceso</span>
-              <button class="btn btn-sm" onclick="codAccesoFormAbrir()" style="margin-left:auto"><i class="ti ti-plus"></i> Nuevo</button>
+              <button class="btn btn-sm" onclick="cargarSelectoresProveedores();openModal('m-acceso')" style="margin-left:auto"><i class="ti ti-plus"></i> Nuevo</button>
             </div>
             <div id="cod-acceso-form-wrap" style="display:none;margin-bottom:14px;padding:14px;background:var(--bg3);border-radius:var(--rsm)">
               <input type="hidden" id="caf-id">
@@ -2811,6 +2811,11 @@ async function intentarLogin() {
       </div>
     </div>
     <div class="fsec"><div class="fst">Datos de acceso al bot</div>
+      <div class="fg" style="margin-bottom:11px">
+        <label>Correo de la cuenta<span class="req">*</span></label>
+        <input type="text" id="acceso-correo" placeholder="correo@cuenta.com">
+        <div class="hint">Correo de la cuenta del proveedor (ej: cuenta@hotmail.com)</div>
+      </div>
       <div class="fg" style="margin-bottom:11px">
         <label>Link / Página del bot<span class="req">*</span></label>
         <input type="text" id="acceso-link" placeholder="Ej: t.me/nombre_bot o https://web.proveedor.com">
@@ -4432,22 +4437,7 @@ async function guardarCuenta(){
     toast(codigo + ' registrada · ' + maxPerf + ' perfiles generados ✓','ok');
 
     // Prompt: registrar acceso del proveedor
-    setTimeout(() => {
-      const ovId = '_ov_acceso_confirm';
-      if (document.getElementById(ovId)) return;
-      const ov = document.createElement('div');
-      ov.id = ovId;
-      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
-      ov.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:28px 24px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)">
-        <div style="font-size:15px;font-weight:600;margin-bottom:8px">✅ Cuenta guardada</div>
-        <div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5">¿Deseas registrar ahora el acceso del proveedor para que el sistema pueda obtener códigos automáticamente?</div>
-        <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button class="btn" onclick="document.getElementById('${ovId}').remove()">No, después</button>
-          <button class="btn btn-p" onclick="document.getElementById('${ovId}').remove();cargarSelectoresProveedores();openModal('m-acceso')">Sí, registrar ahora</button>
-        </div>
-      </div>`;
-      document.body.appendChild(ov);
-    }, 400);
+    setTimeout(() => mostrarConfirmAcceso(correo, platVal, provNom), 400);
 
   } catch(e) {
     console.error('[CUENTA]', e);
@@ -4455,6 +4445,34 @@ async function guardarCuenta(){
   } finally {
     btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Registrar cuenta';
   }
+}
+
+function mostrarConfirmAcceso(correo, plataforma, proveedor) {
+  const ovId = '_ov_acceso_confirm';
+  if (document.getElementById(ovId)) return;
+  const ov = document.createElement('div');
+  ov.id = ovId;
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+  ov.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:28px 24px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+    <div style="font-size:15px;font-weight:600;margin-bottom:8px">✅ Cuenta guardada</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5">¿Registrar ahora el acceso del proveedor para que el sistema pueda obtener códigos automáticamente?</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" onclick="document.getElementById('${ovId}').remove()">No, después</button>
+      <button class="btn btn-p" onclick="
+        document.getElementById('${ovId}').remove();
+        cargarSelectoresProveedores().then(()=>{
+          openModal('m-acceso');
+          const elC = document.getElementById('acceso-correo');
+          if (elC) elC.value = '${correo.replace(/'/g,"\\'")}';
+          const elP = document.getElementById('acceso-plat');
+          if (elP) { for(let o of elP.options){ if(o.value==='${plataforma}'){elP.value='${plataforma}';break;} } }
+          const elV = document.getElementById('acceso-prov');
+          if (elV) { for(let o of elV.options){ if(o.text==='${(proveedor||'').replace(/'/g,"\\'")}'){elV.value=o.value;break;} } }
+        })
+      ">Sí, registrar ahora</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
 }
 
 // ── EDITAR CUENTA ─────────────────────────────────────────────
@@ -8136,14 +8154,15 @@ function filtAccesosPlat(v) {
   });
 }
 
-function guardarAcceso() {
-  const prov    = document.getElementById('acceso-prov')?.value?.trim();
-  const platVal = document.getElementById('acceso-plat')?.value;
-  const link    = document.getElementById('acceso-link')?.value?.trim();
-  const usuario = document.getElementById('acceso-usuario')?.value?.trim();
-  const clave   = document.getElementById('acceso-clave')?.value?.trim();
-  const tipo    = document.getElementById('acceso-tipo')?.value || '—';
-  const notas   = document.getElementById('acceso-notas')?.value?.trim() || '—';
+async function guardarAcceso() {
+  const prov         = document.getElementById('acceso-prov')?.value?.trim();
+  const platVal      = document.getElementById('acceso-plat')?.value;
+  const accesoCorreo = document.getElementById('acceso-correo')?.value?.trim() || null;
+  const link         = document.getElementById('acceso-link')?.value?.trim();
+  const usuario      = document.getElementById('acceso-usuario')?.value?.trim();
+  const clave        = document.getElementById('acceso-clave')?.value?.trim();
+  const tipo         = document.getElementById('acceso-tipo')?.value || '—';
+  const notas        = document.getElementById('acceso-notas')?.value?.trim() || '—';
 
   if (!prov)    { toast('Selecciona el proveedor','warn'); return; }
   if (!link)    { toast('El link del bot es requerido','warn'); return; }
@@ -8184,6 +8203,19 @@ function guardarAcceso() {
     opt.textContent = prov;
     selProv.appendChild(opt);
   }
+
+  // Persistir en Supabase
+  const { error: eAcc } = await supa.from('accesos').upsert({
+    correo:    accesoCorreo,
+    proveedor: prov,
+    plataforma: platVal,
+    link,
+    usuario,
+    clave,
+    tipo_bot:  tipo,
+    notas
+  }, { onConflict: 'correo' });
+  if (eAcc) { toast('Error al guardar en base de datos: ' + eAcc.message, 'error'); return; }
 
   closeModal('m-acceso');
   toast('Acceso guardado correctamente','ok');
