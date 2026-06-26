@@ -3007,18 +3007,29 @@ const WA={
       // Individual
       const {pl, perf, pin, usr} = entries[0] || {pl:p,perf:{},pin:'—',usr:'—'};
       const link = perf?.link || ctx?.link || getLink(pl);
+      if (pl === 'IP') {
+        return `Hola <span class="wav">${n}</span> 📺 Tu IPTV ya está activa.\n\nIngresa estos datos en tu app en el siguiente orden:\n\n1️⃣ Nombre: <span class="wav">${n}</span>\n2️⃣ Usuario: <span class="wav">${usr}</span>\n3️⃣ Clave: <span class="wav">${perf.clave||'—'}</span>\n4️⃣ Servidor: <span class="wav">${link||perf.correo||'—'}</span>\n\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span>\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
+      }
       return `Hola <span class="wav">${n}</span> 🎉 Tu <span class="wav">${getPNom(pl)}</span> ya está activa.\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👤 Usuario: <span class="wav">${usr}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n📌 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span>\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
     }
     // Multi-perfil o combo
     let msg = `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu combo ya está activo:\n`;
     entries.forEach(({pl, perf, pin, usr}) => {
       const link = perf?.link || getLink(pl);
-      msg += `\n${PICO[pl]||'▶️'} <span class="wav">${getPNom(pl)}</span>\n`;
-      msg += `📧 Correo: <span class="wav">${perf?.correo||'—'}</span>\n`;
-      msg += `🔑 Clave: <span class="wav">${perf?.clave||'—'}</span>\n`;
-      msg += `👁️ Usuario: <span class="wav">${usr}</span>\n`;
-      msg += `🔢 PIN: <span class="wav">${pin}</span>\n`;
-      if (link) msg += `🔗 Link: <span class="wav">${link}</span>\n`;
+      if (pl === 'IP') {
+        msg += `\n📺 <span class="wav">IPTV</span>\n`;
+        msg += `1️⃣ Nombre: <span class="wav">${n}</span>\n`;
+        msg += `2️⃣ Usuario: <span class="wav">${usr}</span>\n`;
+        msg += `3️⃣ Clave: <span class="wav">${perf?.clave||'—'}</span>\n`;
+        msg += `4️⃣ Servidor: <span class="wav">${perf?.link||getLink('IP')||'—'}</span>\n`;
+      } else {
+        msg += `\n${PICO[pl]||'▶️'} <span class="wav">${getPNom(pl)}</span>\n`;
+        msg += `📧 Correo: <span class="wav">${perf?.correo||'—'}</span>\n`;
+        msg += `🔑 Clave: <span class="wav">${perf?.clave||'—'}</span>\n`;
+        msg += `👁️ Usuario: <span class="wav">${usr}</span>\n`;
+        msg += `🔢 PIN: <span class="wav">${pin}</span>\n`;
+        if (link) msg += `🔗 Link: <span class="wav">${link}</span>\n`;
+      }
     });
     msg += `\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span> 🎪`;
     msg += `\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
