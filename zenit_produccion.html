@@ -6308,7 +6308,7 @@ async function renderSubsPago(clienteId) {
   lista.innerHTML = rows.map((r, i) => {
     const platNom = PLATS[r.plat]?.nombre || r.plat;
     const lbl = r.esCombo
-      ? `${platNom} <span style="font-size:10px;color:var(--text3)">(combo)</span>`
+      ? `${platNom} <span style="font-size:10px;color:var(--text3)">(combo)</span>${r.perfil && r.perfil !== '—' ? ' · ' + r.perfil : ''}`
       : `${platNom} · ${r.perfil}`;
     const dot = PLATS[r.plat]?.color || '#ccc';
     const vbadge = r.dias <= 0 ? '<span class="b br">Hoy</span>' : r.dias === 1 ? '<span class="b ba">Mañana</span>' : `<span class="b bi">${r.dias} días</span>`;
