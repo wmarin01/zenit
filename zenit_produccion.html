@@ -3220,20 +3220,23 @@ const WA={
   },
   clave:(n,p,m,ctx)=>{
     const plantilla = (PLANTILLAS_WA||[]).find(t => t.tipo === 'Seguridad');
+    const vars = {
+      nombre:     n,
+      plataforma: p,
+      correo:     ctx?.correo              || '—',
+      clave:      ctx?.clave               || '—',
+      clave_nueva:ctx?.clave               || '—',
+      perfil:     ctx?.perfil              || '—',
+      usuario:    ctx?.usuario || ctx?.perfil || '—',
+      pin:        ctx?.pin                 || '—',
+      fecha_vcto: ctx?.vcto || ctx?.fecha_vcto || '—'
+    };
     if (plantilla) {
-      const vars = {
-        nombre: n, plataforma: p,
-        correo:     ctx?.correo             || '—',
-        clave:      ctx?.clave             || '—',
-        perfil:     ctx?.perfil            || '—',
-        pin:        ctx?.pin               || '—',
-        fecha_vcto: ctx?.vcto || ctx?.fecha_vcto || '—'
-      };
       return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
         key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
       );
     }
-    return `Hola <span class="wav">${n}</span> 🔐\n\nPor seguridad actualizamos la clave de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave nueva: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.perfil||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n\nCualquier duda escríbenos. 🙏`;
+    return `Hola <span class="wav">${n}</span> 🔐\n\nPor seguridad actualizamos la clave de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${vars.correo}</span>\n🔑 Clave nueva: <span class="wav">${vars.clave}</span>\n👤 Usuario: <span class="wav">${vars.perfil}</span>\n🔢 PIN: <span class="wav">${vars.pin}</span>\n📅 Vence: <span class="wav">${vars.fecha_vcto}</span>\n\nCualquier duda escríbenos. 🙏`;
   },
   reenvio_accesos:(n,p,m,ctx)=>{
     // Combo: ctx tiene plats[] — delegar a WA.entrega que ya maneja multi-perfil
