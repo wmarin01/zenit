@@ -366,6 +366,13 @@ async function verificarConexion() {
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d1117">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Zenit">
+<link rel="manifest" href="/manifest-zenit.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Zenit — Gestión de Streaming</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -552,6 +559,10 @@ select option{background:var(--bg3)}
   table{font-size:11px}
   .tda{white-space:nowrap}
   #btn-hamburger{display:flex !important}
+  #login-left,.login-divider{display:none !important}
+  #login-flex{flex-direction:column;height:auto;min-height:100vh}
+  #login-right{width:100% !important;max-width:100% !important;padding:24px 20px !important}
+  .login-mobile-title{display:block !important}
 }
 
 /* ── COMPONENTE TELÉFONO CON MÁSCARA ────────────────────────── */
@@ -568,9 +579,9 @@ select option{background:var(--bg3)}
      PANTALLA DE BIENVENIDA Y LOGIN — ZENIT
 ═══════════════════════════════════════════════════════ -->
 <div id="zenit-welcome" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0a0a0f 0%,#0f0f1a 40%,#080d18 100%);display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:'Inter','Segoe UI',system-ui,sans-serif;">
-  <div style="display:flex;align-items:stretch;width:100%;max-width:1200px;min-height:100vh;position:relative;">
+  <div id="login-flex" style="display:flex;align-items:stretch;width:100%;max-width:1200px;min-height:100vh;position:relative;">
   <!-- Panel izquierdo — branding -->
-  <div style="flex:1.1;display:flex;flex-direction:column;justify-content:center;padding:60px 70px;position:relative;overflow:hidden;max-width:700px;">
+  <div id="login-left" style="flex:1.1;display:flex;flex-direction:column;justify-content:center;padding:60px 70px;position:relative;overflow:hidden;max-width:700px;">
     <div style="position:absolute;top:-80px;left:-80px;width:400px;height:400px;background:radial-gradient(circle,rgba(99,102,241,.12) 0%,transparent 70%);pointer-events:none"></div>
     <div style="position:absolute;bottom:-60px;right:-40px;width:300px;height:300px;background:radial-gradient(circle,rgba(56,193,114,.08) 0%,transparent 70%);pointer-events:none"></div>
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:52px;">
@@ -601,9 +612,10 @@ select option{background:var(--bg3)}
     </div>
   </div>
   <!-- Divisor -->
-  <div style="width:1px;background:linear-gradient(to bottom,transparent,rgba(99,102,241,.3),rgba(56,193,114,.2),transparent);flex-shrink:0;"></div>
+  <div class="login-divider" style="width:1px;background:linear-gradient(to bottom,transparent,rgba(99,102,241,.3),rgba(56,193,114,.2),transparent);flex-shrink:0;"></div>
   <!-- Panel derecho — login -->
-  <div style="width:460px;display:flex;flex-direction:column;justify-content:center;padding:60px 52px;background:rgba(255,255,255,.02);">
+  <div id="login-right" style="width:460px;display:flex;flex-direction:column;justify-content:center;padding:60px 52px;background:rgba(255,255,255,.02);">
+    <div class="login-mobile-title" style="display:none;text-align:center;font-size:24px;font-weight:700;color:var(--accent);margin-bottom:24px">ZENIT</div>
     <div style="margin-bottom:36px;">
       <h2 style="font-size:22px;font-weight:600;color:#f1f5f9;margin:0 0 6px 0;">Iniciar sesión</h2>
       <p style="font-size:13px;color:#64748b;margin:0;">Ingresa tus credenciales para continuar</p>
