@@ -6,7 +6,7 @@
   "display": "standalone",
   "background_color": "#8892a0",
   "theme_color": "#2dd4bf",
-  "orientation": "portrait",
+  "orientation": "any",
   "icons": [
     { "src": "/zenit-icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/zenit-icon-512.png", "sizes": "512x512", "type": "image/png" },
