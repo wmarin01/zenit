@@ -8767,7 +8767,7 @@ async function abrirRevisionDuplicado() {
   const { data } = await supa
     .from('cobros')
     .select('fecha, nombre, monto, tipo')
-    .eq('comprobante', comp)
+    .eq('documento', comp)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -8777,12 +8777,12 @@ async function abrirRevisionDuplicado() {
     return;
   }
 
-  const fechaFmt = data.fecha && data.fecha.includes('-')
+  const fechaDisplay = data.fecha
     ? data.fecha.split('-').reverse().join('/')
-    : data.fecha || '—';
+    : '—';
 
   const info = `<div style="margin:10px 0;font-size:13px;line-height:1.8">
-    <span style="color:var(--text3)">Fecha:</span> <strong>${fechaFmt}</strong><br>
+    <span style="color:var(--text3)">Fecha:</span> <strong>${fechaDisplay}</strong><br>
     <span style="color:var(--text3)">Cliente:</span> <strong>${data.nombre || '—'}</strong><br>
     <span style="color:var(--text3)">Monto:</span> <strong>$${typeof data.monto === 'number' ? data.monto.toFixed(2) : data.monto || '—'}</strong><br>
     <span style="color:var(--text3)">Tipo:</span> <strong>${data.tipo || '—'}</strong>
