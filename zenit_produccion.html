@@ -4103,7 +4103,7 @@ async function confirmarPago() {
 
     // Agregar a COBROS en memoria
     COBROS.unshift({
-      fecha: new Date().toLocaleDateString('es-PA',{day:'2-digit',month:'2-digit',year:'numeric'}),
+      fecha: (() => { const d=new Date(); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); })(),
       tipo: 'Renovación', clienteId, nombre,
       tel: normalizeTel(tel), plat: plats,
       monto, banco, forma: forma||'Yappy', doc: comp,
