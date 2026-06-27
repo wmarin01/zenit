@@ -3108,10 +3108,46 @@ const CI={WhatsApp:'<i class="ti ti-brand-whatsapp" style="color:#25D366"></i>',
 const UC=['00838','00839','00840','00841'];
 let waCtx={n:'',p:'',m:''};
 const WA={
-  vencimiento:(n,p,m)=>`Hola <span class="wav">${n}</span> 👋\n\nTu <span class="wav">${p}</span> vence <strong>hoy</strong>.\nMonto: <span class="wav">${m}</span>\n\nDatos de pago:\n<span class="wav">Banco General · Yappy: 6234-5678</span>\n\nEnvíanos tu comprobante 🙏`,
-  '3d':(n,p,m)=>`Hola <span class="wav">${n}</span> 👋\n\nTu <span class="wav">${p}</span> vence en 3 días.\nMonto: <span class="wav">${m}</span>\n\nDatos: <span class="wav">Banco General · Yappy: 6234-5678</span> 🙏`,
-  '1d':(n,p,m)=>`Hola <span class="wav">${n}</span>, tu <span class="wav">${p}</span> vence <strong>mañana</strong>.\nEnvía tu pago de <span class="wav">${m}</span> para no perder el servicio. 🙏`,
-  pago:(n,p,m)=>`Hola <span class="wav">${n}</span> ✅\n\nRecibimos tu pago de <span class="wav">${m}</span> por <span class="wav">${p}</span>.\nSuscripción renovada. ¡Gracias! 🎉`,
+  vencimiento:(n,p,m,ctx)=>{
+    const plantilla = (PLANTILLAS_WA||[]).find(t => t.nombre?.toLowerCase().includes('hoy') || t.nombre?.toLowerCase().includes('vence hoy'));
+    if (plantilla) {
+      const vars = { nombre:n, plataforma:p, monto:m };
+      return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
+        key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
+      );
+    }
+    return `Hola <span class="wav">${n}</span> 👋\n\nTu <span class="wav">${p}</span> vence <strong>hoy</strong>.\nMonto: <span class="wav">${m}</span>\n\nDatos de pago:\n<span class="wav">Banco General · Yappy: 6639-2725</span>\n\nEnvíanos tu comprobante 🙏`;
+  },
+  '3d':(n,p,m,ctx)=>{
+    const plantilla = (PLANTILLAS_WA||[]).find(t => t.nombre?.toLowerCase().includes('3'));
+    if (plantilla) {
+      const vars = { nombre:n, plataforma:p, monto:m };
+      return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
+        key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
+      );
+    }
+    return `Hola <span class="wav">${n}</span> 👋\n\nTu <span class="wav">${p}</span> vence en 3 días.\nMonto: <span class="wav">${m}</span>\n\nDatos: <span class="wav">Banco General · Yappy: 6639-2725</span> 🙏`;
+  },
+  '1d':(n,p,m,ctx)=>{
+    const plantilla = (PLANTILLAS_WA||[]).find(t => t.nombre?.toLowerCase().includes('1'));
+    if (plantilla) {
+      const vars = { nombre:n, plataforma:p, monto:m };
+      return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
+        key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
+      );
+    }
+    return `Hola <span class="wav">${n}</span>, tu <span class="wav">${p}</span> vence <strong>mañana</strong>.\nEnvía tu pago de <span class="wav">${m}</span> para no perder el servicio. 🙏`;
+  },
+  pago:(n,p,m,ctx)=>{
+    const plantilla = (PLANTILLAS_WA||[]).find(t => t.tipo === 'Post pago');
+    if (plantilla) {
+      const vars = { nombre:n, plataforma:p, monto:m };
+      return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
+        key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
+      );
+    }
+    return `Hola <span class="wav">${n}</span> ✅\n\nRecibimos tu pago de <span class="wav">${m}</span> por <span class="wav">${p}</span>.\nSuscripción renovada. ¡Gracias! 🎉`;
+  },
   entrega:(n,p,m,ctx)=>{
     // ctx = {plats, perfilesSel, pins, vcto} — usa getPerfKey para claves indexadas
     const plats = ctx?.plats || [];
@@ -3182,7 +3218,23 @@ const WA={
     }
     return `Hola <span class="wav">${n}</span> 🔄\n\nActualizamos tu cuenta de <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.usuario||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n\nTu vencimiento no cambia. 🙏`;
   },
-  clave:(n,p,m)=>`Hola <span class="wav">${n}</span> 🔐\n\nPor seguridad actualizamos la clave de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${correo||'—'}</span>\n🔑 Clave nueva: <span class="wav">${claveNueva||'—'}</span>\n👤 Usuario: <span class="wav">${perfil||'—'}</span>\n🔢 PIN: <span class="wav">${pin||'—'}</span>\n📅 Vence: <span class="wav">${vcto||'—'}</span>\n\nCualquier duda escríbenos. 🙏`,
+  clave:(n,p,m,ctx)=>{
+    const plantilla = (PLANTILLAS_WA||[]).find(t => t.tipo === 'Seguridad');
+    if (plantilla) {
+      const vars = {
+        nombre: n, plataforma: p,
+        correo:      ctx?.correo  || '—',
+        clave_nueva: ctx?.clave   || '—',
+        perfil:      ctx?.perfil  || '—',
+        pin:         ctx?.pin     || '—',
+        fecha_vcto:  ctx?.vcto    || '—'
+      };
+      return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
+        key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
+      );
+    }
+    return `Hola <span class="wav">${n}</span> 🔐\n\nPor seguridad actualizamos la clave de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave nueva: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.perfil||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n\nCualquier duda escríbenos. 🙏`;
+  },
   reenvio_accesos:(n,p,m,ctx)=>{
     // Combo: ctx tiene plats[] — delegar a WA.entrega que ya maneja multi-perfil
     if (ctx?.plats?.length) return WA.entrega(n, p, m, ctx);
