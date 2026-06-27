@@ -3774,7 +3774,7 @@ function tabUsuario(el,id){
 }
 
 // openModal definida más abajo con lógica completa
-function closeModal(id){const ov=document.getElementById(id);if(ov)ov.classList.remove('on');}
+function closeModal(id){const ov=document.getElementById(id);if(ov){ov.classList.remove('on');document.body.style.overflow='';}}
 document.querySelectorAll('.ov').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('on');}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.ov.on').forEach(ov=>ov.classList.remove('on'));});
 
@@ -6652,7 +6652,8 @@ function openModal(id, title) {
   
   if (title) { const el = ov.querySelector('.mtit'); if(el && id !== 'm-param-form') el.textContent = title; }
   ov.classList.add('on');
-  
+  document.body.style.overflow = 'hidden';
+
   // Sincronizar roles al abrir modal usuario
   if (id === 'm-usuario') {
     syncRolSelects();
