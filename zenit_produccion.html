@@ -3754,7 +3754,7 @@ function valComp(input,hid){
     return;
   }
   if(UC.includes(v)){
-    h.innerHTML='⚠ Comprobante ya registrado — da clic en <strong>Revisar</strong> para ver opciones.';
+    h.innerHTML='⚠ Comprobante ya registrado — <span style="color:var(--accent);cursor:pointer;text-decoration:underline;font-weight:600" onclick="abrirRevisionDuplicado()">Revisar</span> para ver opciones.';
     h.className='hint w';
     input.style.borderColor='var(--amber)';
     input.dataset.valid='false';
@@ -8755,6 +8755,51 @@ function updMetricasCobros() {
 
 
 // ── GESTIÓN COMPROBANTE DUPLICADO ─────────────────────────────
+function abrirRevisionDuplicado() {
+  const inp = document.querySelector('#m-venta input[oninput*="valComp"]');
+  if (!inp) return;
+  const doc = inp.value.trim();
+  const cobro = COBROS.find(c => c.doc === doc);
+
+  const existing = document.getElementById('mini-dup-modal');
+  if (existing) existing.remove();
+
+  const info = cobro
+    ? `<div style="margin:10px 0;font-size:13px;line-height:1.8">
+        <span style="color:var(--text3)">Fecha:</span> <strong>${cobro.fecha || '—'}</strong><br>
+        <span style="color:var(--text3)">Cliente:</span> <strong>${cobro.nombre || '—'}</strong><br>
+        <span style="color:var(--text3)">Monto:</span> <strong>$${typeof cobro.monto === 'number' ? cobro.monto.toFixed(2) : '—'}</strong><br>
+        <span style="color:var(--text3)">Tipo:</span> <strong>${cobro.tipo || '—'}</strong>
+      </div>`
+    : '<div style="margin:10px 0;font-size:13px;color:var(--text3)">No se encontraron detalles del cobro.</div>';
+
+  const el = document.createElement('div');
+  el.id = 'mini-dup-modal';
+  el.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)';
+  el.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+      <div style="font-weight:600;font-size:14px;color:var(--amber);margin-bottom:6px">⚠ Comprobante duplicado</div>
+      <div style="font-size:12px;color:var(--text2)">El comprobante <strong style="color:var(--text)">${doc}</strong> ya fue registrado:</div>
+      ${info}
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn btn-sm" id="mini-dup-cancel">Cancelar</button>
+        <button class="btn btn-sm" id="mini-dup-ok" style="background:var(--amber);color:#000;border-color:var(--amber)"><i class="ti ti-check"></i> Continuar de todas formas</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+
+  document.getElementById('mini-dup-cancel').onclick = () => el.remove();
+  document.getElementById('mini-dup-ok').onclick = () => {
+    inp.dataset.valid = 'true';
+    inp.style.borderColor = 'var(--amber)';
+    ventaData.dupAutorizado = true;
+    const h = document.getElementById('hcv');
+    if (h) { h.textContent = '⚠ Duplicado autorizado'; h.className = 'hint w'; }
+    el.remove();
+    toast('Duplicado autorizado — quedará en el historial', 'warn');
+  };
+}
+
 function rechazarDuplicado() {
   // Limpiar el campo y ocultar la alerta para que corrija
   const inp = document.querySelector('#m-venta input[oninput*="valComp"]');
