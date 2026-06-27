@@ -3786,17 +3786,20 @@ function abrirWA(n,p,m,tipo,ctx,meta){
   openModal('m-wa');
 }
 function cambPlant(v){
+  console.log('cambPlant ejecutado - tipo:', v, '- waCtx:', JSON.stringify(waCtx));
   const ctx = waCtx.ctx || {};
-  const ctxEnriquecido = {
-    ...ctx,
-    correo:     ctx.correo    || ctx.perfilesSel?.[Object.keys(ctx.perfilesSel||{})[0]]?.correo || '—',
-    clave:      ctx.clave     || ctx.perfilesSel?.[Object.keys(ctx.perfilesSel||{})[0]]?.clave  || '—',
-    perfil:     ctx.perfil    || ctx.perfilesSel?.[Object.keys(ctx.perfilesSel||{})[0]]?.codigo || '—',
-    pin:        ctx.pin       || (ctx.pins ? Object.values(ctx.pins)[0] : null) || '—',
-    vcto:       ctx.vcto      || ctx.fecha_vcto || '—',
-    fecha_vcto: ctx.fecha_vcto|| ctx.vcto       || '—',
+  const ctxFinal = {
+    correo:     ctx.correo     || '—',
+    clave:      ctx.clave      || '—',
+    clave_nueva:ctx.clave      || '—',
+    perfil:     ctx.perfil     || '—',
+    usuario:    ctx.usuario    || ctx.perfil || '—',
+    pin:        ctx.pin        || '—',
+    vcto:       ctx.vcto       || ctx.fecha_vcto || '—',
+    fecha_vcto: ctx.fecha_vcto || ctx.vcto       || '—',
   };
-  document.getElementById('wa-txt').innerHTML = (WA[v]||WA.vencimiento)(waCtx.n, waCtx.p, waCtx.m, ctxEnriquecido);
+  const fn = WA[v] || WA.vencimiento;
+  document.getElementById('wa-txt').innerHTML = fn(waCtx.n, waCtx.p, waCtx.m, ctxFinal);
 }
 function copiarWA(){
   navigator.clipboard.writeText(document.getElementById('wa-txt').innerText).then(()=>{
