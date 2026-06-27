@@ -554,7 +554,7 @@ select option{background:var(--bg3)}
   /* FASE 1 — BASE: Corregir scroll y viewport */
   body {
     height: auto !important;
-    min-height: 100vh !important;
+    min-height: 100dvh !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
     flex-direction: column !important;
@@ -563,10 +563,12 @@ select option{background:var(--bg3)}
     margin-left: 0 !important;
     height: auto !important;
     min-height: 100vh !important;
-    overflow: visible !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
     flex-direction: column !important;
   }
   #content {
+    overflow-x: hidden !important;
     overflow-y: visible !important;
     height: auto !important;
     padding: 14px 12px !important;
@@ -624,23 +626,25 @@ select option{background:var(--bg3)}
   .card { padding: 12px !important; }
 
   /* FASE 3 — TABLAS: Scroll horizontal */
-  .tw, .card > div, table {
+  .tw {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
   }
-  table { min-width: 500px; font-size: 11px !important; }
+  table { font-size: 11px !important; }
   td, th { padding: 6px 8px !important; white-space: nowrap !important; }
 
   /* FASE 4 — MODALES Y FORMULARIOS */
-  .modal {
-    width: 95vw !important;
-    max-width: 95vw !important;
-    margin: 10px auto !important;
-    padding: 16px !important;
-  }
-  .modal-wrap {
+  .ov {
     align-items: flex-start !important;
-    padding: 10px !important;
+    overflow-y: auto !important;
+    padding: 12px 8px !important;
+  }
+  .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    margin: 0 auto 20px !important;
   }
   input, select, textarea {
     font-size: 16px !important;
@@ -657,6 +661,28 @@ select option{background:var(--bg3)}
   #login-divider { display: none !important; }
   #login-right { width: 100% !important; max-width: 100% !important; min-height: 100vh !important; padding: 40px 24px !important; box-sizing: border-box !important; }
   .login-mobile-title { display: block !important; }
+
+  /* FASE 6 — HEADER MÓVIL */
+  #hdr {
+    height: auto !important;
+    min-height: 54px !important;
+    padding: 8px 12px !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .hdr-acts {
+    display: flex !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+  }
+  .hdr-acts .hbtn {
+    padding: 7px 10px !important;
+    font-size: 0 !important;
+  }
+  .hdr-acts .hbtn i {
+    font-size: 16px !important;
+    margin: 0 !important;
+  }
 
   /* FASE 5 — ORIENTACIÓN landscape */
   @media(orientation: landscape) {
