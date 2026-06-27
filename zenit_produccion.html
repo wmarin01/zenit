@@ -550,27 +550,120 @@ select option{background:var(--bg3)}
 .cat-btn.on{border-color:var(--accent2);background:rgba(77,111,232,.1);color:var(--accent)}
 .pp{display:none}.pp.on{display:block}
 @media(max-width:860px){
-  #sb{transform:translateX(-100%);transition:transform .25s ease;z-index:1000;position:fixed;height:100vh}
-  #sb.open{transform:translateX(0)}
-  #main{margin-left:0 !important}
-  #hdr{padding:0 14px}
-  .g2,.g3,.fr.c2,.fr.c3,.fr.c4{grid-template-columns:1fr}
-  .overlay-sb{display:block !important}
-  table{font-size:11px}
-  .tda{white-space:nowrap}
-  #btn-hamburger{display:flex !important}
-  #login-left,.login-divider{display:none !important}
-  #login-flex{flex-direction:column;height:auto;min-height:100vh}
-  #login-right{width:100% !important;max-width:100% !important;padding:24px 20px !important}
-  .login-mobile-title{display:block !important}
-  body{height:auto !important;overflow:auto !important}
-  #main{height:auto !important;overflow:visible !important;margin-left:0 !important}
-  #content{overflow-y:visible !important;height:auto !important;padding:14px !important}
-  .card{overflow-x:auto !important}
-  .tw{overflow-x:auto !important;-webkit-overflow-scrolling:touch !important}
-  table{min-width:600px}
-  .modal{max-width:95vw !important;margin:10px auto !important}
-  .fg input,.fg select,.fg textarea{font-size:16px !important}
+
+  /* FASE 1 — BASE: Corregir scroll y viewport */
+  body {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    flex-direction: column !important;
+  }
+  #main {
+    margin-left: 0 !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+    flex-direction: column !important;
+  }
+  #content {
+    overflow-y: visible !important;
+    height: auto !important;
+    padding: 14px 12px !important;
+    flex: none !important;
+  }
+  #hdr {
+    padding: 0 12px !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+  }
+
+  /* FASE 1 — LOGIN: Corregir pantalla de acceso */
+  #login-screen {
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+  }
+  #login-screen > div:first-child {
+    display: none !important;
+  }
+  #login-screen > div:last-child {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 32px 20px !important;
+    min-height: 100vh !important;
+    box-sizing: border-box !important;
+  }
+
+  /* SIDEBAR */
+  #sb {
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    z-index: 1000;
+    position: fixed !important;
+    height: 100vh !important;
+    top: 0 !important;
+    left: 0 !important;
+    overflow-y: auto !important;
+  }
+  #sb.open { transform: translateX(0) !important; }
+  .overlay-sb { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; }
+
+  /* BOTÓN HAMBURGUESA */
+  #btn-hamburger { display: flex !important; }
+
+  /* FASE 2 — LAYOUT: Grids a 1 columna */
+  .g2, .g3, .g4,
+  .fr.c2, .fr.c3, .fr.c4,
+  [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+  .fr { flex-wrap: wrap !important; }
+  .card { padding: 12px !important; }
+
+  /* FASE 3 — TABLAS: Scroll horizontal */
+  .tw, .card > div, table {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  table { min-width: 500px; font-size: 11px !important; }
+  td, th { padding: 6px 8px !important; white-space: nowrap !important; }
+
+  /* FASE 4 — MODALES Y FORMULARIOS */
+  .modal {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    margin: 10px auto !important;
+    padding: 16px !important;
+  }
+  .modal-wrap {
+    align-items: flex-start !important;
+    padding: 10px !important;
+  }
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+  .btn, button {
+    min-height: 40px !important;
+    font-size: 13px !important;
+  }
+
+  /* Login responsive (IDs específicos) */
+  #login-left, .login-divider { display: none !important; }
+  #login-flex { flex-direction: column; height: auto; min-height: 100vh; }
+  #login-right { width: 100% !important; max-width: 100% !important; padding: 24px 20px !important; }
+  .login-mobile-title { display: block !important; }
+
+  /* FASE 5 — ORIENTACIÓN landscape */
+  @media(orientation: landscape) {
+    #login-screen > div:last-child {
+      min-height: auto !important;
+      padding: 20px !important;
+    }
+    #content { padding: 10px !important; }
+  }
 }
 
 /* ── COMPONENTE TELÉFONO CON MÁSCARA ────────────────────────── */
