@@ -7883,7 +7883,14 @@ function renderSubs(data) {
     const tipoBadge = s.tipo==='Combo' ? '<span class="b bpu">Combo</span>' : '<span class="b bi">Individual</span>';
     const tcBadge = s.tipoCliente==='Nuevo' ? '<span class="b bg">Nuevo</span>' : '<span class="b bp">Renovación</span>';
     const comboStr = s.combo && s.combo !== '—' && s.combo !== 'undefined' ? `<span style="font-size:11px;color:var(--purple)">${s.combo}</span>` : '—';
-    const _platNom = (PLATS[s.plat]?.nombre || s.plat).replace(/'/g, "\\'");
+    const _sNom     = (s.nombre   ||'').replace(/'/g,"\\'");
+    const _sPlat    = (PLATS[s.plat]?.nombre || s.plat).replace(/'/g,"\\'");
+    const _sCorreo  = (s.correo   ||'').replace(/'/g,"\\'");
+    const _sClave   = (s.clave    ||'').replace(/'/g,"\\'");
+    const _sPerfil  = (s.perfil   ||'').replace(/'/g,"\\'");
+    const _sPin     = (s.pin      ||'').replace(/'/g,"\\'");
+    const _sVcto    = (s.fVcto    ||'').replace(/'/g,"\\'");
+    const _sUsuario = (s.usuario && s.usuario !== '—' ? s.usuario : s.nombre||'').replace(/'/g,"\\'");
     return `<tr>
       <td style="font-family:var(--mono);font-size:11px">${s.clienteId}</td>
       <td style="font-family:var(--mono);font-size:12px"><strong>${s.perfil}</strong></td>
@@ -7905,7 +7912,7 @@ function renderSubs(data) {
       <td class="tda">
         <button class="btn btn-sm btn-ic" onclick="abrirEditarSubById(${s.id})" title="Editar"><i class="ti ti-edit"></i></button>
         <button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago')" title="Registrar pago"><i class="ti ti-cash"></i></button>
-        <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${s.nombre}','${_platNom}','$${s.monto.toFixed(2)}','${s.dias===0?'vencimiento':s.dias<=1?'1d':'3d'}',{correo:'${s.correo||''}',clave:'${s.clave||''}',perfil:'${s.perfil||''}',pin:'${s.pin||''}',vcto:'${s.fVcto||''}',fecha_vcto:'${s.fVcto||''}',usuario:'${s.nombre||''}'})" title="WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>
+        <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${_sNom}','${_sPlat}','$${s.monto.toFixed(2)}','${s.dias===0?'vencimiento':s.dias<=1?'1d':'3d'}',{correo:'${_sCorreo}',clave:'${_sClave}',perfil:'${_sPerfil}',pin:'${_sPin}',vcto:'${_sVcto}',fecha_vcto:'${_sVcto}',usuario:'${_sUsuario}'})" title="WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>
         <button class="btn btn-sm btn-ic" onclick="reenviarAccesos(${s.id})" title="Reenviar accesos"><i class="ti ti-send"></i></button>
       </td>
     </tr>`;
