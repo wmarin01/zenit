@@ -4102,8 +4102,12 @@ async function confirmarPago() {
     }
 
     // Agregar a COBROS en memoria
+    const _fechaPagoInput = document.getElementById('pago-fecha')?.value || '';
+    const _fechaDisplay = _fechaPagoInput
+      ? _fechaPagoInput.split('-').reverse().join('/')
+      : (() => { const d=new Date(); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); })();
     COBROS.unshift({
-      fecha: (() => { const d=new Date(); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); })(),
+      fecha: _fechaDisplay,
       tipo: 'Renovación', clienteId, nombre,
       tel: normalizeTel(tel), plat: plats,
       monto, banco, forma: forma||'Yappy', doc: comp,
