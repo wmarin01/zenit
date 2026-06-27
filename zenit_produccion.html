@@ -6857,9 +6857,13 @@ async function cargarSelectoresProveedores() {
   const cp = document.getElementById('cuenta-prov');
   if (cp) cp.innerHTML = optsConBlanco;
 
-  // acceso-prov (modal nueva cuenta inventario — alternativo)
+  // acceso-prov — usa nombre como value (no id) para guardar en accesos.proveedor
+  const optsNombre = data.map(p => {
+    const plats = (p.plataformas||[]).join('+');
+    return `<option value="${p.nombre}">${p.nombre}${plats?' · '+plats:''}</option>`;
+  }).join('');
   const ap = document.getElementById('acceso-prov');
-  if (ap) ap.innerHTML = optsConBlanco;
+  if (ap) ap.innerHTML = '<option value="">— Seleccionar —</option>' + optsNombre;
 
   // egreso-sel-prov (modal nuevo egreso)
   const ep = document.getElementById('egreso-sel-prov');
