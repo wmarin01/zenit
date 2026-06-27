@@ -8755,23 +8755,39 @@ function updMetricasCobros() {
 
 
 // ── GESTIÓN COMPROBANTE DUPLICADO ─────────────────────────────
-function abrirRevisionDuplicado() {
-  const inp = document.querySelector('#m-venta input[oninput*="valComp"]');
-  if (!inp) return;
-  const doc = inp.value.trim();
-  const cobro = COBROS.find(c => c.doc === doc);
+async function abrirRevisionDuplicado() {
+  const inp = document.querySelector('#m-venta input[oninput*="valComp"]')
+    || document.getElementById('pago-comp')
+    || document.getElementById('comp');
+  const comp = inp?.value?.trim();
+  if (!comp) return;
 
   const existing = document.getElementById('mini-dup-modal');
   if (existing) existing.remove();
 
-  const info = cobro
-    ? `<div style="margin:10px 0;font-size:13px;line-height:1.8">
-        <span style="color:var(--text3)">Fecha:</span> <strong>${cobro.fecha || '—'}</strong><br>
-        <span style="color:var(--text3)">Cliente:</span> <strong>${cobro.nombre || '—'}</strong><br>
-        <span style="color:var(--text3)">Monto:</span> <strong>$${typeof cobro.monto === 'number' ? cobro.monto.toFixed(2) : '—'}</strong><br>
-        <span style="color:var(--text3)">Tipo:</span> <strong>${cobro.tipo || '—'}</strong>
-      </div>`
-    : '<div style="margin:10px 0;font-size:13px;color:var(--text3)">No se encontraron detalles del cobro.</div>';
+  const { data } = await supa
+    .from('cobros')
+    .select('fecha, nombre, monto, tipo')
+    .eq('documento', comp)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) {
+    toast('No se encontró el comprobante en la base de datos', 'warn');
+    return;
+  }
+
+  const fechaFmt = data.fecha && data.fecha.includes('-')
+    ? data.fecha.split('-').reverse().join('/')
+    : data.fecha || '—';
+
+  const info = `<div style="margin:10px 0;font-size:13px;line-height:1.8">
+    <span style="color:var(--text3)">Fecha:</span> <strong>${fechaFmt}</strong><br>
+    <span style="color:var(--text3)">Cliente:</span> <strong>${data.nombre || '—'}</strong><br>
+    <span style="color:var(--text3)">Monto:</span> <strong>$${typeof data.monto === 'number' ? data.monto.toFixed(2) : data.monto || '—'}</strong><br>
+    <span style="color:var(--text3)">Tipo:</span> <strong>${data.tipo || '—'}</strong>
+  </div>`;
 
   const el = document.createElement('div');
   el.id = 'mini-dup-modal';
@@ -8779,7 +8795,7 @@ function abrirRevisionDuplicado() {
   el.innerHTML = `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.4)">
       <div style="font-weight:600;font-size:14px;color:var(--amber);margin-bottom:6px">⚠ Comprobante duplicado</div>
-      <div style="font-size:12px;color:var(--text2)">El comprobante <strong style="color:var(--text)">${doc}</strong> ya fue registrado:</div>
+      <div style="font-size:12px;color:var(--text2)">El comprobante <strong style="color:var(--text)">${comp}</strong> ya fue registrado:</div>
       ${info}
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
         <button class="btn btn-sm" id="mini-dup-cancel">Cancelar</button>
@@ -8790,8 +8806,7 @@ function abrirRevisionDuplicado() {
 
   document.getElementById('mini-dup-cancel').onclick = () => el.remove();
   document.getElementById('mini-dup-ok').onclick = () => {
-    inp.dataset.valid = 'true';
-    inp.style.borderColor = 'var(--amber)';
+    if (inp) { inp.dataset.valid = 'true'; inp.style.borderColor = 'var(--amber)'; }
     ventaData.dupAutorizado = true;
     const h = document.getElementById('hcv');
     if (h) { h.textContent = '⚠ Duplicado autorizado'; h.className = 'hint w'; }
