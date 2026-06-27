@@ -542,7 +542,17 @@ select option{background:var(--bg3)}
 .cat-btn:hover{background:var(--bg4)}
 .cat-btn.on{border-color:var(--accent2);background:rgba(77,111,232,.1);color:var(--accent)}
 .pp{display:none}.pp.on{display:block}
-@media(max-width:860px){#sb{transform:translateX(-100%)}#main{margin-left:0}.g2,.g3,.fr.c2,.fr.c3,.fr.c4{grid-template-columns:1fr}}
+@media(max-width:860px){
+  #sb{transform:translateX(-100%);transition:transform .25s ease;z-index:1000;position:fixed;height:100vh}
+  #sb.open{transform:translateX(0)}
+  #main{margin-left:0 !important}
+  #hdr{padding:0 14px}
+  .g2,.g3,.fr.c2,.fr.c3,.fr.c4{grid-template-columns:1fr}
+  .overlay-sb{display:block !important}
+  table{font-size:11px}
+  .tda{white-space:nowrap}
+  #btn-hamburger{display:flex !important}
+}
 
 /* ── COMPONENTE TELÉFONO CON MÁSCARA ────────────────────────── */
 .phone-wrap{display:flex;gap:0;border:1px solid var(--border);border-radius:var(--rsm);overflow:hidden;background:var(--bg3);transition:border-color .15s}
@@ -693,6 +703,19 @@ async function intentarLogin() {
     document.getElementById('login-pass').focus();
   }
 }
+function toggleSidebar() {
+  const sb = document.getElementById('sb');
+  const ov = document.querySelector('.overlay-sb');
+  sb.classList.toggle('open');
+  if (ov) ov.style.display = sb.classList.contains('open') ? 'block' : 'none';
+}
+function closeSidebarMobile() {
+  if (window.innerWidth <= 860) {
+    document.getElementById('sb')?.classList.remove('open');
+    const ov = document.querySelector('.overlay-sb');
+    if (ov) ov.style.display = 'none';
+  }
+}
 </script>
 <nav id="sb">
   <div class="sb-logo"><div class="sb-icon"><i class="ti ti-broadcast"></i></div><div><div class="sb-name">Zenit <span id="sb-status" title="Verificando conexión..." style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--amber);margin-left:4px;vertical-align:middle"></span></div><div class="sb-ver">Gestión streaming</div></div></div>
@@ -723,8 +746,10 @@ async function intentarLogin() {
   </div>
   <div class="sb-user"><div class="ua" id="sb-iniciales">--</div><div><div style="font-size:12px;font-weight:500" id="sb-nombre">Cargando...</div><div style="font-size:10px;color:var(--accent)" id="sb-rol">...</div></div><i class="ti ti-logout" style="margin-left:auto;color:var(--text3);font-size:15px;cursor:pointer" onclick="cerrarSesion()" title="Cerrar sesión"></i></div>
 </nav>
+<div class="overlay-sb" onclick="toggleSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999"></div>
 <div id="main">
   <header id="hdr">
+    <button id="btn-hamburger" onclick="toggleSidebar()" style="display:none;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;padding:6px;margin-right:8px;color:var(--text1);font-size:20px"><i class="ti ti-menu-2"></i></button>
     <div><div class="hdr-title" id="htitle">Dashboard</div><div class="hdr-sub" id="hdr-fecha"></div></div>
     <div class="hdr-acts" id="hacts">
       <button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button>
@@ -3273,6 +3298,7 @@ function goTo(v,el){
   if(v==='cobranza') { const tabActivo = document.querySelector('#cobtabs .tab.on'); if(tabActivo) tabActivo.click(); else { const firstTab=document.querySelector('#cobtabs .tab'); if(firstTab)firstTab.click(); } }
   if(v==='suscripciones') _aplicarFiltrosSubs();
   if(v==='cobros') updMetricasCobros();
+  closeSidebarMobile();
 }
 
 function renderC(data){
