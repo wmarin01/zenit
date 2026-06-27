@@ -8756,10 +8756,9 @@ function updMetricasCobros() {
 
 // ── GESTIÓN COMPROBANTE DUPLICADO ─────────────────────────────
 async function abrirRevisionDuplicado() {
-  const inp = document.querySelector('#m-venta input[oninput*="valComp"]')
-    || document.getElementById('pago-comp')
-    || document.getElementById('comp');
-  const comp = inp?.value?.trim();
+  const comp = document.querySelector('input[oninput*="valComp"]')?.value?.trim()
+    || document.getElementById('pago-comp')?.value?.trim()
+    || document.getElementById('comp')?.value?.trim();
   if (!comp) return;
 
   const existing = document.getElementById('mini-dup-modal');
@@ -8768,7 +8767,7 @@ async function abrirRevisionDuplicado() {
   const { data } = await supa
     .from('cobros')
     .select('fecha, nombre, monto, tipo')
-    .eq('documento', comp)
+    .eq('comprobante', comp)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -8806,6 +8805,7 @@ async function abrirRevisionDuplicado() {
 
   document.getElementById('mini-dup-cancel').onclick = () => el.remove();
   document.getElementById('mini-dup-ok').onclick = () => {
+    const inp = document.querySelector('input[oninput*="valComp"]');
     if (inp) { inp.dataset.valid = 'true'; inp.style.borderColor = 'var(--amber)'; }
     ventaData.dupAutorizado = true;
     const h = document.getElementById('hcv');
