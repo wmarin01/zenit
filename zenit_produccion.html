@@ -6321,7 +6321,9 @@ async function renderSubsPago(clienteId) {
   }).join('');
 
   mesesLista.innerHTML = rows.map((r, i) => {
-    const lbl = (PLATS[r.plat]?.nombre || r.plat) + (r.esCombo ? ' (combo)' : ' · ' + r.perfil);
+    const lbl = (PLATS[r.plat]?.nombre || r.plat) + (r.esCombo
+      ? ' (combo)' + (r.perfil && r.perfil !== '—' ? ' · ' + r.perfil : '')
+      : ' · ' + r.perfil);
     return `<div class="fg" id="meses-row-${i}">
       <label>${lbl}</label>
       <div style="display:flex;align-items:center;gap:8px">
