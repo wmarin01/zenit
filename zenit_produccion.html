@@ -5359,11 +5359,13 @@ function buscarClientes(q) {
   return CLIENTES.filter(c => {
     const n = (c.n||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     const a = (c.a||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const nombreCompleto = (n + ' ' + a).trim();
     const cTelD = (c.tel||'').replace(/[^0-9]/g,'');
     const telMatch = hasDigits && rn && ((c.tel||'').includes(rn) || rn.includes(cTelD));
     const telDigits = hasDigits && (cTelD.includes(digits) || digits.includes(cTelD));
-    return n.includes(r) || a.includes(r) || telMatch || telDigits ||
-           c.id.toLowerCase().includes(r);
+    const palabras = r.split(/\s+/).filter(Boolean);
+    const nombreMatch = palabras.every(p => nombreCompleto.includes(p));
+    return nombreMatch || telMatch || telDigits || c.id.toLowerCase().includes(r);
   });
 }
 
@@ -11240,7 +11242,9 @@ function codBuscarCliente(q) {
 
   const matches = CLIENTES.filter(c => {
     const nom = ((c.n||'')+' '+(c.a||'')).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-    return nom.includes(r) || (digits.length >= 4 && (c.tel||'').includes(digits));
+    const palabras = r.split(/\s+/).filter(Boolean);
+    const nombreMatch = palabras.length > 0 && palabras.every(p => nom.includes(p));
+    return nombreMatch || (digits.length >= 4 && (c.tel||'').includes(digits));
   }).slice(0, 8);
 
   if (!matches.length) { res.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:6px 0">Sin resultados</div>'; return; }
