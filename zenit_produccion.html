@@ -6264,7 +6264,12 @@ async function renderSubsPago(clienteId) {
       const platSet = [], subForPlat = {};
       g.subs.forEach(s => {
         (s.plat || '').split('+').map(p => p.trim()).filter(Boolean).forEach(p => {
-          if (!platSet.includes(p)) { platSet.push(p); subForPlat[p] = g.subs.find(sub => sub.plat === p) || s; }
+          if (!platSet.includes(p)) {
+            platSet.push(p);
+            subForPlat[p] = g.subs.find(sub => sub.plat === p)
+              || g.subs.find(sub => sub.perfil && sub.perfil.substring(0, 2) === p)
+              || s;
+          }
         });
       });
       console.log('[renderSubsPago] combo key:', key, '| g.subs.length:', g.subs.length, '| ids:', g.subs.map(s => s.id), '| plats:', g.subs.map(s => s.plat));
@@ -6272,8 +6277,9 @@ async function renderSubsPago(clienteId) {
       const comboPlats  = JSON.stringify(platSet);
       platSet.forEach(plat => {
         const s = subForPlat[plat];
+        const platReal = (s.perfil && s.perfil.length >= 2) ? s.perfil.substring(0, 2) : plat;
         rows.push({
-          subId: s.id, plat, perfil: s.perfil || '—',
+          subId: s.id, plat: platReal, perfil: s.perfil || s.perfilId || '—',
           vcto: s.fVcto || '—', precio: s.monto || 0,
           dias: s.dias || 0, esCombo: true, comboKey: key,
           comboSubIds, comboPlats
