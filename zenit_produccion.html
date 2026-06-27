@@ -3782,7 +3782,19 @@ function abrirWA(n,p,m,tipo,ctx,meta){
   guardarMensajeWA(meta?.clienteId||'', n, meta?.tel||'', tipo, _tmpDiv.textContent);
   openModal('m-wa');
 }
-function cambPlant(v){document.getElementById('wa-txt').innerHTML=(WA[v]||WA.vencimiento)(waCtx.n,waCtx.p,waCtx.m,waCtx.ctx);}
+function cambPlant(v){
+  const ctx = waCtx.ctx || {};
+  const ctxEnriquecido = {
+    ...ctx,
+    correo:     ctx.correo    || ctx.perfilesSel?.[Object.keys(ctx.perfilesSel||{})[0]]?.correo || '—',
+    clave:      ctx.clave     || ctx.perfilesSel?.[Object.keys(ctx.perfilesSel||{})[0]]?.clave  || '—',
+    perfil:     ctx.perfil    || ctx.perfilesSel?.[Object.keys(ctx.perfilesSel||{})[0]]?.codigo || '—',
+    pin:        ctx.pin       || (ctx.pins ? Object.values(ctx.pins)[0] : null) || '—',
+    vcto:       ctx.vcto      || ctx.fecha_vcto || '—',
+    fecha_vcto: ctx.fecha_vcto|| ctx.vcto       || '—',
+  };
+  document.getElementById('wa-txt').innerHTML = (WA[v]||WA.vencimiento)(waCtx.n, waCtx.p, waCtx.m, ctxEnriquecido);
+}
 function copiarWA(){
   navigator.clipboard.writeText(document.getElementById('wa-txt').innerText).then(()=>{
     const b=document.querySelector('#m-wa .btn-p');const o=b.innerHTML;
