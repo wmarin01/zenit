@@ -7890,7 +7890,7 @@ function renderSubs(data) {
     const _sPerfil  = (s.perfil   ||'').replace(/'/g,"\\'");
     const _sPin     = (s.pin      ||'').replace(/'/g,"\\'");
     const _sVcto    = (s.fVcto    ||'').replace(/'/g,"\\'");
-    const _sUsuario = (s.usuario && s.usuario !== '—' ? s.usuario : s.nombre||'').replace(/'/g,"\\'");
+    const _sUsuario = (s.nombre||'').replace(/'/g,"\\'");
     return `<tr>
       <td style="font-family:var(--mono);font-size:11px">${s.clienteId}</td>
       <td style="font-family:var(--mono);font-size:12px"><strong>${s.perfil}</strong></td>
