@@ -7904,7 +7904,7 @@ function renderSubs(data) {
       <td class="tda">
         <button class="btn btn-sm btn-ic" onclick="abrirEditarSubById(${s.id})" title="Editar"><i class="ti ti-edit"></i></button>
         <button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago')" title="Registrar pago"><i class="ti ti-cash"></i></button>
-        <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${s.nombre}','${s.plat}','$${s.monto.toFixed(2)}','${s.dias===0?'vencimiento':s.dias<=1?'1d':'3d'}')" title="WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>
+        <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${s.nombre}','${s.plat}','$${s.monto.toFixed(2)}','${s.dias===0?'vencimiento':s.dias<=1?'1d':'3d'}',{correo:'${s.correo||''}',clave:'${s.clave||''}',perfil:'${s.perfil||''}',pin:'${s.pin||''}',vcto:'${s.fVcto||''}',fecha_vcto:'${s.fVcto||''}',usuario:'${s.usuario||''}'})" title="WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>
         <button class="btn btn-sm btn-ic" onclick="reenviarAccesos(${s.id})" title="Reenviar accesos"><i class="ti ti-send"></i></button>
       </td>
     </tr>`;
