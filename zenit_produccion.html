@@ -10892,7 +10892,7 @@ function initChat() {
   widget.id = 'chat-widget';
   widget.innerHTML = `
     <div id="chat-btn" onclick="toggleChat()" title="Mensajería interna"
-      style="position:fixed;bottom:80px;right:16px;width:48px;height:48px;border-radius:50%;
+      style="position:fixed;bottom:24px;left:16px;width:48px;height:48px;border-radius:50%;
              background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;
              cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.3);z-index:9999;font-size:22px;
              transition:transform .2s">
@@ -11731,29 +11731,28 @@ function zcodUsarManual() {
 function zcodMostrarWA() {
   const waWrap = document.getElementById('zcod-wa-wrap');
   if (!waWrap || !_zcod.cli || !_zcod.codigo) return;
-  const plat   = (_zcod.sub?.perfil || '').substring(0,2) || _zcod.sub?.plat || '';
-  const color  = _ZCOD_COLOR[plat] || '#25D366';
-  const nombre = (_zcod.cli.n||'') + ' ' + (_zcod.cli.a||'');
-  const tel    = (_zcod.cli.tel||'').replace(/[^0-9]/g,'');
-  const codigo = _zcod.codigo;
-  const esLink = codigo.startsWith('http');
+  const plat     = (_zcod.sub?.perfil || '').substring(0,2) || _zcod.sub?.plat || '';
+  const nombre   = (_zcod.cli.n||'') + ' ' + (_zcod.cli.a||'');
+  const tel      = (_zcod.cli.tel||'').replace(/[^0-9]/g,'');
+  const codigo   = _zcod.codigo;
+  const esLink   = codigo.startsWith('http');
+  const platNom  = _ZCOD_NOMBRE[plat] || plat;
   const msgTexto = esLink
-    ? `Hola ${nombre.trim()}, aquí está el enlace para ${_ZCOD_NOMBRE[plat]||plat}:\n${codigo}`
-    : `Hola ${nombre.trim()}, tu código de ${_ZCOD_NOMBRE[plat]||plat} es: ${codigo}\nÚsalo de inmediato, expira en minutos. 🔐`;
+    ? `Hola ${nombre.trim()}, aquí está el enlace para ${platNom}:\n${codigo}`
+    : `Hola ${nombre.trim()}, tu código de ${platNom} es: ${codigo}\nÚsalo de inmediato, expira en minutos. 🔐`;
   const msgWA = esLink
-    ? `Hola ${nombre.trim()}, aquí está el enlace para ${_ZCOD_NOMBRE[plat]||plat}:%0A${encodeURIComponent(codigo)}`
-    : `Hola ${nombre.trim()}, tu código de ${_ZCOD_NOMBRE[plat]||plat} es: *${codigo}*%0AÚsalo de inmediato, expira en minutos. 🔐`;
-  waWrap.innerHTML = `
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn" style="flex:1;justify-content:center;padding:11px;background:var(--bg3);border-color:var(--border);color:var(--text);font-size:13px"
-        onclick="navigator.clipboard.writeText(${JSON.stringify(msgTexto)}).then(()=>toast('Mensaje copiado ✓','ok'))">
-        <i class="ti ti-clipboard"></i> Copiar mensaje
-      </button>
-      <a href="https://wa.me/507${tel}?text=${msgWA}" target="_blank" rel="noopener"
-        class="btn" style="flex:1;justify-content:center;padding:11px;background:#25D366;border-color:#25D366;color:#fff;text-decoration:none;font-size:13px">
-        <i class="ti ti-brand-whatsapp"></i> Abrir WA
-      </a>
-    </div>`;
+    ? `Hola ${nombre.trim()}, aquí está el enlace para ${platNom}:%0A${encodeURIComponent(codigo)}`
+    : `Hola ${nombre.trim()}, tu código de ${platNom} es: *${codigo}*%0AÚsalo de inmediato, expira en minutos. 🔐`;
+  waWrap._msgTexto = msgTexto;
+  waWrap.innerHTML = `<div style="display:flex;gap:8px;margin-top:8px">
+    <button class="btn" style="flex:1;justify-content:center;padding:11px;background:var(--bg3);border-color:var(--border);color:var(--text);font-size:13px" onclick="document.getElementById('zcod-wa-wrap')._msgTexto && navigator.clipboard.writeText(document.getElementById('zcod-wa-wrap')._msgTexto).then(()=>toast('Mensaje copiado ✓','ok'))">
+      <i class="ti ti-clipboard"></i> Copiar mensaje
+    </button>
+    <a href="https://wa.me/507${tel}?text=${msgWA}" target="_blank" rel="noopener"
+      class="btn" style="flex:1;justify-content:center;padding:11px;background:#25D366;border-color:#25D366;color:#fff;text-decoration:none;font-size:13px">
+      <i class="ti ti-brand-whatsapp"></i> Abrir WA
+    </a>
+  </div>`;
   waWrap.style.display = 'block';
 }
 
