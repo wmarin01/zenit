@@ -11563,7 +11563,7 @@ async function zcodSelPlat(btn, plat, subId) {
   _zcod.correo = correo;
 
   if (correo) {
-    const { data: acc } = await supa.from('accesos').select('*').eq('correo', correo).maybeSingle();
+    const { data: acc } = await supa.from('accesos').select('*').eq('correo', correo).eq('plataforma', plat).maybeSingle();
     _zcod.acceso = acc || null;
   }
 
