@@ -798,7 +798,7 @@ async function obtenerCodigo() {
   if (_intentos.desde && Date.now() - _intentos.desde > 60 * 60 * 1000) {
     _intentos = { count: 0, desde: null };
   }
-  if (_intentos.count >= 3) {
+  if (_intentos.count >= 6) {
     resultado.style.display = 'block';
     resultado.className = 'resultado error';
     document.getElementById('res-label').textContent = 'Acceso bloqueado';
