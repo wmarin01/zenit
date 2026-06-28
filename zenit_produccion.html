@@ -10892,7 +10892,7 @@ function initChat() {
   widget.id = 'chat-widget';
   widget.innerHTML = `
     <div id="chat-btn" onclick="toggleChat()" title="Mensajería interna"
-      style="position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;
+      style="position:fixed;bottom:80px;right:16px;width:48px;height:48px;border-radius:50%;
              background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;
              cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.3);z-index:9999;font-size:22px;
              transition:transform .2s">
@@ -11672,7 +11672,10 @@ async function zcodObtenerAuto() {
     const data = await resp.json();
 
     if (data.error || !data.codigo) {
-      resBox.innerHTML = `<div style="padding:11px 14px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);border-radius:var(--rsm);font-size:13px;color:var(--amber);margin-top:10px"><i class="ti ti-mail-off"></i> No se encontró el código. Usa el campo manual.</div>`;
+      resBox.innerHTML = `<div style="padding:14px 16px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);border-radius:var(--rsm);margin-top:10px">
+  <div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:4px"><i class="ti ti-clock-off"></i> Código no encontrado o expirado</div>
+  <div style="font-size:12px;color:var(--text2);line-height:1.6">El código puede haber expirado (vence a los 15 minutos) o aún no ha llegado al correo.<br>Solicita un nuevo código en la app e intenta de nuevo.</div>
+</div>`;
     } else {
       _zcod.codigo = data.codigo;
       if (data.codigo.startsWith('http')) {

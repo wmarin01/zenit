@@ -836,7 +836,8 @@ async function obtenerCodigo() {
       document.getElementById('res-codigo').textContent = '';
       document.getElementById('res-hora').textContent = '';
       document.getElementById('res-link-wrap').innerHTML = '';
-      document.getElementById('res-msg').innerHTML = '⚠️ No se encontró el código. Asegúrate de haberlo solicitado en la app hace unos segundos e intenta de nuevo.';
+      document.getElementById('res-label').textContent = 'Código no encontrado o expirado';
+      document.getElementById('res-msg').innerHTML = 'El código puede haber expirado (vence a los 15 minutos) o aún no ha llegado al correo.<br>Solicita un nuevo código en la app e intenta de nuevo.';
     } else if (data.codigo.startsWith('http')) {
       resultado.className = 'resultado';
       document.getElementById('res-label').textContent = 'Enlace encontrado';
