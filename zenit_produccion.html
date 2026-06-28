@@ -11734,13 +11734,23 @@ function zcodMostrarWA() {
   const tel    = (_zcod.cli.tel||'').replace(/[^0-9]/g,'');
   const codigo = _zcod.codigo;
   const esLink = codigo.startsWith('http');
-  const msg    = esLink
+  const msgTexto = esLink
+    ? `Hola ${nombre.trim()}, aquí está el enlace para ${_ZCOD_NOMBRE[plat]||plat}:\n${codigo}`
+    : `Hola ${nombre.trim()}, tu código de ${_ZCOD_NOMBRE[plat]||plat} es: ${codigo}\nÚsalo de inmediato, expira en minutos. 🔐`;
+  const msgWA = esLink
     ? `Hola ${nombre.trim()}, aquí está el enlace para ${_ZCOD_NOMBRE[plat]||plat}:%0A${encodeURIComponent(codigo)}`
     : `Hola ${nombre.trim()}, tu código de ${_ZCOD_NOMBRE[plat]||plat} es: *${codigo}*%0AÚsalo de inmediato, expira en minutos. 🔐`;
-  waWrap.innerHTML = `<a href="https://wa.me/507${tel}?text=${msg}" target="_blank" rel="noopener"
-    class="btn" style="width:100%;justify-content:center;padding:13px;background:#25D366;border-color:#25D366;color:#fff;text-decoration:none;font-size:14px;margin-top:6px">
-    <i class="ti ti-brand-whatsapp"></i> Enviar código por WhatsApp
-  </a>`;
+  waWrap.innerHTML = `
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn" style="flex:1;justify-content:center;padding:11px;background:var(--bg3);border-color:var(--border);color:var(--text);font-size:13px"
+        onclick="navigator.clipboard.writeText(${JSON.stringify(msgTexto)}).then(()=>toast('Mensaje copiado ✓','ok'))">
+        <i class="ti ti-clipboard"></i> Copiar mensaje
+      </button>
+      <a href="https://wa.me/507${tel}?text=${msgWA}" target="_blank" rel="noopener"
+        class="btn" style="flex:1;justify-content:center;padding:11px;background:#25D366;border-color:#25D366;color:#fff;text-decoration:none;font-size:13px">
+        <i class="ti ti-brand-whatsapp"></i> Abrir WA
+      </a>
+    </div>`;
   waWrap.style.display = 'block';
 }
 
