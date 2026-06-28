@@ -1707,11 +1707,11 @@ function closeSidebarMobile() {
 <style>
   .zcod-wrap { max-width:640px; margin:0 auto; }
   .zcod-plat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin-bottom:16px; }
-  .zcod-plat-btn { padding:10px 8px; background:var(--bg3); border:2px solid var(--zcod-color,var(--border)); border-radius:10px; color:var(--text); cursor:pointer; font-family:var(--font); transition:all .2s; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:3px; }
+  .zcod-plat-btn { padding:7px 8px; background:var(--bg3); border:2px solid var(--zcod-color,var(--border)); border-radius:8px; color:var(--text); cursor:pointer; font-family:var(--font); transition:all .2s; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:2px; }
   .zcod-plat-btn:hover { background:var(--bg4); }
   .zcod-plat-btn.active { background:var(--zcod-color,var(--accent)); box-shadow:0 0 14px var(--zcod-color,var(--accent))44; color:#fff; }
   .zcod-plat-nombre { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; display:block; }
-  .zcod-plat-dias { font-size:10px; margin-top:1px; display:block; opacity:.8; }
+  .zcod-plat-dias { font-size:11px; margin-top:2px; display:block; font-weight:700; color:#fff; }
   .zcod-semaforo { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px; font-size:11px; font-weight:700; margin-bottom:14px; letter-spacing:0.5px; }
   .zcod-sem-verde   { background:rgba(34,197,94,.12);  border:1px solid rgba(34,197,94,.3);  color:#4ade80; }
   .zcod-sem-naranja { background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.3); color:#fbbf24; }
@@ -1761,7 +1761,7 @@ function closeSidebarMobile() {
 
         <div id="zcod-creds-wrap" style="display:none;margin-bottom:10px"></div>
 
-        <button class="btn" id="zcod-fetch-btn" style="width:100%;justify-content:center;padding:11px;font-size:13px;margin-bottom:8px" onclick="zcodObtenerAuto()">
+        <button class="btn" id="zcod-fetch-btn" style="width:100%;justify-content:center;padding:8px;font-size:13px;margin-bottom:8px" onclick="zcodObtenerAuto()">
           <i class="ti ti-search"></i> Obtener código automático
         </button>
         <div id="zcod-fetch-res"></div>
