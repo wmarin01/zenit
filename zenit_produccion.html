@@ -1701,64 +1701,99 @@ function closeSidebarMobile() {
     <div style="margin-top:8px;font-size:12px;color:var(--text3)">Mensajes de las últimas 72 horas</div>
   </div>
 
-  <!-- Tab: Códigos -->
-  <div id="ac-codigos" style="display:none">
+<!-- Tab: Códigos -->
+<div id="ac-codigos" style="display:none">
+<style>
+  .zcod-plat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:20px; }
+  .zcod-plat-btn { padding:14px 10px; background:var(--bg3); border:2px solid var(--zcod-color,var(--border)); border-radius:10px; color:var(--text); cursor:pointer; font-family:var(--font); transition:all .2s; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:4px; }
+  .zcod-plat-btn:hover { background:var(--bg4); }
+  .zcod-plat-btn.active { background:var(--zcod-color,var(--accent)); box-shadow:0 0 18px var(--zcod-color,var(--accent)); color:#fff; }
+  .zcod-plat-nombre { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; display:block; }
+  .zcod-plat-dias { font-size:11px; margin-top:1px; display:block; }
+  .zcod-semaforo { display:inline-flex; align-items:center; gap:7px; padding:7px 14px; border-radius:20px; font-size:12px; font-weight:700; margin-bottom:18px; letter-spacing:0.5px; }
+  .zcod-sem-verde  { background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.3); color:#4ade80; }
+  .zcod-sem-naranja{ background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.3); color:#fbbf24; }
+  .zcod-sem-rojo   { background:rgba(239,68,68,.12);  border:1px solid rgba(239,68,68,.3);  color:#f87171; }
+  .zcod-tipos-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+  .zcod-tipo-btn { padding:11px 10px; background:var(--bg3); border:1px solid var(--border); border-radius:var(--rsm); color:var(--text2); font-family:var(--font); font-size:12px; font-weight:600; cursor:pointer; transition:all .2s; text-align:center; }
+  .zcod-tipo-btn:hover { border-color:var(--accent); color:var(--text); }
+  .zcod-tipo-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .zcod-tipo-btn.full { grid-column:1 / -1; }
+  .zcod-instruccion { background:var(--bg3); border-left:3px solid var(--accent); border-radius:0 var(--rsm) var(--rsm) 0; padding:12px 14px; font-size:12.5px; color:var(--text2); line-height:1.6; margin-bottom:14px; display:none; }
+  .zcod-correo-box { background:var(--bg3); border:1px solid var(--green); border-radius:var(--rsm); padding:12px 14px; font-size:13px; font-family:monospace; color:#4ade80; margin-bottom:12px; word-break:break-all; }
+  .zcod-resultado { background:var(--bg3); border:2px solid var(--green); border-radius:var(--r); padding:20px; text-align:center; margin-top:14px; display:none; }
+  .zcod-resultado.error { border-color:var(--amber); }
+  .zcod-res-label { font-size:11px; color:var(--text3); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:10px; }
+  .zcod-res-codigo { font-size:44px; font-weight:900; letter-spacing:6px; font-family:monospace; }
+  .zcod-res-hora { font-size:11px; color:var(--text3); margin-top:8px; }
+  .zcod-res-msg { font-size:13px; color:var(--text2); line-height:1.6; }
+  .zcod-manual-row { display:flex; gap:8px; margin-top:10px; }
+  .zcod-manual-inp { flex:1; padding:9px 12px; border:1px solid var(--border); border-radius:var(--rsm); background:var(--bg3); color:var(--text); font-family:monospace; font-size:16px; letter-spacing:2px; }
+</style>
 
-    <!-- Paso 1: Buscador de cliente -->
-    <div class="card" style="margin-bottom:14px">
-      <div class="ct" style="font-size:11px;margin-bottom:10px"><i class="ti ti-user-search" style="color:var(--accent)"></i>Buscar cliente</div>
-      <div class="sbox"><i class="ti ti-search"></i><input type="text" id="cod-busq" placeholder="Nombre o teléfono..." oninput="codBuscarCliente(this.value)" autocomplete="off" style="background:transparent;border:none;outline:none;width:100%;color:var(--text);font-size:13px"></div>
-      <div id="cod-resultados" style="margin-top:8px"></div>
-    </div>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+  <div class="sbox" style="flex:1"><i class="ti ti-search"></i><input type="text" id="zcod-busq" placeholder="Nombre o teléfono del cliente..." oninput="zcodBuscarCliente(this.value)" autocomplete="off" style="background:transparent;border:none;outline:none;width:100%;color:var(--text);font-size:13px"></div>
+  <button class="btn btn-sm btn-ic" onclick="zcodReset()" title="Limpiar"><i class="ti ti-x"></i></button>
+</div>
+<div id="zcod-resultados" style="margin-bottom:12px"></div>
 
-    <!-- Pasos 2-4: detalle (aparece tras seleccionar cliente) -->
-    <div id="ac-cod-detalle" style="display:none">
+<div id="zcod-detalle" style="display:none">
 
-      <!-- Chip de cliente seleccionado -->
-      <div class="card" id="ac-cod-cli-card" style="margin-bottom:12px;padding:12px 16px"></div>
+  <div class="card" id="zcod-cli-card" style="margin-bottom:14px;padding:12px 16px"></div>
 
-      <!-- Plataformas activas -->
-      <div class="card" style="margin-bottom:12px">
-        <div class="ct" style="font-size:11px;margin-bottom:10px"><i class="ti ti-device-tv"></i>Plataformas activas — selecciona una</div>
-        <div id="ac-cod-plats" style="display:flex;gap:10px;flex-wrap:wrap"></div>
-      </div>
+  <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:10px">✅ Plataformas activas</div>
+  <div class="zcod-plat-grid" id="zcod-plats"></div>
 
-      <!-- Cuenta + tipos de código (aparece tras seleccionar plataforma) -->
-      <div id="ac-cod-cuenta-wrap"></div>
+  <div id="zcod-area" style="display:none">
+    <div id="zcod-semaforo-wrap" style="margin-bottom:16px"></div>
 
-      <!-- Área de obtención del código (aparece tras seleccionar tipo) -->
-      <div id="ac-cod-resultado"></div>
+    <div id="zcod-bloque-tipos"></div>
+    <div class="zcod-instruccion" id="zcod-instruccion-box"></div>
 
-      <!-- Botón WA (aparece tras tener código) -->
-      <div id="ac-cod-wa-wrap"></div>
+    <div id="zcod-bloque-correo" style="display:none">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:6px">Correo de la cuenta:</div>
+      <div class="zcod-correo-box" id="zcod-correo-display">—</div>
 
-    </div>
+      <div id="zcod-creds-wrap" style="display:none;margin-bottom:12px"></div>
 
-    <!-- Configurar accesos (solo Master) -->
-    <div id="ac-accesos-cfg" style="display:none;margin-top:18px">
-      <div style="border-top:1px solid var(--border);padding-top:14px">
-        <button class="btn" onclick="codToggleConfig(this)" style="gap:8px">
-          <i class="ti ti-settings"></i> ⚙️ Configurar accesos
-          <i class="ti ti-chevron-down" id="cod-cfg-chev" style="margin-left:6px;transition:transform .2s"></i>
-        </button>
-        <div id="ac-accesos-cfg-body" style="display:none;margin-top:12px">
-          <div class="card">
-            <div style="display:flex;align-items:center;margin-bottom:12px">
-              <span style="font-weight:600;font-size:14px">Registros de acceso</span>
-              <button class="btn btn-sm" onclick="document.getElementById('acceso-id').value='';document.getElementById('acceso-title').textContent='Nuevo acceso de bot';cargarSelectoresProveedores();openModal('m-acceso')" style="margin-left:auto"><i class="ti ti-plus"></i> Nuevo</button>
-            </div>
-            <div class="tw">
-              <table>
-                <thead><tr><th>Correo</th><th>Proveedor</th><th>Plataforma</th><th>Tipo bot</th><th>Link</th><th>Usuario</th><th></th></tr></thead>
-                <tbody id="tb-accesos-body"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:16px">—</td></tr></tbody>
-              </table>
-            </div>
-          </div>
+      <button class="btn" id="zcod-fetch-btn" style="width:100%;justify-content:center;padding:13px;font-size:14px;margin-bottom:10px" onclick="zcodObtenerAuto()">
+        <i class="ti ti-search"></i> Obtener código automático
+      </button>
+      <div id="zcod-fetch-res"></div>
+
+      <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:12px">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:8px">¿No encontró nada? Pega el código manualmente:</div>
+        <div class="zcod-manual-row">
+          <input type="text" class="zcod-manual-inp" id="zcod-manual-inp" placeholder="Ej: 123456">
+          <button class="btn" onclick="zcodUsarManual()"><i class="ti ti-check"></i> Usar</button>
         </div>
       </div>
     </div>
 
+    <div class="zcod-resultado" id="zcod-resultado">
+      <div class="zcod-res-label" id="zcod-res-label">Código encontrado</div>
+      <div class="zcod-res-codigo" id="zcod-res-codigo"></div>
+      <div class="zcod-res-hora" id="zcod-res-hora"></div>
+      <div class="zcod-res-msg" id="zcod-res-msg"></div>
+      <div id="zcod-res-link-wrap"></div>
+    </div>
+
+    <div id="zcod-wa-wrap" style="margin-top:14px"></div>
   </div>
+
+</div>
+
+<div id="ac-accesos-cfg" style="display:none;margin-top:28px">
+  <div class="sh" style="margin-bottom:12px">
+    <span>Configuración de accesos</span>
+    <button class="btn btn-sm" onclick="codCfgToggle()"><i class="ti ti-settings" id="cod-cfg-chev"></i></button>
+  </div>
+  <div id="ac-accesos-cfg-body" style="display:none">
+    <button class="btn btn-s btn-sm" onclick="codAccesoFormAbrir(null)" style="margin-bottom:10px"><i class="ti ti-plus"></i> Nuevo acceso</button>
+    <div id="ac-accesos-list"></div>
+  </div>
+</div>
+
 </div>
 <!-- HISTORIAL -->
 <div class="view" id="v-historial">
@@ -11389,298 +11424,330 @@ const _COD_TIPOS = {
 };
 let _cod = {};
 
-function codBuscarCliente(q) {
-  const res = document.getElementById('cod-resultados');
+const _ZCOD_COLOR = { NF:'#E50914', DS:'#FFD700', HB:'#720E9E', PV:'#00A8E1', IP:'#ffffff' };
+const _ZCOD_NOMBRE = { NF:'Netflix', DS:'Disney+', HB:'HBO Max', PV:'Prime Video', IP:'IPTV' };
+const _ZCOD_GAS = 'https://script.google.com/macros/s/AKfycbx0L9wcVFGoinn3MMTDsFNZTQZlZcFRlaZWpOQFdGtKA3vRb12BituUqeOlKI5TcHw7og/exec';
+
+const _ZCOD_TIPOS = {
+  NF: [
+    { label: 'Inicio de sesión',         tipo: 'LOGIN',         full: false },
+    { label: 'Ver temporalmente',         tipo: 'VIAJE',         full: false },
+    { label: 'Actualizar hogar',          tipo: 'HOGAR',         full: false },
+    { label: 'Verificar disp. nuevo',     tipo: 'VERIFICACION',  full: false },
+    { label: 'Verificar cambio cuenta',   tipo: 'VERIFICACION2', full: false },
+    { label: 'Restablecer contraseña',    tipo: 'RESET',         full: true  },
+  ],
+  DS: [
+    { label: 'Código de acceso',          tipo: 'LOGIN', full: false },
+    { label: 'Restablecer contraseña',    tipo: 'RESET', full: false },
+  ],
+  HB: [
+    { label: 'Código de acceso',          tipo: 'LOGIN', full: false },
+    { label: 'Restablecer contraseña',    tipo: 'RESET', full: false },
+  ],
+  PV: [
+    { label: 'Código de verificación',    tipo: 'LOGIN', full: false },
+    { label: 'Restablecer contraseña',    tipo: 'RESET', full: false },
+  ],
+};
+
+const _ZCOD_INSTRUC = {
+  NF_LOGIN:         '💡 En la TV selecciona "Obtener ayuda para iniciar sesión" y elige enviar el código al correo.',
+  NF_VIAJE:         '💡 Cuando aparezca el aviso en la TV, selecciona "Estoy de viaje" o "Ver temporalmente" y envía el código al correo.',
+  NF_HOGAR:         '💡 En la TV selecciona la opción de actualizar hogar y envía el enlace al correo.',
+  NF_VERIFICACION:  '💡 Netflix solicita este código de 6 dígitos la primera vez que se inicia sesión en un dispositivo nuevo.',
+  NF_VERIFICACION2: '💡 Código de 6 dígitos que Netflix envía para confirmar cambios de cuenta (correo, contraseña, etc.).',
+  NF_RESET:         '💡 Solicita restablecer contraseña en Netflix y busca el enlace aquí.',
+  DS_LOGIN:         '💡 En Disney+ selecciona verificación y elige enviar el código de 6 dígitos al correo.',
+  DS_RESET:         '💡 Solicita restablecer contraseña en Disney+ y busca el enlace aquí.',
+  HB_LOGIN:         '💡 En HBO Max selecciona "Obtener código de un solo uso" y revisa el correo.',
+  HB_RESET:         '💡 Solicita restablecer contraseña en HBO Max y busca el enlace aquí.',
+  PV_LOGIN:         '💡 En Prime Video selecciona verificación y elige recibir el código de 6 dígitos al correo.',
+  PV_RESET:         '💡 Solicita restablecer contraseña en Amazon y busca el enlace aquí.',
+};
+
+let _zcod = { cli: null, sub: null, acceso: null, correo: null, tipo: null, codigo: null };
+
+function zcodBuscarCliente(q) {
+  const res = document.getElementById('zcod-resultados');
   if (!res) return;
-  const r      = q.toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const r = q.toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g,'');
   const digits = q.replace(/[^0-9]/g,'');
   if (!r) { res.innerHTML = ''; return; }
-
   const matches = CLIENTES.filter(c => {
     const nom = ((c.n||'')+' '+(c.a||'')).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
     const palabras = r.split(/\s+/).filter(Boolean);
-    const nombreMatch = palabras.length > 0 && palabras.every(p => nom.includes(p));
-    return nombreMatch || (digits.length >= 4 && (c.tel||'').includes(digits));
+    return (palabras.every(p => nom.includes(p))) || (digits.length >= 4 && (c.tel||'').includes(digits));
   }).slice(0, 8);
-
   if (!matches.length) { res.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:6px 0">Sin resultados</div>'; return; }
-
   res.innerHTML = matches.map(c => {
-    const dots = (c.plats||[]).map(p => `<span style="width:7px;height:7px;border-radius:50%;background:var(--${p.toLowerCase()},var(--accent));display:inline-block"></span>`).join('');
-    return `<div onclick="codSelCliente('${c.id}')" style="padding:9px 12px;border-radius:var(--rsm);cursor:pointer;background:var(--bg3);border:1px solid var(--border);margin-bottom:5px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='var(--bg3)'">
+    const dots = (c.plats||[]).map(p => `<span style="width:7px;height:7px;border-radius:50%;background:${_ZCOD_COLOR[p]||'var(--accent)'};display:inline-block"></span>`).join('');
+    return `<div onclick="zcodSelCliente('${c.id}')" style="padding:9px 12px;border-radius:var(--rsm);cursor:pointer;background:var(--bg3);border:1px solid var(--border);margin-bottom:5px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='var(--bg3)'">
       <div style="font-weight:600;font-size:13px">${c.n} ${c.a||''}</div>
       <div style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px;margin-top:2px">${formatTel(c.tel)||c.tel||'—'} <span style="display:flex;gap:3px">${dots}</span></div>
     </div>`;
   }).join('');
 }
 
-function codSelCliente(clienteId) {
+async function zcodSelCliente(clienteId) {
   const cli = CLIENTES.find(c => c.id === clienteId);
   if (!cli) return;
-  _cod = { cli, sub: null, tipo: null, codigo: null, correo: null };
+  _zcod = { cli, sub: null, acceso: null, correo: null, tipo: null, codigo: null };
 
-  document.getElementById('cod-busq').value = (cli.n+' '+(cli.a||'')).trim();
-  document.getElementById('cod-resultados').innerHTML = '';
+  document.getElementById('zcod-busq').value = (cli.n+' '+(cli.a||'')).trim();
+  document.getElementById('zcod-resultados').innerHTML = '';
 
-  // Chip de cliente
-  const cliCard = document.getElementById('ac-cod-cli-card');
+  const cliCard = document.getElementById('zcod-cli-card');
   if (cliCard) cliCard.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
     <div class="ua" style="width:36px;height:36px;font-size:13px;flex-shrink:0">${(cli.n||'?')[0].toUpperCase()}</div>
     <div style="flex:1"><div style="font-weight:600;font-size:14px">${cli.n} ${cli.a||''}</div><div style="font-size:12px;color:var(--text2)">${formatTel(cli.tel)||cli.tel||'—'}</div></div>
-    <button class="btn btn-sm btn-ic" onclick="codReset()" title="Cambiar cliente"><i class="ti ti-x"></i></button>
+    <button class="btn btn-sm btn-ic" onclick="zcodReset()" title="Cambiar cliente"><i class="ti ti-x"></i></button>
   </div>`;
 
-  // Botones de plataforma
   const activeSubs = SUBS_FULL.filter(s => s.clienteId === clienteId && s.est === 'activo');
-  const platsDiv   = document.getElementById('ac-cod-plats');
+  const platMap = {};
+  activeSubs.forEach(s => {
+    const plat = s.perfil ? s.perfil.substring(0,2) : s.plat;
+    if (plat && !platMap[plat]) platMap[plat] = s;
+  });
+
+  const platsDiv = document.getElementById('zcod-plats');
   if (platsDiv) {
-    if (!activeSubs.length) {
+    if (!Object.keys(platMap).length) {
       platsDiv.innerHTML = '<span style="font-size:13px;color:var(--text3)">Sin suscripciones activas</span>';
     } else {
-      platsDiv.innerHTML = activeSubs.map(s => {
-        const dc  = _COD_DOT[s.plat] || '--accent';
-        const nom = (PLATAFORMAS||[]).find(p=>p.codigo===s.plat)?.nombre || s.plat;
+      platsDiv.innerHTML = Object.entries(platMap).map(([plat, s]) => {
+        const color = _ZCOD_COLOR[plat] || 'var(--accent)';
+        const nombre = _ZCOD_NOMBRE[plat] || plat;
         const diasCol = s.dias <= 3 ? 'var(--red)' : s.dias <= 7 ? 'var(--amber)' : 'var(--text3)';
-        return `<button class="cod-plat-btn" data-sub-id="${s.id}" onclick="codSelPlat(this,'${s.id}')" style="display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:12px 16px;border-radius:var(--r);background:var(--bg3);border:2px solid var(--border);cursor:pointer;min-width:120px;font-family:var(--font);transition:border-color .15s">
-          <span style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:17px"><span style="width:10px;height:10px;border-radius:50%;background:var(${dc});display:inline-block;flex-shrink:0"></span>${s.plat}</span>
-          <span style="font-size:11px;color:var(--text3)">${nom}</span>
-          <span style="font-size:11px;color:${diasCol}">Vence ${s.fVcto}</span>
+        return `<button class="zcod-plat-btn" onclick="zcodSelPlat(this,'${plat}','${s.id}')" style="--zcod-color:${color}">
+          <span class="zcod-plat-nombre">${nombre}</span>
+          <span class="zcod-plat-dias" style="color:${diasCol}">${s.dias >= 0 ? s.dias+'d' : 'Vencido'}</span>
         </button>`;
       }).join('');
     }
   }
 
-  ['ac-cod-cuenta-wrap','ac-cod-resultado','ac-cod-wa-wrap'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.innerHTML = ''; }
+  ['zcod-area','zcod-bloque-correo','zcod-instruccion-box','zcod-resultado','zcod-wa-wrap'].forEach(id => {
+    const el = document.getElementById(id); if(el) { el.style.display='none'; if(el.innerHTML !== undefined && id !== 'zcod-area') el.innerHTML = id === 'zcod-bloque-tipos' ? '' : el.innerHTML; }
   });
-  document.getElementById('ac-cod-detalle').style.display = 'block';
+  document.getElementById('zcod-bloque-tipos').innerHTML = '';
+  document.getElementById('zcod-detalle').style.display = 'block';
 }
 
-async function codSelPlat(btn, subId) {
+async function zcodSelPlat(btn, plat, subId) {
   const sub = SUBS_FULL.find(s => String(s.id) === String(subId));
   if (!sub) return;
-  _cod.sub    = sub;
-  _cod.tipo   = null;
-  _cod.codigo = null;
-  _cod.acceso = null;
+  _zcod.sub = sub;
+  _zcod.tipo = null;
+  _zcod.codigo = null;
+  _zcod.acceso = null;
 
-  // Resaltar botón seleccionado
-  const dc = _COD_DOT[sub.plat] || '--accent';
-  document.querySelectorAll('.cod-plat-btn').forEach(b => { b.style.borderColor='var(--border)'; b.style.background='var(--bg3)'; });
-  btn.style.borderColor = `var(${dc})`;
-  btn.style.background  = 'var(--bg4)';
+  document.querySelectorAll('.zcod-plat-btn').forEach(b => { b.classList.remove('active'); });
+  btn.classList.add('active');
 
-  // Paso 1: obtener correo y proveedor desde cuentas_inventario
-  let correo    = sub.correo && sub.correo !== '—' ? sub.correo : '';
-  let proveedor = '—';
-  const cuentaId = (sub.perfil && sub.perfil !== '—' && sub.perfil.length > 3) ? sub.perfil.slice(0, -1) : null;
+  const color = _ZCOD_COLOR[plat] || 'var(--accent)';
+
+  let correo = sub.correo && sub.correo !== '—' ? sub.correo : '';
+  const cuentaId = (sub.perfil && sub.perfil !== '—' && sub.perfil.length > 3) ? sub.perfil.slice(0,-1) : null;
   if (cuentaId) {
-    const { data: ct } = await supa.from('cuentas_inventario').select('proveedor,correo').eq('codigo', cuentaId).maybeSingle();
-    if (ct) { proveedor = ct.proveedor || '—'; if (!correo) correo = ct.correo || '—'; }
+    const { data: ct } = await supa.from('cuentas_inventario').select('correo').eq('codigo', cuentaId).maybeSingle();
+    if (ct && ct.correo) correo = ct.correo;
   }
-  _cod.correo = correo;
+  _zcod.correo = correo;
 
-  // Paso 2: buscar configuración de acceso por correo de cuenta
   if (correo) {
     const { data: acc } = await supa.from('accesos').select('*').eq('correo', correo).maybeSingle();
-    _cod.acceso = acc || null;
+    _zcod.acceso = acc || null;
   }
 
-  const tipBot  = _cod.acceso?.tipo_bot || 'manual';
-  const tipos   = _COD_TIPOS[sub.plat] || ['Inicio sesión'];
-  const platNom = (PLATAFORMAS||[]).find(p=>p.codigo===sub.plat)?.nombre || sub.plat;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const [dd,mm,yy] = (sub.fVcto||'').split('/');
+  const vcto = new Date(+yy,+mm-1,+dd);
+  const dias = Math.ceil((vcto-hoy)/86400000);
+  let semHtml = '';
+  if (dias > 5)       semHtml = `<div class="zcod-semaforo zcod-sem-verde">🟢 Activo · Quedan ${dias} días</div>`;
+  else if (dias >= 0) semHtml = `<div class="zcod-semaforo zcod-sem-naranja">🟡 Por vencer · Quedan ${dias} días</div>`;
+  else                semHtml = `<div class="zcod-semaforo zcod-sem-rojo">🔴 Vencido</div>`;
+  document.getElementById('zcod-semaforo-wrap').innerHTML = semHtml;
 
-  const _TIP_LABEL = { correo_propio:'✉️ Correo propio', web:'🌐 Web / Portal', telegram:'✈️ Telegram', manual:'✍️ Manual' };
-  const _TIP_COLOR = { correo_propio:'var(--green)', web:'var(--accent)', telegram:'var(--purple)', manual:'var(--text3)' };
-
-  const wrap = document.getElementById('ac-cod-cuenta-wrap');
-  if (wrap) {
-    wrap.innerHTML = `<div class="card" style="margin-bottom:12px">
-      <div class="ct" style="font-size:12px;margin-bottom:12px"><i class="ti ti-server" style="color:var(${dc})"></i>Cuenta · ${platNom}</div>
-      <div style="display:grid;grid-template-columns:max-content 1fr;gap:5px 14px;font-size:13px;margin-bottom:14px;align-items:center">
-        <span style="color:var(--text3)">Correo</span><strong style="font-family:var(--mono);font-size:12px;word-break:break-all">${correo||'—'}</strong>
-        <span style="color:var(--text3)">Proveedor</span><strong>${proveedor}</strong>
-        <span style="color:var(--text3)">Vence</span><span><strong>${sub.fVcto}</strong> <span style="color:var(--text3);font-size:12px">${sub.dias}d restantes</span></span>
-        <span style="color:var(--text3)">Perfil</span><strong style="font-family:var(--mono)">${sub.perfil}</strong>
-        <span style="color:var(--text3)">Método</span><span style="color:${_TIP_COLOR[tipBot]||'var(--text3)'};font-weight:600">${_TIP_LABEL[tipBot]||tipBot}</span>
-      </div>
-      <div class="ct" style="font-size:11px;margin-bottom:10px"><i class="ti ti-key" style="color:var(--amber)"></i>¿Qué tipo de código necesitas?</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        ${tipos.map(t => {
-          const full = t === 'Restablecer contraseña' ? 'grid-column:1/-1;' : '';
-          return `<button class="cod-tipo-btn" onclick="codSelTipo(this,'${t.replace(/'/g,"&#39;")}')" style="${full}padding:11px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;text-align:center">${t}</button>`;
-        }).join('')}
-      </div>
-    </div>`;
+  const tipos = _ZCOD_TIPOS[plat] || [];
+  const bloqueTipos = document.getElementById('zcod-bloque-tipos');
+  bloqueTipos.innerHTML = '';
+  if (tipos.length) {
+    const label = document.createElement('div');
+    label.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:10px';
+    label.textContent = '🔑 Tipo de código';
+    bloqueTipos.appendChild(label);
+    const grid = document.createElement('div');
+    grid.className = 'zcod-tipos-grid';
+    tipos.forEach(t => {
+      const b = document.createElement('button');
+      b.className = 'zcod-tipo-btn' + (t.full ? ' full' : '');
+      b.textContent = t.label;
+      b.onclick = () => zcodSelTipo(t, plat, correo, color, b);
+      grid.appendChild(b);
+    });
+    bloqueTipos.appendChild(grid);
   }
 
-  ['ac-cod-resultado','ac-cod-wa-wrap'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=''; });
+  document.getElementById('zcod-instruccion-box').style.display = 'none';
+  document.getElementById('zcod-bloque-correo').style.display = 'none';
+  document.getElementById('zcod-resultado').style.display = 'none';
+  document.getElementById('zcod-wa-wrap').innerHTML = '';
+  document.getElementById('zcod-fetch-res').innerHTML = '';
+  document.getElementById('zcod-area').style.display = 'block';
 }
 
-function codSelTipo(el, tipo) {
-  _cod.tipo   = tipo;
-  _cod.codigo = null;
+function zcodSelTipo(tipoObj, plat, correo, color, btnEl) {
+  document.querySelectorAll('.zcod-tipo-btn').forEach(b => b.classList.remove('active'));
+  btnEl.classList.add('active');
+  _zcod.tipo = tipoObj.tipo;
+  _zcod.codigo = null;
 
-  const plat = _cod.sub?.plat;
-  const dc   = _COD_DOT[plat] || '--accent';
-
-  // Estado activo en botones de tipo
-  document.querySelectorAll('.cod-tipo-btn').forEach(b => {
-    b.style.background  = 'var(--bg3)';
-    b.style.borderColor = 'var(--border)';
-    b.style.color       = 'var(--text2)';
-  });
-  el.style.background  = `var(${dc})`;
-  el.style.borderColor = `var(${dc})`;
-  el.style.color       = '#fff';
-
-  const acceso = _cod.acceso;
-  const tipBot = acceso?.tipo_bot || 'manual';
-  const resDiv = document.getElementById('ac-cod-resultado');
-  const waWrap = document.getElementById('ac-cod-wa-wrap');
-  if (waWrap) waWrap.innerHTML = '';
-
-  const _COD_INSTRUC = {
-    NF: {
-      'Inicio de sesión':           '💡 En la TV o celular selecciona "Obtener ayuda para iniciar sesión" y elige enviar el código al correo.',
-      'Ver temporalmente':          '💡 En el aviso de la TV selecciona "Estoy de viaje" o "Ver temporalmente" y envía el código al correo.',
-      'Actualizar hogar':           '💡 En la TV solicita actualizar hogar y envía el enlace al correo.',
-      'Verificar dispositivo nuevo':'💡 Netflix solicita este código de 6 dígitos la primera vez en un dispositivo nuevo.',
-      'Restablecer contraseña':     '💡 Se buscará el enlace de restablecimiento de contraseña de Netflix en el correo.'
-    },
-    DS: {
-      'Código de acceso':       '💡 En Disney+ selecciona verificación y elige enviar el código de 6 dígitos al correo.',
-      'Restablecer contraseña': '💡 Se buscará el enlace de restablecimiento de contraseña de Disney+ en el correo.'
-    },
-    HB: {
-      'Código de acceso':       '💡 En HBO Max selecciona "Obtener código de un solo uso" y revisa el correo.',
-      'Restablecer contraseña': '💡 Se buscará el enlace de restablecimiento de contraseña de HBO Max en el correo.'
-    },
-    PV: {
-      'Código de verificación': '💡 En Prime Video selecciona verificación y elige recibir el código de 6 dígitos al correo.',
-      'Restablecer contraseña': '💡 Se buscará el enlace de restablecimiento de contraseña de Amazon en el correo.'
-    }
-  };
-  const instrucText = (_COD_INSTRUC[plat] || {})[tipo] || '';
-  const instrucHtml = instrucText
-    ? `<div style="background:rgba(99,102,241,0.08);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 14px;font-size:12px;color:var(--text2);margin-bottom:12px">${instrucText}</div>`
-    : '';
-
-  const manualField = `<div style="display:flex;gap:8px">
-    <input type="text" id="cod-manual-inp" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg3);color:var(--text);font-family:var(--mono);font-size:16px;letter-spacing:2px" placeholder="Ej: 123456">
-    <button class="btn" onclick="codUsarManual()"><i class="ti ti-check"></i> Usar</button>
-  </div>`;
-
-  const credRow = (label, val) => !val ? '' : `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-    <span style="color:var(--text3);font-size:12px;min-width:55px">${label}</span>
-    <code style="flex:1;font-size:13px;background:var(--bg4);padding:4px 8px;border-radius:var(--rsm);word-break:break-all">${val}</code>
-    <button class="btn btn-sm btn-ic" data-copy="${val.replace(/"/g,'&quot;')}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>
-  </div>`;
-
-  let html = instrucHtml + `<div class="card">`;
-
-  if (tipBot === 'correo_propio') {
-    html += `<button id="cod-fetch-btn" class="btn" style="width:100%;justify-content:center;padding:13px;font-size:14px;background:var(${dc});border-color:var(${dc});color:#fff;margin-bottom:14px" onclick="codObtenerAuto()">
-      <i class="ti ti-search"></i> 🔍 Obtener código automático
-    </button>
-    <div id="cod-fetch-res"></div>
-    <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:12px">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:8px">¿No encontró nada? Pega el código manualmente:</div>
-      ${manualField}
-    </div>`;
-
-  } else if (tipBot === 'web') {
-    if (acceso?.link) html += `<a href="${acceso.link}" target="_blank" rel="noopener" class="btn" style="display:flex;width:100%;justify-content:center;padding:13px;font-size:14px;margin-bottom:12px;text-decoration:none">🌐 Abrir correo / portal</a>`;
-    const creds = credRow('Usuario', acceso?.usuario) + credRow('Clave', acceso?.clave);
-    if (creds) html += `<div style="margin-bottom:12px">${creds}</div>`;
-    html += `<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Pega el código obtenido:</div>${manualField}`;
-
-  } else if (tipBot === 'telegram') {
-    if (acceso?.link) html += `<a href="${acceso.link}" target="_blank" rel="noopener" class="btn" style="display:flex;width:100%;justify-content:center;padding:13px;font-size:14px;margin-bottom:12px;text-decoration:none">✈️ Abrir bot Telegram</a>`;
-    const creds = credRow('Usuario', acceso?.usuario) + credRow('Clave', acceso?.clave);
-    if (creds) html += `<div style="margin-bottom:12px">${creds}</div>`;
-    html += `<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Pega el código obtenido:</div>${manualField}`;
-
+  const instrBox = document.getElementById('zcod-instruccion-box');
+  const key = plat + '_' + tipoObj.tipo;
+  if (_ZCOD_INSTRUC[key]) {
+    instrBox.innerHTML = _ZCOD_INSTRUC[key];
+    instrBox.style.display = 'block';
   } else {
-    html += `<div style="padding:9px 12px;background:var(--bg4);border-radius:var(--rsm);font-size:12px;color:var(--text3);margin-bottom:12px"><i class="ti ti-info-circle"></i> Sin acceso automático configurado para esta cuenta.</div>${manualField}`;
+    instrBox.style.display = 'none';
   }
 
-  html += `</div>`;
-  if (resDiv) resDiv.innerHTML = html;
+  document.getElementById('zcod-resultado').style.display = 'none';
+  document.getElementById('zcod-fetch-res').innerHTML = '';
+  document.getElementById('zcod-wa-wrap').innerHTML = '';
+  document.getElementById('zcod-manual-inp').value = '';
+
+  const tipBot = _zcod.acceso?.tipo_bot || 'manual';
+  const credsWrap = document.getElementById('zcod-creds-wrap');
+
+  if (tipBot === 'web' && _zcod.acceso) {
+    const acc = _zcod.acceso;
+    const credRow = (label, val) => !val ? '' : `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="color:var(--text3);font-size:12px;min-width:55px">${label}</span>
+      <code style="flex:1;font-size:13px;background:var(--bg4);padding:4px 8px;border-radius:var(--rsm);word-break:break-all">${val}</code>
+      <button class="btn btn-sm btn-ic" data-copy="${val}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>
+    </div>`;
+    let credsHtml = '';
+    if (acc.link) credsHtml += `<a href="${acc.link}" target="_blank" rel="noopener" class="btn" style="display:flex;width:100%;justify-content:center;padding:10px;font-size:13px;margin-bottom:10px;text-decoration:none">🌐 Abrir correo / portal</a>`;
+    credsHtml += credRow('Usuario', acc.usuario) + credRow('Clave', acc.clave);
+    credsWrap.innerHTML = credsHtml;
+    credsWrap.style.display = 'block';
+  } else {
+    credsWrap.innerHTML = '';
+    credsWrap.style.display = 'none';
+  }
+
+  const fetchBtn = document.getElementById('zcod-fetch-btn');
+  fetchBtn.style.background = color;
+  fetchBtn.style.borderColor = color;
+  fetchBtn.style.color = '#fff';
+
+  if (tipBot === 'correo_propio' || tipBot === 'web') {
+    fetchBtn.style.display = 'flex';
+  } else {
+    fetchBtn.style.display = 'none';
+  }
+
+  document.getElementById('zcod-correo-display').textContent = correo || '—';
+  document.getElementById('zcod-bloque-correo').style.display = 'block';
 }
 
-async function codObtenerAuto() {
-  const correo = _cod.correo;
-  const plat   = _cod.sub?.plat;
-  const dc     = _COD_DOT[plat] || '--accent';
-  const btn    = document.getElementById('cod-fetch-btn');
-  const resBox = document.getElementById('cod-fetch-res');
+async function zcodObtenerAuto() {
+  const correo = _zcod.correo || '';
+  const plat   = _zcod.sub?.perfil?.substring(0,2) || _zcod.sub?.plat || '';
+  const tipo   = _zcod.tipo || '';
+  const esNtfwm = correo.toLowerCase().includes('@ntfwm.com');
+  const usuario = _zcod.acceso?.usuario || (esNtfwm ? 'wmarin65@ntfwm.com' : correo);
+  const color  = _ZCOD_COLOR[plat] || 'var(--accent)';
+
+  const btn    = document.getElementById('zcod-fetch-btn');
+  const resBox = document.getElementById('zcod-fetch-res');
   if (btn) { btn.disabled=true; btn.innerHTML='<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Buscando en el correo...'; }
   if (resBox) resBox.innerHTML = '';
+
   try {
-    const usuario = _cod.acceso?.usuario || '';
-    const resp = await fetch(`${_GAS_URL}?correo=${encodeURIComponent(correo)}&plataforma=${encodeURIComponent(plat)}&usuario=${encodeURIComponent(usuario)}&tipo=${encodeURIComponent(_cod.tipo||'')}`);
+    const resp = await fetch(`${_ZCOD_GAS}?correo=${encodeURIComponent(correo)}&plataforma=${encodeURIComponent(plat)}&usuario=${encodeURIComponent(usuario)}&tipo=${encodeURIComponent(tipo)}`);
     const data = await resp.json();
+
     if (data.error || !data.codigo) {
-      if (resBox) resBox.innerHTML = `<div style="padding:11px 14px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);border-radius:var(--rsm);font-size:13px;color:var(--amber)"><i class="ti ti-mail-off"></i> No se encontraron emails recientes. Usa el campo manual.</div>`;
+      resBox.innerHTML = `<div style="padding:11px 14px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);border-radius:var(--rsm);font-size:13px;color:var(--amber);margin-top:10px"><i class="ti ti-mail-off"></i> No se encontró el código. Usa el campo manual.</div>`;
     } else {
-      _cod.codigo = data.codigo;
-      let _resHtml;
+      _zcod.codigo = data.codigo;
       if (data.codigo.startsWith('http')) {
-        _resHtml = `<div style="padding:18px;background:var(--bg4);border:2px solid var(${dc});border-radius:var(--r);text-align:center;margin-bottom:4px">
-          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Enlace de restablecimiento encontrado</div>
-          ${data.asunto ? `<div style="font-size:11px;color:var(--text3);margin-bottom:6px">📧 ${data.asunto}</div>` : ''}
-          ${data.fecha  ? `<div style="font-size:11px;color:var(--text3);margin-bottom:12px">🕐 ${data.fecha}</div>` : ''}
-          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-            <a href="${data.codigo}" target="_blank" rel="noopener" class="btn" style="background:var(${dc});border-color:var(${dc});color:#fff;padding:10px 16px;text-decoration:none">🔗 Abrir enlace</a>
-            <button class="btn" data-url="${data.codigo.replace(/"/g,'&quot;')}" onclick="navigator.clipboard.writeText(this.dataset.url).then(()=>toast('Enlace copiado','ok'))">📋 Copiar enlace</button>
+        resBox.innerHTML = `<div class="zcod-resultado" style="display:block">
+          <div class="zcod-res-label">Enlace encontrado</div>
+          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">
+            <a href="${data.codigo}" target="_blank" rel="noopener" class="btn" style="background:${color};border-color:${color};color:#fff;padding:10px 16px;text-decoration:none">🔗 Abrir enlace</a>
+            <button class="btn" data-url="${data.codigo.replace(/"/g,'&quot;')}" onclick="navigator.clipboard.writeText(this.dataset.url).then(()=>toast('Enlace copiado','ok'))">📋 Copiar</button>
           </div>
+          ${data.hora ? `<div class="zcod-res-hora">Recibido a las ${data.hora}</div>` : ''}
         </div>`;
       } else {
-        _resHtml = `<div style="padding:18px;background:var(--bg4);border:2px solid var(${dc});border-radius:var(--r);text-align:center;margin-bottom:4px">
-          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Código encontrado</div>
-          <div style="font-size:38px;font-weight:700;font-family:var(--mono);color:var(${dc});letter-spacing:5px;word-break:break-all">${data.codigo}</div>
-          ${data.asunto ? `<div style="font-size:11px;color:var(--text3);margin-top:8px">📧 ${data.asunto}</div>` : ''}
-          ${data.fecha  ? `<div style="font-size:11px;color:var(--text3)">🕐 ${data.fecha}</div>` : ''}
+        resBox.innerHTML = `<div class="zcod-resultado" style="display:block">
+          <div class="zcod-res-label">Código encontrado</div>
+          <div class="zcod-res-codigo" style="color:${color}">${data.codigo}</div>
+          ${data.hora ? `<div class="zcod-res-hora">Recibido a las ${data.hora}</div>` : ''}
         </div>`;
       }
-      if (resBox) resBox.innerHTML = _resHtml;
-      codMostrarWABtn();
+      zcodMostrarWA();
     }
+
+    try {
+      await supa.from('historial_codigos').insert({
+        cliente_id:  _zcod.cli?.id || null,
+        telefono:    _zcod.cli?.tel || null,
+        plataforma:  plat,
+        tipo:        tipo || null,
+        resultado:   data.codigo ? 'exitoso' : 'sin_codigo',
+        hora_correo: data.hora || null
+      });
+    } catch(_e) {}
+
   } catch(e) {
-    if (resBox) resBox.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>Error de conexión: ${e.message}</div>`;
+    resBox.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i> Error de conexión: ${e.message}</div>`;
   } finally {
-    if (btn) { btn.disabled=false; btn.innerHTML='<i class="ti ti-search"></i> 🔍 Obtener código automático'; }
+    if (btn) { btn.disabled=false; btn.innerHTML='<i class="ti ti-search"></i> Obtener código automático'; }
   }
 }
 
-function codUsarManual() {
-  const val = (document.getElementById('cod-manual-inp')?.value||'').trim();
+function zcodUsarManual() {
+  const val = (document.getElementById('zcod-manual-inp')?.value||'').trim();
   if (!val) { toast('Ingresa el código primero','warn'); return; }
-  _cod.codigo = val;
-
-  const plat = _cod.sub?.plat;
-  const dc   = _COD_DOT[plat] || '--accent';
-  const old  = document.getElementById('cod-manual-box');
-  if (old) old.remove();
-  const div  = document.createElement('div');
-  div.id     = 'cod-manual-box';
-  div.style.cssText = `padding:14px;background:var(--bg4);border:2px solid var(${dc});border-radius:var(--r);text-align:center;margin-top:10px`;
-  div.innerHTML = `<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Código manual</div><div style="font-size:36px;font-weight:700;font-family:var(--mono);color:var(${dc});letter-spacing:4px;word-break:break-all">${val}</div>`;
-  const resDiv = document.getElementById('ac-cod-resultado');
-  if (resDiv) resDiv.appendChild(div);
-  codMostrarWABtn();
+  _zcod.codigo = val;
+  const plat = _zcod.sub?.perfil?.substring(0,2) || _zcod.sub?.plat || '';
+  const color = _ZCOD_COLOR[plat] || 'var(--accent)';
+  document.getElementById('zcod-fetch-res').innerHTML = `<div class="zcod-resultado" style="display:block">
+    <div class="zcod-res-label">Código manual</div>
+    <div class="zcod-res-codigo" style="color:${color}">${val}</div>
+  </div>`;
+  zcodMostrarWA();
 }
 
-function codMostrarWABtn() {
-  const waWrap = document.getElementById('ac-cod-wa-wrap');
-  if (!waWrap) return;
-  const plat = _cod.sub?.plat;
-  const dc   = _COD_DOT[plat] || '--accent';
-  waWrap.innerHTML = `<button class="btn" style="width:100%;justify-content:center;padding:14px;font-size:15px;margin-top:12px;background:var(${dc});border-color:var(${dc});color:#fff" onclick="codEnviarWA()">
-    <i class="ti ti-brand-whatsapp"></i> 📲 Enviar WA al cliente
-  </button>`;
+function zcodMostrarWA() {
+  const waWrap = document.getElementById('zcod-wa-wrap');
+  if (!waWrap || !_zcod.cli || !_zcod.codigo) return;
+  const plat    = _zcod.sub?.perfil?.substring(0,2) || _zcod.sub?.plat || '';
+  const color   = _ZCOD_COLOR[plat] || '#25D366';
+  const nombre  = (_zcod.cli.n||'') + ' ' + (_zcod.cli.a||'');
+  const tel     = (_zcod.cli.tel||'').replace(/[^0-9]/g,'');
+  const codigo  = _zcod.codigo;
+  const esLink  = codigo.startsWith('http');
+  const msg     = esLink
+    ? `Hola ${nombre.trim()}, aquí está el enlace para ${_ZCOD_NOMBRE[plat]||plat}:%0A${encodeURIComponent(codigo)}`
+    : `Hola ${nombre.trim()}, tu código de ${_ZCOD_NOMBRE[plat]||plat} es: *${codigo}*%0AÚsalo de inmediato, expira en minutos. 🔐`;
+  waWrap.innerHTML = `<a href="https://wa.me/507${tel}?text=${msg}" target="_blank" rel="noopener"
+    class="btn" style="width:100%;justify-content:center;padding:13px;background:#25D366;border-color:#25D366;color:#fff;text-decoration:none;font-size:14px">
+    <i class="ti ti-brand-whatsapp"></i> Enviar código por WhatsApp
+  </a>`;
+}
+
+function zcodReset() {
+  _zcod = { cli:null, sub:null, acceso:null, correo:null, tipo:null, codigo:null };
+  const busq = document.getElementById('zcod-busq'); if(busq) busq.value='';
+  const res  = document.getElementById('zcod-resultados'); if(res) res.innerHTML='';
+  const det  = document.getElementById('zcod-detalle'); if(det) det.style.display='none';
 }
 
 async function codEnviarWA() {
