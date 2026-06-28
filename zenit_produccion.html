@@ -11728,19 +11728,20 @@ function zcodUsarManual() {
 function zcodMostrarWA() {
   const waWrap = document.getElementById('zcod-wa-wrap');
   if (!waWrap || !_zcod.cli || !_zcod.codigo) return;
-  const plat    = _zcod.sub?.perfil?.substring(0,2) || _zcod.sub?.plat || '';
-  const color   = _ZCOD_COLOR[plat] || '#25D366';
-  const nombre  = (_zcod.cli.n||'') + ' ' + (_zcod.cli.a||'');
-  const tel     = (_zcod.cli.tel||'').replace(/[^0-9]/g,'');
-  const codigo  = _zcod.codigo;
-  const esLink  = codigo.startsWith('http');
-  const msg     = esLink
+  const plat   = (_zcod.sub?.perfil || '').substring(0,2) || _zcod.sub?.plat || '';
+  const color  = _ZCOD_COLOR[plat] || '#25D366';
+  const nombre = (_zcod.cli.n||'') + ' ' + (_zcod.cli.a||'');
+  const tel    = (_zcod.cli.tel||'').replace(/[^0-9]/g,'');
+  const codigo = _zcod.codigo;
+  const esLink = codigo.startsWith('http');
+  const msg    = esLink
     ? `Hola ${nombre.trim()}, aquí está el enlace para ${_ZCOD_NOMBRE[plat]||plat}:%0A${encodeURIComponent(codigo)}`
     : `Hola ${nombre.trim()}, tu código de ${_ZCOD_NOMBRE[plat]||plat} es: *${codigo}*%0AÚsalo de inmediato, expira en minutos. 🔐`;
   waWrap.innerHTML = `<a href="https://wa.me/507${tel}?text=${msg}" target="_blank" rel="noopener"
-    class="btn" style="width:100%;justify-content:center;padding:13px;background:#25D366;border-color:#25D366;color:#fff;text-decoration:none;font-size:14px">
+    class="btn" style="width:100%;justify-content:center;padding:13px;background:#25D366;border-color:#25D366;color:#fff;text-decoration:none;font-size:14px;margin-top:6px">
     <i class="ti ti-brand-whatsapp"></i> Enviar código por WhatsApp
   </a>`;
+  waWrap.style.display = 'block';
 }
 
 function zcodReset() {
