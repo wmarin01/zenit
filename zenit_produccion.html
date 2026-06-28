@@ -871,6 +871,7 @@ function closeSidebarMobile() {
     <div class="ni" onclick="goTo('suscripciones',this)"><i class="ti ti-list-details"></i>Suscripciones</div>
     <div class="ni" onclick="goTo('cobranza',this)"><i class="ti ti-cash"></i>Cobranza<span class="nb">3</span></div>
     <div class="ni" onclick="goTo('inventario',this)"><i class="ti ti-server"></i>Inventario</div>
+    <div class="ni" onclick="goTo('codigos',this)"><i class="ti ti-shield-lock"></i>Códigos</div>
   </div>
   <div class="sb-sec"><div class="sb-lbl">Administración</div>
     <div class="ni" onclick="goTo('proveedores',this)"><i class="ti ti-building-store"></i>Proveedores</div>
@@ -1659,7 +1660,6 @@ function closeSidebarMobile() {
 <div class="view" id="v-accesos">
   <div class="tabs" id="accesos-tabs" style="margin-bottom:16px">
     <div class="tab on" onclick="tabAccesos(this,'ac-mensajes')"><i class="ti ti-brand-whatsapp"></i> Mensajes recientes</div>
-    <div class="tab" onclick="tabAccesos(this,'ac-codigos')"><i class="ti ti-key"></i> Códigos</div>
   </div>
 
   <!-- Tab: Mensajes recientes -->
@@ -1701,8 +1701,9 @@ function closeSidebarMobile() {
     <div style="margin-top:8px;font-size:12px;color:var(--text3)">Mensajes de las últimas 72 horas</div>
   </div>
 
-<!-- Tab: Códigos -->
-<div id="ac-codigos" style="display:none">
+</div>
+<!-- Vista: Códigos -->
+<div class="view" id="v-codigos">
 <style>
   .zcod-wrap { max-width:640px; margin:0 auto; }
   .zcod-plat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin-bottom:16px; }
