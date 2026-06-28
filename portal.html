@@ -793,11 +793,10 @@ async function obtenerCodigo() {
   const resultado = document.getElementById('resultado-box');
   const btn = document.getElementById('btn-obtener');
 
-  // Control de intentos (máx 3 por hora)
   const _telKey = 'intentos_cod_' + (_cliente?.telefono || '');
-  let _intentos = JSON.parse(localStorage.getItem(_telKey) || '{"count":0,"desde":0}');
-  if (Date.now() - _intentos.desde > 60 * 60 * 1000) {
-    _intentos = { count: 0, desde: Date.now() };
+  let _intentos = JSON.parse(localStorage.getItem(_telKey) || '{"count":0,"desde":null}');
+  if (_intentos.desde && Date.now() - _intentos.desde > 60 * 60 * 1000) {
+    _intentos = { count: 0, desde: null };
   }
   if (_intentos.count >= 3) {
     resultado.style.display = 'block';
@@ -819,10 +818,12 @@ async function obtenerCodigo() {
   btn.textContent = 'Buscando en el correo...';
 
   const correo = _subSel.correo || '';
-  const plat = _subSel.plataforma;
+  const plat   = _subSel.plataformaReal || _subSel.plataforma;
+  const esNtfwm = correo.toLowerCase().includes('@ntfwm.com');
+  const usuario = esNtfwm ? 'wmarin65@ntfwm.com' : correo;
 
   try {
-    const url = `${GAS_URL}?correo=${encodeURIComponent(correo)}&plataforma=${encodeURIComponent(plat)}&usuario=${encodeURIComponent(correo)}&tipo=${encodeURIComponent(_tipoSel)}`;
+    const url = `${GAS_URL}?correo=${encodeURIComponent(correo)}&plataforma=${encodeURIComponent(plat)}&usuario=${encodeURIComponent(usuario)}&tipo=${encodeURIComponent(_tipoSel)}`;
     const resp = await fetch(url);
     const data = await resp.json();
 
@@ -842,10 +843,7 @@ async function obtenerCodigo() {
       document.getElementById('res-codigo').textContent = '';
       document.getElementById('res-msg').textContent = 'Haz clic para completar la acción:';
       document.getElementById('res-hora').textContent = data.hora ? 'Recibido a las ' + data.hora : '';
-      document.getElementById('res-link-wrap').innerHTML = `
-        <a href="${data.codigo}" target="_blank" class="btn-link" style="background:${PLAT_COLOR[plat]||'#6366f1'};margin-top:12px">
-          👉 Abrir enlace
-        </a>`;
+      document.getElementById('res-link-wrap').innerHTML = `<a href="${data.codigo}" target="_blank" class="btn-link" style="background:${PLAT_COLOR[plat]||'#6366f1'};margin-top:12px">👉 Abrir enlace</a>`;
     } else {
       resultado.className = 'resultado';
       const color = PLAT_COLOR[plat] || '#6366f1';
@@ -857,12 +855,11 @@ async function obtenerCodigo() {
       document.getElementById('res-link-wrap').innerHTML = '';
     }
 
-    // Guardar en historial_codigos
     try {
       await supa.from('historial_codigos').insert({
         cliente_id:  _cliente?.id || null,
         telefono:    _cliente?.telefono || null,
-        plataforma:  _subSel?.plataformaReal || _subSel?.plataforma || null,
+        plataforma:  plat,
         tipo:        _tipoSel || null,
         resultado:   data.codigo ? 'exitoso' : 'sin_codigo',
         hora_correo: data.hora || null
