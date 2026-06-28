@@ -3779,6 +3779,18 @@ function closeModal(id){const ov=document.getElementById(id);if(ov){ov.classList
 document.querySelectorAll('.ov').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('on');}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.ov.on').forEach(ov=>ov.classList.remove('on'));});
 
+// Control botón atrás en PWA (Android)
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', function() {
+  const modalAbierto = document.querySelector('.ov.on');
+  if (modalAbierto) {
+    modalAbierto.classList.remove('on');
+    document.body.style.overflow = '';
+  } else {
+    history.pushState(null, '', location.href);
+  }
+});
+
 function abrirWA(n,p,m,tipo,ctx,meta){
   waCtx={n,p,m,ctx,meta};
   document.getElementById('wa-tit').textContent='Mensaje para '+n;
