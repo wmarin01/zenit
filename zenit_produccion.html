@@ -1665,11 +1665,34 @@ function closeSidebarMobile() {
 <div id="ac-mensajes">
 </div>
 <div id="ac-accesos-lista" style="display:none">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <span style="font-size:13px;font-weight:600">Registros de acceso</span>
+  <div style="display:flex;gap:9px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+    <div class="sbox" style="flex:1;max-width:300px"><i class="ti ti-search"></i><input type="text" id="acc-busq" placeholder="Buscar acceso..." oninput="filtAccesos(this.value)" style="background:transparent;border:none;outline:none;width:100%;color:var(--text);font-size:13px"></div>
+    <select id="acc-filtro-plat" onchange="filtAccesosPlat(this.value)" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg2);color:var(--text);font-size:13px">
+      <option value="">Todas las plataformas</option>
+      <option value="NF">Netflix</option>
+      <option value="DS">Disney+</option>
+      <option value="HB">HBO Max</option>
+      <option value="PV">Prime Video</option>
+      <option value="IP">IPTV</option>
+    </select>
     <button class="btn btn-sm btn-s" onclick="codAccesoFormAbrir(null)"><i class="ti ti-plus"></i> Nuevo acceso</button>
+    <button class="btn btn-sm btn-ic" onclick="dbCargarAccesos()" title="Actualizar"><i class="ti ti-refresh"></i></button>
   </div>
-  <div id="ac-accesos-list"></div>
+  <div class="card" style="padding:0;overflow-x:auto">
+    <table style="min-width:860px">
+      <thead><tr>
+        <th>Proveedor</th>
+        <th>Plataforma</th>
+        <th>Link / Bot</th>
+        <th>Correo / Usuario</th>
+        <th>Clave</th>
+        <th>Notas</th>
+        <th>Actualizado</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="tb-accesos"></tbody>
+    </table>
+  </div>
 </div>
 
 </div>
@@ -11388,7 +11411,7 @@ function tabAccesos(el, id) {
   });
   const panel = document.getElementById(id);
   if (panel) panel.style.display = 'block';
-  if (id === 'ac-accesos-lista') renderAccesos();
+  if (id === 'ac-accesos-lista') dbCargarAccesos();
 }
 
 async function renderAccesos() {
