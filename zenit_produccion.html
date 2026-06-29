@@ -2570,7 +2570,7 @@ function closeSidebarMobile() {
       <button class="btn" style="flex:1;justify-content:center;padding:11px;background:#25D366;border-color:#25D366;color:#fff" id="exito-wa-btn">
         <i class="ti ti-brand-whatsapp"></i> Enviar WA
       </button>
-      <button class="btn" style="flex:1;justify-content:center;padding:11px" onclick="closeModal('m-exito-venta')">
+      <button class="btn" style="flex:1;justify-content:center;padding:11px" onclick="document.getElementById('m-exito-venta').style.display='none';document.body.style.overflow='';">
         <i class="ti ti-x"></i> Cerrar
       </button>
     </div>
@@ -4044,7 +4044,8 @@ async function mostrarExitoVenta(datos) {
   } catch(_e) {}
   document.getElementById('exito-pin1').textContent = pin1Real || '9530';
 
-  openModal('m-exito-venta');
+  const _exitoOverlay = document.getElementById('m-exito-venta');
+  if (_exitoOverlay) { _exitoOverlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
 }
 
 function copiarDato(id) {
