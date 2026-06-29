@@ -8368,8 +8368,6 @@ function copiarLink(link) {
   navigator.clipboard.writeText(link).then(() => toast('Link copiado al portapapeles','ok'));
 }
 
-function filtAccesos(q) {
-  const r = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 async function dbCargarAccesos() {
   const tbody = document.getElementById('tb-accesos');
   if (!tbody) return;
@@ -8401,6 +8399,8 @@ async function dbCargarAccesos() {
   }
 }
 
+function filtAccesos(q) {
+  const r = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const rows = document.querySelectorAll('#tb-accesos tr');
   rows.forEach(tr => {
     tr.style.display = tr.textContent.toLowerCase().includes(r) ? '' : 'none';
