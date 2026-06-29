@@ -1658,48 +1658,19 @@ function closeSidebarMobile() {
 
 <!-- ACCESOS / MENSAJES WA -->
 <div class="view" id="v-accesos">
-  <div class="tabs" id="accesos-tabs" style="margin-bottom:16px">
-    <div class="tab on" onclick="tabAccesos(this,'ac-mensajes')"><i class="ti ti-brand-whatsapp"></i> Mensajes recientes</div>
+<div class="tabs">
+  <div class="tab active" onclick="tabAccesos(this,'ac-mensajes')"><i class="ti ti-message"></i> Mensajes recientes</div>
+  <div class="tab" onclick="tabAccesos(this,'ac-accesos-lista')"><i class="ti ti-key"></i> Accesos</div>
+</div>
+<div id="ac-mensajes">
+</div>
+<div id="ac-accesos-lista" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <span style="font-size:13px;font-weight:600">Registros de acceso</span>
+    <button class="btn btn-sm btn-s" onclick="codAccesoFormAbrir(null)"><i class="ti ti-plus"></i> Nuevo acceso</button>
   </div>
-
-  <!-- Tab: Mensajes recientes -->
-  <div id="ac-mensajes">
-    <div style="display:flex;gap:9px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
-      <div class="sbox" style="flex:1;max-width:300px"><i class="ti ti-search"></i><input type="text" id="wa-busq" placeholder="Cliente, tipo..." oninput="filtMensajesWA()"></div>
-      <select id="wa-filtro-tipo" onchange="filtMensajesWA()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg2);color:var(--text);font-size:13px">
-        <option value="">Todos los tipos</option>
-        <option value="entrega">Entrega</option>
-        <option value="cambio">Cambio</option>
-        <option value="vencimiento">Vencimiento</option>
-        <option value="1d">1 día</option>
-        <option value="3d">3 días</option>
-        <option value="pago">Pago</option>
-      </select>
-      <select id="wa-filtro-est" onchange="filtMensajesWA()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg2);color:var(--text);font-size:13px">
-        <option value="">Todos los estados</option>
-        <option value="pendiente">Pendiente</option>
-        <option value="enviado">Enviado</option>
-      </select>
-      <button class="btn btn-sm btn-ic" onclick="cargarMensajesWA()" title="Actualizar lista"><i class="ti ti-refresh"></i></button>
-    </div>
-    <div class="card" style="padding:0;overflow-x:auto">
-      <table style="min-width:860px">
-        <thead><tr>
-          <th>Fecha/hora</th>
-          <th>Cliente</th>
-          <th>Teléfono</th>
-          <th>Tipo</th>
-          <th style="min-width:200px">Vista previa</th>
-          <th>Estado</th>
-          <th></th>
-        </tr></thead>
-        <tbody id="tb-mensajes-wa">
-          <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">—</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div style="margin-top:8px;font-size:12px;color:var(--text3)">Mensajes de las últimas 72 horas</div>
-  </div>
+  <div id="ac-accesos-list"></div>
+</div>
 
 </div>
 <!-- Vista: Códigos -->
@@ -11409,16 +11380,13 @@ function copiarMensajeWA(btn) {
 }
 
 function tabAccesos(el, panelId) {
-  document.querySelectorAll('#accesos-tabs .tab').forEach(t => t.classList.remove('on'));
-  el.classList.add('on');
-  ['ac-mensajes','ac-codigos'].forEach(id => {
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['ac-mensajes','ac-accesos-lista'].forEach(id => {
     const p = document.getElementById(id);
     if (p) p.style.display = id === panelId ? 'block' : 'none';
   });
-  if (panelId === 'ac-codigos') {
-    const cfg = document.getElementById('ac-accesos-cfg');
-    if (cfg) cfg.style.display = USUARIO_ACTIVO?.rol === 'Master' ? 'block' : 'none';
-  }
+  if (panelId === 'ac-accesos-lista') cargarAccesosList();
 }
 
 // ── CÓDIGOS DE VERIFICACIÓN ─────────────────────────────────────────────────
