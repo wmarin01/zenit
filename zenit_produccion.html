@@ -11391,6 +11391,31 @@ function tabAccesos(el, id) {
   if (id === 'ac-accesos-lista') renderAccesos();
 }
 
+async function renderAccesos() {
+  const wrap = document.getElementById('ac-accesos-list');
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</div>';
+  const { data, error } = await supa.from('accesos').select('*').order('correo');
+  if (error) { wrap.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i> ${error.message}</div>`; return; }
+  if (!data || !data.length) { wrap.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0">Sin registros</div>'; return; }
+  const TL = { correo_propio:'✉️ Correo propio', web:'🌐 Web', telegram:'✈️ Telegram', manual:'✍️ Manual' };
+  wrap.innerHTML = data.map(a => `<div class="card" style="padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;font-family:var(--mono);color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.correo||'—'}</div>
+      <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;align-items:center">
+        <span class="b bi" style="font-size:10px">${a.plataforma||'—'}</span>
+        <span style="font-size:11px;color:var(--text3)">${TL[a.tipo_bot]||a.tipo_bot||'—'}</span>
+        ${a.proveedor ? `<span style="font-size:11px;color:var(--text3)">${a.proveedor}</span>` : ''}
+        ${a.link ? `<a href="${a.link}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent)">Abrir</a>` : ''}
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;flex-shrink:0">
+      <button class="btn btn-sm btn-ic" onclick="codAccesoEditar('${a.id}')" title="Editar"><i class="ti ti-edit"></i></button>
+      <button class="btn btn-sm btn-ic" style="color:var(--red)" onclick="codAccesoEliminar('${a.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+    </div>
+  </div>`).join('');
+}
+
 // ── CÓDIGOS DE VERIFICACIÓN ─────────────────────────────────────────────────
 
 const _GAS_URL = 'https://script.google.com/macros/s/AKfycbx0L9wcVFGoinn3MMTDsFNZTQZlZcFRlaZWpOQFdGtKA3vRb12BituUqeOlKI5TcHw7og/exec';
