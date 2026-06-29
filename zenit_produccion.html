@@ -1683,6 +1683,7 @@ function closeSidebarMobile() {
       <thead><tr>
         <th>Proveedor</th>
         <th>Plataforma</th>
+        <th>Tipo</th>
         <th>Link / Bot</th>
         <th>Correo / Usuario</th>
         <th>Clave</th>
@@ -5138,7 +5139,7 @@ async function cargarUsuariosSistema() {
       const esMaster = USUARIO_ACTIVO.rol === 'Master';
 
       // 1. Ocultar menús no permitidos para operadores
-      const vistasOperador = ['dashboard', 'clientes', 'ventas', 'cobros', 'suscripciones', 'cobranza', 'inventario', 'accesos', 'ayuda'];
+      const vistasOperador = ['dashboard', 'clientes', 'ventas', 'cobros', 'suscripciones', 'cobranza', 'inventario', 'accesos', 'codigos', 'ayuda'];
       
       document.querySelectorAll('.ni').forEach(item => {
         const onclickVal = item.getAttribute('onclick') || '';
@@ -8379,13 +8380,13 @@ async function dbCargarAccesos() {
   }
   tbody.innerHTML = data.map(a => `<tr>
     <td><strong>${a.proveedor||'—'}</strong></td>
-    <td>${(a.plataforma||'').split(',').map(x=>`<span class="b bi" style="margin-right:2px">${x.trim()}</span>`).join('')||'—'}</td>
-    <td style="font-size:12px">${a.link||a.bot||'—'}</td>
-    <td style="font-size:12px;font-family:var(--mono)">${a.correo||a.usuario||'—'}</td>
+    <td><span class="b bi">${a.plataforma||'—'}</span></td>
+    <td style="font-size:12px">${a.tipo_bot||'—'}</td>
+    <td style="font-size:12px">${a.link||'—'}</td>
+    <td style="font-size:12px;font-family:var(--mono)">${a.correo||'—'}</td>
     <td><span class="clave-acc" style="filter:blur(4px);cursor:pointer" onclick="this.style.filter='none'">${a.clave||'—'}</span></td>
     <td style="font-size:12px">${a.notas||'—'}</td>
-    <td style="font-size:11px;color:var(--text3)">${a.updated_at?new Date(a.updated_at).toLocaleDateString('es-PA'):'—'}</td>
-    <td class="tda"><button class="btn btn-sm btn-ic" onclick="toast('Editar próximamente','info')"><i class="ti ti-edit"></i></button></td>
+    <td class="tda"><button class="btn btn-sm btn-ic" onclick="codAccesoEditar('${a.id}')"><i class="ti ti-edit"></i></button></td>
   </tr>`).join('');
 
   // Poblar select de proveedor en modal de lote
