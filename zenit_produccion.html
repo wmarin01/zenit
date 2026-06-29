@@ -11379,14 +11379,16 @@ function copiarMensajeWA(btn) {
   }).catch(() => toast('No se pudo copiar', 'warn'));
 }
 
-function tabAccesos(el, panelId) {
+function tabAccesos(el, id) {
   el.closest('.tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  ['ac-mensajes','ac-accesos-lista'].forEach(id => {
-    const p = document.getElementById(id);
-    if (p) p.style.display = id === panelId ? 'block' : 'none';
+  ['ac-mensajes','ac-accesos-lista'].forEach(p => {
+    const el2 = document.getElementById(p);
+    if (el2) el2.style.display = 'none';
   });
-  if (panelId === 'ac-accesos-lista') cargarAccesosList();
+  const panel = document.getElementById(id);
+  if (panel) panel.style.display = 'block';
+  if (id === 'ac-accesos-lista') renderAccesos();
 }
 
 // ── CÓDIGOS DE VERIFICACIÓN ─────────────────────────────────────────────────
