@@ -426,7 +426,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .bt{background:rgba(45,212,191,.15);color:var(--teal)}
 .tw{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
-th{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:500;text-align:left;padding:8px 11px;border-bottom:1px solid var(--border)}
+th{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:500;text-align:left;padding:8px 11px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1}
 td{padding:10px 11px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:rgba(255,255,255,.015)}
@@ -2507,6 +2507,76 @@ function closeSidebarMobile() {
   </div>
 </div></div>
 
+<!-- Modal: Éxito post-venta -->
+<div class="modal-overlay" id="m-exito-venta" style="display:none">
+  <div class="modal" style="max-width:480px;padding:28px">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="width:56px;height:56px;border-radius:50%;background:rgba(34,197,94,.15);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+        <i class="ti ti-check" style="font-size:26px;color:var(--green)"></i>
+      </div>
+      <div style="font-size:18px;font-weight:700;color:var(--text)">¡Venta registrada!</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px" id="exito-cliente-nombre"></div>
+    </div>
+
+    <div class="card" style="padding:16px;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:12px">📋 Datos de acceso</div>
+      <div style="display:grid;gap:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--text3)">Correo</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;font-family:monospace;color:var(--text)" id="exito-correo"></span>
+            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-correo')" title="Copiar"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--text3)">Clave</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;font-family:monospace;color:var(--text)" id="exito-clave"></span>
+            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-clave')" title="Copiar"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--text3)">PIN perfil 1</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:15px;font-weight:700;letter-spacing:3px;color:var(--amber)" id="exito-pin1"></span>
+            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-pin1')" title="Copiar"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--text3)">Nombre perfil</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;color:var(--text)" id="exito-usuario"></span>
+            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-usuario')" title="Copiar"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--text3)">PIN cliente</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:15px;font-weight:700;letter-spacing:3px;color:var(--accent)" id="exito-pin"></span>
+            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-pin')" title="Copiar"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--text3)">Nombre perfil Chrome</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px;font-family:monospace;color:var(--text2)" id="exito-chrome-nombre"></span>
+            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-chrome-nombre')" title="Copiar"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="flex:1;justify-content:center;padding:11px;background:#25D366;border-color:#25D366;color:#fff" id="exito-wa-btn">
+        <i class="ti ti-brand-whatsapp"></i> Enviar WA
+      </button>
+      <button class="btn" style="flex:1;justify-content:center;padding:11px" onclick="closeModal('m-exito-venta')">
+        <i class="ti ti-x"></i> Cerrar
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="m-venta"><div class="modal" style="max-width:700px">
   <div class="mh"><div class="mico" style="background:var(--accent2)"><i class="ti ti-shopping-cart"></i></div><div><div class="mtit">Nueva venta</div><div class="msub">Complete todos los campos obligatorios</div></div><button class="mcl" onclick="closeModal('m-venta')"><i class="ti ti-x"></i></button></div>
   <div class="mb">
@@ -3938,6 +4008,51 @@ function confirmarBloqueo(nombre){
   if(confirm('¿Confirmas bloquear al usuario "'+nombre+'"?\nPodrás reactivarlo después.')){toast(nombre+' ha sido bloqueado','ok');}
 }
 
+async function mostrarExitoVenta(datos) {
+  const { clienteNombre, correo, clave, pin1, usuario, pin, plat, perf } = datos;
+
+  document.getElementById('exito-cliente-nombre').textContent = clienteNombre + ' · ' + (PLATS[plat]?.nombre || plat);
+  document.getElementById('exito-correo').textContent = correo || '—';
+  document.getElementById('exito-clave').textContent = clave || '—';
+  document.getElementById('exito-pin1').textContent = pin1 || '9530';
+  document.getElementById('exito-usuario').textContent = usuario || '—';
+  document.getElementById('exito-pin').textContent = pin || '—';
+
+  // Generar nombre perfil Chrome
+  const provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV' };
+  const prov = provMap[datos.proveedor] || (datos.proveedor||'').substring(0,3).toUpperCase();
+  let nombreChrome = '';
+  if (datos.proveedor === 'LealTV') {
+    nombreChrome = `${plat}-${perf||''}-${correo||''}`;
+  } else {
+    const correoCorto = (correo||'').split('@')[0];
+    nombreChrome = `${plat}-${prov}-${correoCorto}@${(correo||'').split('@')[1]||''}`;
+  }
+  document.getElementById('exito-chrome-nombre').textContent = nombreChrome;
+
+  // Buscar PIN perfil 1 en suscripciones
+  let pin1Real = null;
+  try {
+    const { data: subs1 } = await supa.from('suscripciones')
+      .select('pin, perfil_id')
+      .eq('correo', correo)
+      .eq('plataforma', plat)
+      .like('perfil_id', '%1')
+      .eq('estado', 'activo')
+      .maybeSingle();
+    if (subs1?.pin) pin1Real = subs1.pin;
+  } catch(_e) {}
+  document.getElementById('exito-pin1').textContent = pin1Real || '9530';
+
+  openModal('m-exito-venta');
+}
+
+function copiarDato(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => toast('Copiado ✓', 'ok'));
+}
+
 async function confirmarVenta(){
   const tipo     = ventaData.tipo;
   const comboId  = ventaData.plats.length > 1 && new Set(ventaData.plats).size > 1
@@ -4053,6 +4168,19 @@ async function confirmarVenta(){
     _aplicarFiltrosSubs();
 
     closeModal('m-venta');
+    const _exitoEntry = entries[0];
+    const _exitoAcceso = await supa.from('accesos').select('proveedor,clave').eq('correo', _exitoEntry.perf?.correo||'').eq('plataforma', _exitoEntry.p||'').maybeSingle();
+    mostrarExitoVenta({
+      clienteNombre: ventaData.clienteNombre,
+      correo:   _exitoEntry.perf?.correo || '—',
+      clave:    _exitoEntry.perf?.clave || _exitoAcceso?.data?.clave || '—',
+      pin1:     null,
+      usuario:  usuarios[_exitoEntry.p] || '—',
+      pin:      pins[_exitoEntry.p] || '—',
+      plat:     _exitoEntry.p,
+      perf:     _exitoEntry.perf?.codigo || '—',
+      proveedor: _exitoAcceso?.data?.proveedor || '—'
+    });
     sincronizarPlatsClientes();
     renderDashboard();
   cargarSelectoresProveedores();
