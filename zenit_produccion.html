@@ -3278,7 +3278,7 @@ const WA={
         msg += `3️⃣ Clave: <span class="wav">${perf?.clave||'—'}</span>\n`;
         msg += `4️⃣ Servidor: <span class="wav">${perf?.link||getLink('IP')||'—'}</span>\n`;
       } else {
-        msg += `\n${PICO[pl]||'▶️'} <span class="wav">${getPNom(pl)}</span>\n`;
+        msg += `\n\n${PICO[pl]||'▶️'} <span class="wav">${getPNom(pl)}</span>\n`;
         msg += `📧 Correo: <span class="wav">${perf?.correo||'—'}</span>\n`;
         msg += `🔑 Clave: <span class="wav">${perf?.clave||'—'}</span>\n`;
         msg += `👁️ Usuario: <span class="wav">${usr}</span>\n`;
@@ -3286,7 +3286,7 @@ const WA={
         if (link) msg += `🔗 Link: <span class="wav">${link}</span>\n`;
       }
     });
-    msg += `\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span> 🎪`;
+    msg += `\n\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span> 🎪`;
     msg += `\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
     return msg;
   },
@@ -4240,11 +4240,12 @@ async function confirmarVentaDesdeModal(){
       document.getElementById('m-exito-venta').style.display = 'none';
       const _waPerfilesSel = {};
       entries.forEach(e => { _waPerfilesSel[e.key] = e.perf; });
+      const _refCompleto = entries.map(e => e.perf?.codigo).filter(Boolean).join(' + ');
       abrirWA(_waNombre, PLATS[_exitoEntry.p]?.nombre || _exitoEntry.p, '$'+monto.toFixed(2), 'entrega', {
         plats: plats,
         perfilesSel: _waPerfilesSel,
         correo: _exitoEntry.perf?.correo, clave: _exitoEntry.perf?.clave,
-        vcto: vctoStr, usuarios, pins, perfil: _exitoEntry.perf?.codigo
+        vcto: vctoStr, usuarios, pins, perfil: _refCompleto
       }, { clienteId: _waClienteId, tel: _waTel });
     };
 
