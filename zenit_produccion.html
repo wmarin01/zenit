@@ -4044,7 +4044,9 @@ async function mostrarExitoVenta(datos, esPreview) {
     cerrarBtn.onclick = function() {
       document.getElementById('m-exito-venta').style.display = 'none';
       document.body.style.overflow = 'hidden';
-      document.getElementById('m-venta').classList.add('on');
+      const mv = document.getElementById('m-venta');
+      mv.style.display = '';
+      mv.classList.add('on');
     };
 
     let pin1Preview = null;
