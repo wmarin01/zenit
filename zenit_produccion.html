@@ -487,6 +487,8 @@ select option{background:var(--bg3)}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:none;align-items:center;justify-content:center;padding:16px;pointer-events:none}
 .ov.on{display:flex;pointer-events:all}
 .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:100%;max-height:90vh;overflow-y:auto;animation:fi .2s ease}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px;box-sizing:border-box}
+.modal-overlay .modal{background:var(--bg2);border-radius:var(--r);max-height:90vh;overflow-y:auto}
 .modal::-webkit-scrollbar{width:4px}
 .modal::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px}
 .mh{padding:16px 20px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:11px;position:sticky;top:0;background:var(--bg2);z-index:1}
