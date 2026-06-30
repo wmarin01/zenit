@@ -2520,53 +2520,7 @@ function closeSidebarMobile() {
       <div style="font-size:13px;color:var(--text2);margin-top:4px" id="exito-cliente-nombre"></div>
     </div>
 
-    <div class="card" style="padding:16px;margin-bottom:14px">
-      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:12px">📋 Datos de acceso</div>
-      <div style="display:grid;gap:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;color:var(--text3)">Correo</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:13px;font-family:monospace;color:var(--text)" id="exito-correo"></span>
-            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-correo')" title="Copiar"><i class="ti ti-copy"></i></button>
-          </div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;color:var(--text3)">Clave</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:13px;font-family:monospace;color:var(--text)" id="exito-clave"></span>
-            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-clave')" title="Copiar"><i class="ti ti-copy"></i></button>
-          </div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border)">
-          <span style="font-size:12px;color:var(--text3)">PIN perfil 1</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:15px;font-weight:700;letter-spacing:3px;color:var(--amber)" id="exito-pin1"></span>
-            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-pin1')" title="Copiar"><i class="ti ti-copy"></i></button>
-          </div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border)">
-          <span style="font-size:12px;color:var(--text3)">Perfil Netflix (cliente)</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:13px;color:var(--text)" id="exito-usuario"></span>
-            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-usuario')" title="Copiar"><i class="ti ti-copy"></i></button>
-          </div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;color:var(--text3)">PIN cliente</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:15px;font-weight:700;letter-spacing:3px;color:var(--accent)" id="exito-pin"></span>
-            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-pin')" title="Copiar"><i class="ti ti-copy"></i></button>
-          </div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;color:var(--text3)">Perfil Chrome (navegador)</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:12px;font-family:monospace;color:var(--text2)" id="exito-chrome-nombre"></span>
-            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-chrome-nombre')" title="Copiar"><i class="ti ti-copy"></i></button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div id="exito-datos-container"></div>
 
     <div style="display:flex;gap:8px">
       <button class="btn" style="flex:1;justify-content:center;padding:11px;background:#25D366;border-color:#25D366;color:#fff" id="exito-wa-btn" onclick="confirmarVentaDesdeModal()">
@@ -4010,26 +3964,97 @@ function confirmarBloqueo(nombre){
   if(confirm('¿Confirmas bloquear al usuario "'+nombre+'"?\nPodrás reactivarlo después.')){toast(nombre+' ha sido bloqueado','ok');}
 }
 
-async function mostrarExitoVenta(datos, esPreview) {
-  const { clienteNombre, correo, clave, pin1, usuario, pin, plat, perf } = datos;
-  document.getElementById('exito-cliente-nombre').textContent = clienteNombre + ' · ' + (PLATS[plat]?.nombre || plat);
-  document.getElementById('exito-correo').textContent = correo || '—';
-  document.getElementById('exito-clave').textContent = clave || '—';
-  document.getElementById('exito-pin1').textContent = pin1 || '9530';
-  document.getElementById('exito-usuario').textContent = usuario || '—';
-  document.getElementById('exito-pin').textContent = pin || '—';
+async function mostrarExitoVenta(datosArray, esPreview) {
+  const lista = Array.isArray(datosArray) ? datosArray : [datosArray];
+  const primero = lista[0];
+
+  const nombresPlats = lista.map(d => PLATS[d.plat]?.nombre || d.plat).join(' + ');
+  document.getElementById('exito-cliente-nombre').textContent = primero.clienteNombre + ' · ' + nombresPlats;
 
   const provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV' };
-  const prov = provMap[datos.proveedor] || (datos.proveedor||'').substring(0,3).toUpperCase();
-  let nombreChrome = '';
-  if (datos.proveedor === 'LealTV') {
-    const numInv = (perf||'').replace(/^[A-Z]+/i, '').slice(0, -1);
-    nombreChrome = `${plat}-${numInv}-${correo||''}`;
-  } else {
-    const correoCorto = (correo||'').split('@')[0];
-    nombreChrome = `${plat}-${prov}-${correoCorto}@${(correo||'').split('@')[1]||''}`;
+  const PICO = {NF:'🔴',DS:'🔵',HB:'🟣',PV:'🔷',IP:'⚪'};
+
+  const container = document.getElementById('exito-datos-container');
+  let html = '';
+
+  for (let idx = 0; idx < lista.length; idx++) {
+    const datos = lista[idx];
+    const { correo, clave, usuario, pin, plat, perf } = datos;
+    const prov = provMap[datos.proveedor] || (datos.proveedor||'').substring(0,3).toUpperCase();
+    let nombreChrome = '';
+    if (datos.proveedor === 'LealTV') {
+      const numInv = (perf||'').replace(/^[A-Z]+/i, '').slice(0, -1);
+      nombreChrome = `${plat}-${numInv}-${correo||''}`;
+    } else {
+      const correoCorto = (correo||'').split('@')[0];
+      nombreChrome = `${plat}-${prov}-${correoCorto}@${(correo||'').split('@')[1]||''}`;
+    }
+
+    let pin1Real = null;
+    try {
+      const { data: subs1 } = await supa.from('suscripciones')
+        .select('pin, perfil_id')
+        .eq('correo', correo)
+        .eq('plataforma', plat)
+        .like('perfil_id', '%1')
+        .eq('estado', 'activo')
+        .maybeSingle();
+      if (subs1?.pin) pin1Real = subs1.pin;
+    } catch(_e) {}
+    const pin1Final = pin1Real || '9530';
+
+    const sfx = idx;
+    html += `
+    <div class="card" style="padding:16px;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:12px">${PICO[plat]||'▶️'} ${PLATS[plat]?.nombre||plat}</div>
+      <div style="display:grid;gap:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--text3)">Correo</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;font-family:monospace;color:var(--text)" id="exito-correo-${sfx}">${correo||'—'}</span>
+            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-correo-${sfx}')" title="Copiar"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--text3)">Clave</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;font-family:monospace;color:var(--text)" id="exito-clave-${sfx}">${clave||'—'}</span>
+            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-clave-${sfx}')" title="Copiar"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--text3)">PIN perfil 1</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:15px;font-weight:700;letter-spacing:3px;color:var(--amber)" id="exito-pin1-${sfx}">${pin1Final}</span>
+            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-pin1-${sfx}')" title="Copiar"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--text3)">Perfil ${PLATS[plat]?.nombre||plat} (cliente)</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;color:var(--text)" id="exito-usuario-${sfx}">${usuario||'—'}</span>
+            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-usuario-${sfx}')" title="Copiar"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--text3)">PIN cliente</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:15px;font-weight:700;letter-spacing:3px;color:var(--accent)" id="exito-pin-${sfx}">${pin||'—'}</span>
+            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-pin-${sfx}')" title="Copiar"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--text3)">Perfil Chrome (navegador)</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px;font-family:monospace;color:var(--text2)" id="exito-chrome-${sfx}">${nombreChrome}</span>
+            <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-chrome-${sfx}')" title="Copiar"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>`;
   }
-  document.getElementById('exito-chrome-nombre').textContent = nombreChrome;
+
+  container.innerHTML = html;
 
   const tituloEl = document.getElementById('exito-titulo');
   const waBtn = document.getElementById('exito-wa-btn');
@@ -4048,38 +4073,12 @@ async function mostrarExitoVenta(datos, esPreview) {
       mv.style.display = '';
       mv.classList.add('on');
     };
-
-    let pin1Preview = null;
-    try {
-      const { data: subs1p } = await supa.from('suscripciones')
-        .select('pin, perfil_id')
-        .eq('correo', correo)
-        .eq('plataforma', plat)
-        .like('perfil_id', '%1')
-        .eq('estado', 'activo')
-        .maybeSingle();
-      if (subs1p?.pin) pin1Preview = subs1p.pin;
-    } catch(_e) {}
-    document.getElementById('exito-pin1').textContent = pin1Preview || '9530';
   } else {
     tituloEl.textContent = '¡Venta registrada!';
     waBtn.innerHTML = '<i class="ti ti-brand-whatsapp"></i> Enviar WA';
     waBtn.style.background = '#25D366';
     waBtn.style.borderColor = '#25D366';
     cerrarBtn.innerHTML = '<i class="ti ti-x"></i> Cerrar';
-
-    let pin1Real = null;
-    try {
-      const { data: subs1 } = await supa.from('suscripciones')
-        .select('pin, perfil_id')
-        .eq('correo', correo)
-        .eq('plataforma', plat)
-        .like('perfil_id', '%1')
-        .eq('estado', 'activo')
-        .maybeSingle();
-      if (subs1?.pin) pin1Real = subs1.pin;
-    } catch(_e) {}
-    document.getElementById('exito-pin1').textContent = pin1Real || '9530';
   }
 
   const _exitoOverlay = document.getElementById('m-exito-venta');
@@ -4135,21 +4134,23 @@ async function verDatosAccesoVenta(){
   // Guardar todo lo calculado para usarlo en confirmarVentaDesdeModal()
   window._ventaPendingData = { tipo, plats, entries, usuarios, pins, fIniVal, fVctoVal, fIniStr, vctoStr, montoCobrado, monto, banco, forma, doc, canal };
 
-  const firstEntry = entries[0];
-  const _exitoAcceso = await supa.from('accesos').select('proveedor,clave').eq('correo', firstEntry.perf?.correo||'').eq('plataforma', firstEntry.p||'').maybeSingle();
+  const datosArray = [];
+  for (const entry of entries) {
+    const _acc = await supa.from('accesos').select('proveedor,clave').eq('correo', entry.perf?.correo||'').eq('plataforma', entry.p||'').maybeSingle();
+    datosArray.push({
+      clienteNombre: ventaData.clienteNombre,
+      correo:   entry.perf?.correo || '—',
+      clave:    entry.perf?.clave || _acc?.data?.clave || '—',
+      usuario:  usuarios[entry.key] || usuarios[entry.p] || '—',
+      pin:      pins[entry.key] || '—',
+      plat:     entry.p,
+      perf:     entry.perf?.codigo || '—',
+      proveedor: _acc?.data?.proveedor || '—'
+    });
+  }
 
   document.getElementById('m-venta').style.display = 'none';
-  await mostrarExitoVenta({
-    clienteNombre: ventaData.clienteNombre,
-    correo:   firstEntry.perf?.correo || '—',
-    clave:    firstEntry.perf?.clave || _exitoAcceso?.data?.clave || '—',
-    pin1:     null,
-    usuario:  usuarios[firstEntry.key] || usuarios[firstEntry.p] || '—',
-    pin:      pins[firstEntry.key] || '—',
-    plat:     firstEntry.p,
-    perf:     firstEntry.perf?.codigo || '—',
-    proveedor: _exitoAcceso?.data?.proveedor || '—'
-  }, true);
+  await mostrarExitoVenta(datosArray, true);
 }
 
 async function confirmarVentaDesdeModal(){
@@ -4210,19 +4211,22 @@ async function confirmarVentaDesdeModal(){
     closeModal('m-venta');
 
     const _exitoEntry = entries[0];
-    const _exitoAcceso = await supa.from('accesos').select('proveedor,clave').eq('correo', _exitoEntry.perf?.correo||'').eq('plataforma', _exitoEntry.p||'').maybeSingle();
+    const _datosArrayPost = [];
+    for (const entry of entries) {
+      const _acc = await supa.from('accesos').select('proveedor,clave').eq('correo', entry.perf?.correo||'').eq('plataforma', entry.p||'').maybeSingle();
+      _datosArrayPost.push({
+        clienteNombre: ventaData.clienteNombre,
+        correo:   entry.perf?.correo || '—',
+        clave:    entry.perf?.clave || _acc?.data?.clave || '—',
+        usuario:  usuarios[entry.key] || usuarios[entry.p] || '—',
+        pin:      pins[entry.key] || '—',
+        plat:     entry.p,
+        perf:     entry.perf?.codigo || '—',
+        proveedor: _acc?.data?.proveedor || '—'
+      });
+    }
 
-    await mostrarExitoVenta({
-      clienteNombre: ventaData.clienteNombre,
-      correo:   _exitoEntry.perf?.correo || '—',
-      clave:    _exitoEntry.perf?.clave || _exitoAcceso?.data?.clave || '—',
-      pin1:     null,
-      usuario:  usuarios[_exitoEntry.key] || usuarios[_exitoEntry.p] || '—',
-      pin:      pins[_exitoEntry.key] || '—',
-      plat:     _exitoEntry.p,
-      perf:     _exitoEntry.perf?.codigo || '—',
-      proveedor: _exitoAcceso?.data?.proveedor || '—'
-    }, false);
+    await mostrarExitoVenta(_datosArrayPost, false);
 
     sincronizarPlatsClientes();
     renderDashboard();
