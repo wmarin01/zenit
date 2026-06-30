@@ -4233,6 +4233,7 @@ async function confirmarVentaDesdeModal(){
     const _waClienteId = ventaData.clienteId;
     const _waTel = ventaData.clienteTel;
     document.getElementById('exito-wa-btn').onclick = function() {
+      document.getElementById('m-exito-venta').style.display = 'none';
       abrirWA(_waNombre, PLATS[_exitoEntry.p]?.nombre || _exitoEntry.p, '$'+monto.toFixed(2), 'entrega', {
         correo: _exitoEntry.perf?.correo, clave: _exitoEntry.perf?.clave,
         vcto: vctoStr, usuarios, pins, perfil: _exitoEntry.perf?.codigo
