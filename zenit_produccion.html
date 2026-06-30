@@ -4038,6 +4038,10 @@ async function mostrarExitoVenta(datos, esPreview) {
     waBtn.style.background = 'var(--accent)';
     waBtn.style.borderColor = 'var(--accent)';
     cerrarBtn.innerHTML = '<i class="ti ti-x"></i> Cancelar';
+    cerrarBtn.onclick = function() {
+      document.getElementById('m-exito-venta').style.display = 'none';
+      document.getElementById('m-venta').style.display = 'flex';
+    };
 
     let pin1Preview = null;
     try {
@@ -4128,6 +4132,7 @@ async function verDatosAccesoVenta(){
   const firstEntry = entries[0];
   const _exitoAcceso = await supa.from('accesos').select('proveedor,clave').eq('correo', firstEntry.perf?.correo||'').eq('plataforma', firstEntry.p||'').maybeSingle();
 
+  document.getElementById('m-venta').style.display = 'none';
   await mostrarExitoVenta({
     clienteNombre: ventaData.clienteNombre,
     correo:   firstEntry.perf?.correo || '—',
