@@ -2514,7 +2514,7 @@ function closeSidebarMobile() {
       <div style="width:56px;height:56px;border-radius:50%;background:rgba(34,197,94,.15);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
         <i class="ti ti-check" style="font-size:26px;color:var(--green)"></i>
       </div>
-      <div style="font-size:18px;font-weight:700;color:var(--text)">¡Venta registrada!</div>
+      <div style="font-size:18px;font-weight:700;color:var(--text)" id="exito-titulo">¡Venta registrada!</div>
       <div style="font-size:13px;color:var(--text2);margin-top:4px" id="exito-cliente-nombre"></div>
     </div>
 
@@ -2567,10 +2567,10 @@ function closeSidebarMobile() {
     </div>
 
     <div style="display:flex;gap:8px">
-      <button class="btn" style="flex:1;justify-content:center;padding:11px;background:#25D366;border-color:#25D366;color:#fff" id="exito-wa-btn">
+      <button class="btn" style="flex:1;justify-content:center;padding:11px;background:#25D366;border-color:#25D366;color:#fff" id="exito-wa-btn" onclick="confirmarVentaDesdeModal()">
         <i class="ti ti-brand-whatsapp"></i> Enviar WA
       </button>
-      <button class="btn" style="flex:1;justify-content:center;padding:11px" onclick="document.getElementById('m-exito-venta').style.display='none';document.body.style.overflow='';">
+      <button class="btn" style="flex:1;justify-content:center;padding:11px" id="exito-cerrar-btn" onclick="document.getElementById('m-exito-venta').style.display='none';document.body.style.overflow='';">
         <i class="ti ti-x"></i> Cerrar
       </button>
     </div>
@@ -2747,7 +2747,7 @@ function closeSidebarMobile() {
       <div class="sum" id="v-resumen"></div>
       <div style="display:flex;justify-content:space-between;margin-top:12px">
         <button class="btn" onclick="ventaPaso4()"><i class="ti ti-arrow-left"></i> Anterior</button>
-        <button class="btn btn-p" onclick="confirmarVenta()"><i class="ti ti-check"></i>Confirmar venta</button>
+        <button class="btn btn-p" id="btn-confirmar-venta" onclick="verDatosAccesoVenta()"><i class="ti ti-key"></i> Ver datos de acceso</button>
       </div>
     </div>
   </div>
@@ -4008,9 +4008,8 @@ function confirmarBloqueo(nombre){
   if(confirm('¿Confirmas bloquear al usuario "'+nombre+'"?\nPodrás reactivarlo después.')){toast(nombre+' ha sido bloqueado','ok');}
 }
 
-async function mostrarExitoVenta(datos) {
+async function mostrarExitoVenta(datos, esPreview) {
   const { clienteNombre, correo, clave, pin1, usuario, pin, plat, perf } = datos;
-
   document.getElementById('exito-cliente-nombre').textContent = clienteNombre + ' · ' + (PLATS[plat]?.nombre || plat);
   document.getElementById('exito-correo').textContent = correo || '—';
   document.getElementById('exito-clave').textContent = clave || '—';
@@ -4018,7 +4017,6 @@ async function mostrarExitoVenta(datos) {
   document.getElementById('exito-usuario').textContent = usuario || '—';
   document.getElementById('exito-pin').textContent = pin || '—';
 
-  // Generar nombre perfil Chrome
   const provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV' };
   const prov = provMap[datos.proveedor] || (datos.proveedor||'').substring(0,3).toUpperCase();
   let nombreChrome = '';
@@ -4030,19 +4028,49 @@ async function mostrarExitoVenta(datos) {
   }
   document.getElementById('exito-chrome-nombre').textContent = nombreChrome;
 
-  // Buscar PIN perfil 1 en suscripciones
-  let pin1Real = null;
-  try {
-    const { data: subs1 } = await supa.from('suscripciones')
-      .select('pin, perfil_id')
-      .eq('correo', correo)
-      .eq('plataforma', plat)
-      .like('perfil_id', '%1')
-      .eq('estado', 'activo')
-      .maybeSingle();
-    if (subs1?.pin) pin1Real = subs1.pin;
-  } catch(_e) {}
-  document.getElementById('exito-pin1').textContent = pin1Real || '9530';
+  const tituloEl = document.getElementById('exito-titulo');
+  const waBtn = document.getElementById('exito-wa-btn');
+  const cerrarBtn = document.getElementById('exito-cerrar-btn');
+
+  if (esPreview) {
+    tituloEl.textContent = 'Verifica antes de confirmar';
+    waBtn.innerHTML = '<i class="ti ti-check"></i> Confirmar venta';
+    waBtn.style.background = 'var(--accent)';
+    waBtn.style.borderColor = 'var(--accent)';
+    cerrarBtn.innerHTML = '<i class="ti ti-x"></i> Cancelar';
+
+    let pin1Preview = null;
+    try {
+      const { data: subs1p } = await supa.from('suscripciones')
+        .select('pin, perfil_id')
+        .eq('correo', correo)
+        .eq('plataforma', plat)
+        .like('perfil_id', '%1')
+        .eq('estado', 'activo')
+        .maybeSingle();
+      if (subs1p?.pin) pin1Preview = subs1p.pin;
+    } catch(_e) {}
+    document.getElementById('exito-pin1').textContent = pin1Preview || '9530';
+  } else {
+    tituloEl.textContent = '¡Venta registrada!';
+    waBtn.innerHTML = '<i class="ti ti-brand-whatsapp"></i> Enviar WA';
+    waBtn.style.background = '#25D366';
+    waBtn.style.borderColor = '#25D366';
+    cerrarBtn.innerHTML = '<i class="ti ti-x"></i> Cerrar';
+
+    let pin1Real = null;
+    try {
+      const { data: subs1 } = await supa.from('suscripciones')
+        .select('pin, perfil_id')
+        .eq('correo', correo)
+        .eq('plataforma', plat)
+        .like('perfil_id', '%1')
+        .eq('estado', 'activo')
+        .maybeSingle();
+      if (subs1?.pin) pin1Real = subs1.pin;
+    } catch(_e) {}
+    document.getElementById('exito-pin1').textContent = pin1Real || '9530';
+  }
 
   const _exitoOverlay = document.getElementById('m-exito-venta');
   if (_exitoOverlay) { _exitoOverlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
@@ -4052,6 +4080,170 @@ function copiarDato(id) {
   const el = document.getElementById(id);
   if (!el) return;
   navigator.clipboard.writeText(el.textContent).then(() => toast('Copiado ✓', 'ok'));
+}
+
+async function verDatosAccesoVenta(){
+  const tipo     = ventaData.tipo;
+  const plats = ventaData.plats;
+  const entries = plats.map((p, i) => {
+    const idxEnPlat = plats.slice(0,i).filter(x=>x===p).length;
+    const key  = getPerfKey(plats, p, idxEnPlat);
+    const perf = ventaData.perfilesSel[key] || ventaData.perfilesSel[p] || null;
+    return {p, i, idxEnPlat, key, perf};
+  });
+  const usuarios = getUsuariosVenta();
+  const pins     = {};
+  entries.forEach(({p, key, perf}) => {
+    if (perf) pins[key] = ventaData.pins?.[key] || ventaData.pins?.[p] || generarPIN(ventaData.clienteId, p, perf.num);
+  });
+  const faltaPerfil = entries.find(e => !e.perf);
+  if (faltaPerfil) { toast('Selecciona un perfil para ' + (PLATS[faltaPerfil.p]?.nombre || faltaPerfil.p), 'warn'); return; }
+  const faltaUsuario = entries.find(e => !usuarios[e.key] || usuarios[e.key].length < 1);
+  if (faltaUsuario) { toast('Ingresa el usuario para ' + (PLATS[faltaUsuario.p]?.nombre || faltaUsuario.p), 'warn'); return; }
+  const fIniEl  = document.getElementById('v-fecha-ini');
+  const fVctoEl = document.getElementById('v-fecha-vcto');
+  if (!fIniEl?.value || !fVctoEl?.value) { toast('Completa las fechas de vigencia', 'warn'); return; }
+  const fIniVal = fIniEl.value;
+  const fVctoVal= fVctoEl.value;
+  const fIniStr = fIniVal.split('-').reverse().join('/');
+  const vctoStr = fVctoVal.split('-').reverse().join('/');
+  const montoEl  = document.getElementById('v-monto');
+  const precioEl = document.getElementById('v-precio');
+  const bancoEl = document.getElementById('v-banco');
+  const formaEl = document.getElementById('v-forma');
+  const compEl  = document.getElementById('v-comp');
+  const montoCobrado = parseFloat((montoEl?.value||'').replace(/[$,]/g,'').trim()) || 0;
+  const monto        = parseFloat((precioEl?.value||'').replace('$','').replace(',','.').trim()) || ventaData.planPrecio || 0;
+  const banco   = bancoEl?.value || 'Banco General';
+  const forma   = formaEl?.value || 'Yappy';
+  const doc     = compEl?.value?.trim() || '';
+  if (!monto) { toast('Ingresa el monto del pago', 'warn'); return; }
+  if (!doc || doc.length < 4) { toast('El Nro. de comprobante es obligatorio', 'warn'); return; }
+  const canalEl = document.querySelector('#v-pago .canal-sel .on, #v-pago .btn-canal.on');
+  const canal   = canalEl?.dataset?.canal || 'WhatsApp';
+
+  // Guardar todo lo calculado para usarlo en confirmarVentaDesdeModal()
+  window._ventaPendingData = { tipo, plats, entries, usuarios, pins, fIniVal, fVctoVal, fIniStr, vctoStr, montoCobrado, monto, banco, forma, doc, canal };
+
+  const firstEntry = entries[0];
+  const _exitoAcceso = await supa.from('accesos').select('proveedor,clave').eq('correo', firstEntry.perf?.correo||'').eq('plataforma', firstEntry.p||'').maybeSingle();
+
+  await mostrarExitoVenta({
+    clienteNombre: ventaData.clienteNombre,
+    correo:   firstEntry.perf?.correo || '—',
+    clave:    firstEntry.perf?.clave || _exitoAcceso?.data?.clave || '—',
+    pin1:     null,
+    usuario:  usuarios[firstEntry.key] || usuarios[firstEntry.p] || '—',
+    pin:      pins[firstEntry.key] || '—',
+    plat:     firstEntry.p,
+    perf:     firstEntry.perf?.codigo || '—',
+    proveedor: _exitoAcceso?.data?.proveedor || '—'
+  }, true);
+}
+
+async function confirmarVentaDesdeModal(){
+  const pd = window._ventaPendingData;
+  if (!pd) { toast('No hay datos pendientes de venta', 'error'); return; }
+  const { entries, usuarios, pins, fIniVal, fVctoVal, fIniStr, vctoStr, montoCobrado, monto, banco, forma, doc, canal, tipo, plats } = pd;
+
+  const comboId  = plats.length > 1 && new Set(plats).size > 1
+    ? normalizarCombo(plats.join('+')) : '—';
+
+  const btnConf = document.getElementById('exito-wa-btn');
+  if (btnConf) { btnConf.disabled = true; btnConf.innerHTML = '<i class="ti ti-loader"></i> Guardando...'; }
+
+  try {
+    const correos = entries.map(e => e.perf?.correo || '—');
+    const correo2 = [...new Set(correos)].join(' / ');
+    const usuario2= entries.map(e => usuarios[e.key] || '—').join(' / ');
+
+    await dbGuardarVenta({
+      clienteId: ventaData.clienteId, nombre: ventaData.clienteNombre,
+      plats: normalizarCombo([...new Set(plats)].join('+')),
+      perfiles: entries.map(e=>e.perf?.codigo||'—').join('+'),
+      pins: entries.map(e=>pins[e.key]||'—').join('/'),
+      fechaIni: fIniVal, fechaFin: fVctoVal, monto, canal
+    });
+
+    for (const {p, key, perf, idxEnPlat} of entries) {
+      const subParams = {
+        clienteId: ventaData.clienteId, plat: p, tipo: tipo==='combo'?'Combo':'Individual',
+        combo: comboId, correo: perf?.correo||'—',
+        usuario: usuarios[key]||'—', pin: pins[key]||'—',
+        perfilId: perf?.codigo||null,
+        fIni: fIniStr, fVcto: vctoStr, monto, tipoCliente: 'Nuevo'
+      };
+      await dbGuardarSuscripcion(subParams);
+    }
+
+    await dbGuardarCobro({
+      tipo: 'Venta nueva', clienteId: ventaData.clienteId,
+      nombre: ventaData.clienteNombre, tel: normalizeTel(ventaData.clienteTel),
+      plat: [...new Set(plats)].join('+'), correo: correo2, usuario: usuario2,
+      monto: montoCobrado, banco, forma, doc,
+      fechaIni: fIniVal,
+      operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
+      dupAutorizado: ventaData.dupAutorizado || false
+    });
+
+    const resumen = entries.map(e=>e.perf?.codigo||'—').join('+');
+    await dbGuardarHistorial('Venta nueva', ventaData.clienteNombre + ' — ' + resumen + ' — $' + monto.toFixed(2), 'var(--green)');
+
+    for (const {p, perf} of entries) {
+      if (PERFILES_DISP[p]) PERFILES_DISP[p] = PERFILES_DISP[p].filter(pr => pr.codigo !== (perf?.codigo));
+    }
+
+    await dbCargarVentas();
+    await dbCargarSuscripciones();
+    _aplicarFiltrosSubs();
+    closeModal('m-venta');
+
+    const _exitoEntry = entries[0];
+    const _exitoAcceso = await supa.from('accesos').select('proveedor,clave').eq('correo', _exitoEntry.perf?.correo||'').eq('plataforma', _exitoEntry.p||'').maybeSingle();
+
+    await mostrarExitoVenta({
+      clienteNombre: ventaData.clienteNombre,
+      correo:   _exitoEntry.perf?.correo || '—',
+      clave:    _exitoEntry.perf?.clave || _exitoAcceso?.data?.clave || '—',
+      pin1:     null,
+      usuario:  usuarios[_exitoEntry.key] || usuarios[_exitoEntry.p] || '—',
+      pin:      pins[_exitoEntry.key] || '—',
+      plat:     _exitoEntry.p,
+      perf:     _exitoEntry.perf?.codigo || '—',
+      proveedor: _exitoAcceso?.data?.proveedor || '—'
+    }, false);
+
+    sincronizarPlatsClientes();
+    renderDashboard();
+    cargarSelectoresProveedores();
+    toast('Venta registrada correctamente ✓', 'ok');
+
+    const _waNombre = ventaData.clienteNombre;
+    const _waClienteId = ventaData.clienteId;
+    const _waTel = ventaData.clienteTel;
+    document.getElementById('exito-wa-btn').onclick = function() {
+      abrirWA(_waNombre, PLATS[_exitoEntry.p]?.nombre || _exitoEntry.p, '$'+monto.toFixed(2), 'entrega', {
+        correo: _exitoEntry.perf?.correo, clave: _exitoEntry.perf?.clave,
+        vcto: vctoStr, usuarios, pins, perfil: _exitoEntry.perf?.codigo
+      }, { clienteId: _waClienteId, tel: _waTel });
+    };
+
+    setTimeout(() => {
+      ventaData = {clienteId:'', clienteNombre:'', clienteTel:'', tipo:'individual', plats:[], perfilesSel:{}, pins:{}, meses:1, fechaIni:fIniVal, dupAutorizado:false};
+      ['v-monto','v-precio','v-comp'].forEach(id => { const el = document.getElementById(id); if (el) { el.value = ''; el.style.borderColor = ''; el.dataset.valid = ''; } });
+      document.querySelectorAll('#m-venta textarea').forEach(t => t.value = '');
+      document.querySelectorAll('#m-venta .hint[id^="hc"]').forEach(h => { h.textContent = 'Validación en tiempo real'; h.className = 'hint'; });
+      dbCargarPerfilesDisp();
+      ventaPaso1();
+      window._ventaPendingData = null;
+    }, 400);
+
+  } catch(e) {
+    console.error('[VENTA] Error:', e);
+    toast('Error al guardar la venta: ' + (e.message || e), 'error');
+  } finally {
+    if (btnConf) { btnConf.disabled = false; }
+  }
 }
 
 async function confirmarVenta(){
