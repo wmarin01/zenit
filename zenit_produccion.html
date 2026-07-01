@@ -4088,7 +4088,7 @@ async function mostrarExitoVenta(datosArray, esPreview) {
       const provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV' };
       chromeBtns.innerHTML = lista.map(d => {
         const prov = provMap[d.proveedor] || (d.proveedor||'').substring(0,3).toUpperCase();
-        const zenitUrl = `web+zenit://plat=${d.plat}&correo=${encodeURIComponent(d.correo||'')}&prov=${prov}`;
+        const zenitUrl = `web+zenit://${d.plat}|${encodeURIComponent(d.correo||'')}|${prov}`;
         const color = {NF:'#E50914',DS:'#FFD700',HB:'#720E9E',PV:'#00A8E1'}[d.plat] || 'var(--accent)';
         return `<a href="${zenitUrl}" target="_blank" rel="noopener" class="btn" style="flex:1;min-width:140px;justify-content:center;padding:10px;background:${color};border-color:${color};color:${d.plat==='DS'?'#000':'#fff'};text-decoration:none;font-size:12px">
           <i class="ti ti-brand-chrome"></i> Chrome ${PLATS[d.plat]?.nombre||d.plat}
