@@ -2522,7 +2522,7 @@ function closeSidebarMobile() {
 
     <div id="exito-datos-container"></div>
 
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;margin-bottom:8px">
       <button class="btn" style="flex:1;justify-content:center;padding:11px;background:#25D366;border-color:#25D366;color:#fff" id="exito-wa-btn" onclick="confirmarVentaDesdeModal()">
         <i class="ti ti-brand-whatsapp"></i> Enviar WA
       </button>
@@ -2530,6 +2530,7 @@ function closeSidebarMobile() {
         <i class="ti ti-x"></i> Cerrar
       </button>
     </div>
+    <div id="exito-chrome-btns" style="display:none;gap:8px;flex-wrap:wrap"></div>
   </div>
 </div>
 
@@ -4079,6 +4080,25 @@ async function mostrarExitoVenta(datosArray, esPreview) {
     waBtn.style.background = '#25D366';
     waBtn.style.borderColor = '#25D366';
     cerrarBtn.innerHTML = '<i class="ti ti-x"></i> Cerrar';
+  }
+
+  const chromeBtns = document.getElementById('exito-chrome-btns');
+  if (chromeBtns) {
+    if (esPreview) {
+      const provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV' };
+      chromeBtns.innerHTML = lista.map(d => {
+        const prov = provMap[d.proveedor] || (d.proveedor||'').substring(0,3).toUpperCase();
+        const zenitUrl = `zenit://plat=${d.plat}&correo=${encodeURIComponent(d.correo||'')}&prov=${prov}`;
+        const color = {NF:'#E50914',DS:'#FFD700',HB:'#720E9E',PV:'#00A8E1'}[d.plat] || 'var(--accent)';
+        return `<a href="${zenitUrl}" class="btn" style="flex:1;min-width:140px;justify-content:center;padding:10px;background:${color};border-color:${color};color:${d.plat==='DS'?'#000':'#fff'};text-decoration:none;font-size:12px">
+          <i class="ti ti-brand-chrome"></i> Chrome ${PLATS[d.plat]?.nombre||d.plat}
+        </a>`;
+      }).join('');
+      chromeBtns.style.display = 'flex';
+    } else {
+      chromeBtns.style.display = 'none';
+      chromeBtns.innerHTML = '';
+    }
   }
 
   const _exitoOverlay = document.getElementById('m-exito-venta');
