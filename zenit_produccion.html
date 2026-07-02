@@ -3966,6 +3966,58 @@ function confirmarBloqueo(nombre){
   if(confirm('¿Confirmas bloquear al usuario "'+nombre+'"?\nPodrás reactivarlo después.')){toast(nombre+' ha sido bloqueado','ok');}
 }
 
+function esDispositivoMovil() {
+  return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+}
+
+function zenitChromeBtn(plat, correo, prov, clave, nombreChrome, label) {
+  const colorMap = {NF:'#E50914',DS:'#FFD700',HB:'#720E9E',PV:'#00A8E1'};
+  const color = colorMap[plat] || 'var(--accent)';
+  const txtColor = plat === 'DS' ? '#000' : '#fff';
+  const platLinks = {
+    NF: 'https://www.netflix.com/account',
+    DS: 'https://www.disneyplus.com/es-419/edit-profiles',
+    HB: 'https://play.hbomax.com/profile-picker',
+    PV: 'https://www.primevideo.com/region/eu/profiles?step=edit'
+  };
+  const link = platLinks[plat] || '';
+  const zenitUrl = `http://localhost:9999/chrome?plat=${plat}&correo=${encodeURIComponent(correo)}&prov=${prov}`;
+
+  if (esDispositivoMovil()) {
+    return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;margin-top:6px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--amber);margin-bottom:10px">📱 ${label} — Acceso manual</div>
+      <div style="display:grid;gap:7px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:var(--text3)">Correo</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px;font-family:monospace;color:var(--text)">${correo}</span>
+            <button class="btn btn-sm btn-ic" onclick="navigator.clipboard.writeText('${correo}').then(()=>toast('Copiado ✓','ok'))"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:var(--text3)">Clave</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px;font-family:monospace;color:var(--text)">${clave}</span>
+            <button class="btn btn-sm btn-ic" onclick="navigator.clipboard.writeText('${clave}').then(()=>toast('Copiado ✓','ok'))"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:var(--text3)">Perfil Chrome</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;font-family:monospace;color:var(--text2)">${nombreChrome}</span>
+            <button class="btn btn-sm btn-ic" onclick="navigator.clipboard.writeText('${nombreChrome}').then(()=>toast('Copiado ✓','ok'))"><i class="ti ti-copy"></i></button>
+          </div>
+        </div>
+        ${link ? `<a href="${link}" target="_blank" rel="noopener" class="btn" style="justify-content:center;padding:9px;background:${color};border-color:${color};color:${txtColor};text-decoration:none;font-size:12px;margin-top:4px"><i class="ti ti-external-link"></i> Abrir ${plat}</a>` : ''}
+      </div>
+    </div>`;
+  } else {
+    return `<button class="btn" onclick="fetch('${zenitUrl}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))" style="flex:1;min-width:140px;justify-content:center;padding:10px;background:${color};border-color:${color};color:${txtColor};font-size:12px">
+      <i class="ti ti-brand-chrome"></i> ${label}
+    </button>`;
+  }
+}
+
 async function mostrarExitoVenta(datosArray, esPreview) {
   const lista = Array.isArray(datosArray) ? datosArray : [datosArray];
   const primero = lista[0];
@@ -4089,13 +4141,14 @@ async function mostrarExitoVenta(datosArray, esPreview) {
       const provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV' };
       chromeBtns.innerHTML = lista.map(d => {
         const prov = provMap[d.proveedor] || (d.proveedor||'').substring(0,3).toUpperCase();
-        const zenitUrl = `http://localhost:9999/chrome?plat=${d.plat}&correo=${encodeURIComponent(d.correo||'')}&prov=${prov}`;
-        const color = {NF:'#E50914',DS:'#FFD700',HB:'#720E9E',PV:'#00A8E1'}[d.plat] || 'var(--accent)';
-        return `<button class="btn" onclick="fetch('${zenitUrl}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible. Inicia zenit-server.ps1','error'))" style="flex:1;min-width:140px;justify-content:center;padding:10px;background:${color};border-color:${color};color:${d.plat==='DS'?'#000':'#fff'};font-size:12px">
-          <i class="ti ti-brand-chrome"></i> Chrome ${PLATS[d.plat]?.nombre||d.plat}
-        </button>`;
+        const correoCorto = (d.correo||'').split('@')[0];
+        const dominio = (d.correo||'').split('@')[1] || '';
+        const nombreChrome = d.proveedor === 'LealTV'
+          ? `${d.plat}-${(d.perf||'').replace(/^[A-Z]+/i,'').slice(0,-1)}-${d.correo||''}`
+          : `${d.plat}-${prov}-${correoCorto}@${dominio}`;
+        return zenitChromeBtn(d.plat, d.correo||'', prov, d.clave||'', nombreChrome, 'Chrome ' + (PLATS[d.plat]?.nombre||d.plat));
       }).join('');
-      chromeBtns.style.display = 'flex';
+      chromeBtns.style.display = esDispositivoMovil() ? 'block' : 'flex';
     } else {
       chromeBtns.style.display = 'none';
       chromeBtns.innerHTML = '';
@@ -4665,30 +4718,30 @@ function mostrarResumenCambio() {
   const _colorR = _colorMap[_platCodR] || 'var(--accent)';
   const _correoAntR = correoAnterior !== '—' ? correoAnterior : '';
   const _correoNuevoR = correoNuevo !== '—' ? correoNuevo : '';
-  const _fetchProvAnt = _correoAntR ? supa.from('accesos').select('proveedor').eq('plataforma',_platCodR).eq('correo',_correoAntR).maybeSingle() : Promise.resolve({data:null});
-  const _fetchProvNuevo = _correoNuevoR ? supa.from('accesos').select('proveedor').eq('plataforma',_platCodR).eq('correo',_correoNuevoR).maybeSingle() : Promise.resolve({data:null});
+  const _fetchProvAnt = _correoAntR ? supa.from('accesos').select('proveedor,clave').eq('plataforma',_platCodR).eq('correo',_correoAntR).maybeSingle() : Promise.resolve({data:null});
+  const _fetchProvNuevo = _correoNuevoR ? supa.from('accesos').select('proveedor,clave').eq('plataforma',_platCodR).eq('correo',_correoNuevoR).maybeSingle() : Promise.resolve({data:null});
   Promise.all([_fetchProvAnt, _fetchProvNuevo]).then(([_rAnt, _rNuevo]) => {
     const _pAnt = _provMap[_rAnt?.data?.proveedor] || (_rAnt?.data?.proveedor||'').substring(0,3).toUpperCase();
     const _pNuevo = _provMap[_rNuevo?.data?.proveedor] || (_rNuevo?.data?.proveedor||'').substring(0,3).toUpperCase();
-    const _urlAntR = `http://localhost:9999/chrome?plat=${_platCodR}&correo=${encodeURIComponent(_correoAntR)}&prov=${_pAnt}`;
-    const _urlNuevoR = `http://localhost:9999/chrome?plat=${_platCodR}&correo=${encodeURIComponent(_correoNuevoR)}&prov=${_pNuevo}`;
+    const _claveAnt = _rAnt?.data?.clave || '';
+    const _claveNuevo = _rNuevo?.data?.clave || '';
+    const _correoAntCorto = (_correoAntR||'').split('@')[0];
+    const _correoNuevoCorto = (_correoNuevoR||'').split('@')[0];
+    const _nombreChromeAnt = `${_platCodR}-${_pAnt}-${_correoAntCorto}@${(_correoAntR||'').split('@')[1]||''}`;
+    const _nombreChromeNuevo = `${_platCodR}-${_pNuevo}-${_correoNuevoCorto}@${(_correoNuevoR||'').split('@')[1]||''}`;
     const _chromeSec = document.getElementById('cambio-chrome-btns');
     if (_chromeSec) {
       _chromeSec.innerHTML = `
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:10px">🖥️ Verifica en Chrome antes de confirmar</div>
-          <div style="display:grid;gap:8px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:10px">🖥️ Verifica antes de confirmar</div>
+          <div style="display:grid;gap:10px">
             <div>
               <div style="font-size:11px;color:var(--text3);margin-bottom:5px">📤 Cuenta anterior — eliminar perfil cliente</div>
-              <button class="btn" onclick="fetch('${_urlAntR}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))" style="width:100%;justify-content:center;padding:10px;background:var(--bg3);border-color:var(--border);color:var(--text);font-size:12px">
-                <i class="ti ti-brand-chrome"></i> Abrir perfil anterior (${perfilAnterior})
-              </button>
+              ${zenitChromeBtn(_platCodR, _correoAntR, _pAnt, _claveAnt, _nombreChromeAnt, 'Abrir perfil anterior (' + perfilAnterior + ')')}
             </div>
             <div>
               <div style="font-size:11px;color:var(--text3);margin-bottom:5px">📥 Cuenta nueva — crear perfil cliente</div>
-              <button class="btn" onclick="fetch('${_urlNuevoR}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))" style="width:100%;justify-content:center;padding:10px;background:${_colorR};border-color:${_colorR};color:${_platCodR==='DS'?'#000':'#fff'};font-size:12px">
-                <i class="ti ti-brand-chrome"></i> Abrir perfil nuevo (${perfilNuevoCod})
-              </button>
+              ${zenitChromeBtn(_platCodR, _correoNuevoR, _pNuevo, _claveNuevo, _nombreChromeNuevo, 'Abrir perfil nuevo (' + perfilNuevoCod + ')')}
             </div>
           </div>
         </div>`;
@@ -5082,17 +5135,8 @@ async function guardarCuenta(){
     const _nombreChrome = platVal === 'LealTV'
       ? `${platVal}-${codigo.replace(/^[A-Z]+/i,'').slice(0,-1)}-${correo}`
       : `${platVal}-${_prov}-${_correoCorto}@${_dominio}`;
-    const _color = {NF:'#E50914',DS:'#FFD700',HB:'#720E9E',PV:'#00A8E1'}[platVal] || 'var(--accent)';
-    const _zenitUrl = `http://localhost:9999/chrome?plat=${platVal}&correo=${encodeURIComponent(correo)}&prov=${_prov}`;
     setTimeout(() => {
-      const msg = `<div style="text-align:center;padding:8px 0">
-        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Cuenta <strong>${codigo}</strong> registrada. Crea el perfil Chrome:</div>
-        <div style="font-size:11px;font-family:monospace;color:var(--text3);margin-bottom:14px">${_nombreChrome}</div>
-        <button class="btn" onclick="fetch('${_zenitUrl}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'));closeModal('m-chrome-cuenta')" style="width:100%;justify-content:center;padding:12px;background:${_color};border-color:${_color};color:${platVal==='DS'?'#000':'#fff'};font-size:14px">
-          <i class="ti ti-brand-chrome"></i> Crear perfil Chrome
-        </button>
-      </div>`;
-      // Reusar el modal de éxito de venta temporalmente
+      const _btnChrome = zenitChromeBtn(platVal, correo, _prov, clave, _nombreChrome, 'Crear perfil Chrome');
       const overlay = document.createElement('div');
       overlay.id = 'm-chrome-cuenta';
       overlay.className = 'modal-overlay';
@@ -5102,7 +5146,8 @@ async function guardarCuenta(){
           <div style="font-size:15px;font-weight:700">Perfil Chrome</div>
           <button class="btn btn-sm btn-ic" onclick="document.getElementById('m-chrome-cuenta').remove();document.body.style.overflow=''"><i class="ti ti-x"></i></button>
         </div>
-        ${msg}
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Cuenta <strong>${codigo}</strong> registrada.</div>
+        ${_btnChrome}
       </div>`;
       document.body.appendChild(overlay);
       document.body.style.overflow = 'hidden';
