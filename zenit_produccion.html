@@ -8497,6 +8497,7 @@ async function reenviarAccesos(subId) {
         }
       }
     }
+    console.log('[IPTV DEBUG]', { correo: s.correo, clave: claveRenv, usuario: usuarioRenv, link: linkRenv });
     abrirWA(
       s.nombre, platNom, monto, 'reenvio_accesos',
       { correo: s.correo||'—', clave: claveRenv, perfil: s.perfil||'—',
