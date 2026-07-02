@@ -3321,7 +3321,7 @@ const WA={
     const link = ctx?.link || (PLATAFORMAS||[]).find(x => x.codigo === ctx?.platCod)?.link || '';
     if (ctx?.platCod === 'IP' || p === 'IPTV' || p === 'IP') {
       const linkIP = ctx?.link || (PLATAFORMAS||[]).find(x => x.codigo === 'IP')?.link || ctx?.correo || '—';
-      return `Hola <span class="wav">${n}</span> 📺 Tu IPTV ya está activa.\n\nIngresa estos datos en tu app en el siguiente orden:\n\n1️⃣ Nombre: <span class="wav">${n}</span>\n2️⃣ Usuario: <span class="wav">${ctx?.usuario||ctx?.perfil||'—'}</span>\n3️⃣ Clave: <span class="wav">${ctx?.clave||'—'}</span>\n4️⃣ Servidor: <span class="wav">${linkIP}</span>\n\n📅 Vence: <span class="wav">${ctx?.fecha_vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${ctx?.monto||m}</span>\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
+      return `Hola <span class="wav">${n}</span> 📺 Tu IPTV ya está activa.\n\nIngresa estos datos en tu app en el siguiente orden:\n\n1️⃣ Nombre: <span class="wav">${n}</span>\n2️⃣ Usuario: <span class="wav">${ctx?.correo||ctx?.usuario||ctx?.perfil||'—'}</span>\n3️⃣ Clave: <span class="wav">${ctx?.clave||ctx?.pin||'—'}</span>\n4️⃣ Servidor: <span class="wav">${linkIP}</span>\n\n📅 Vence: <span class="wav">${ctx?.fecha_vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${ctx?.monto||m}</span>\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
     }
     const plantilla = (PLANTILLAS_WA||[]).find(t => t.tipo === 'Venta');
     if (plantilla) {
