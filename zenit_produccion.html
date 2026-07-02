@@ -4009,7 +4009,7 @@ function zenitChromeBtn(plat, correo, prov, clave, nombreChrome, label) {
             <button class="btn btn-sm btn-ic" onclick="navigator.clipboard.writeText('${nombreChrome}').then(()=>toast('Copiado ✓','ok'))"><i class="ti ti-copy"></i></button>
           </div>
         </div>
-        ${link ? `<a href="${link}" target="_blank" rel="noopener" class="btn" style="justify-content:center;padding:9px;background:${color};border-color:${color};color:${txtColor};text-decoration:none;font-size:12px;margin-top:4px"><i class="ti ti-external-link"></i> Abrir ${plat}</a>` : ''}
+        ${link ? `<a href="${link}" target="_blank" rel="noopener noreferrer" class="btn" onclick="event.stopPropagation()" style="justify-content:center;padding:9px;background:${color};border-color:${color};color:${txtColor};text-decoration:none;font-size:12px;margin-top:4px;display:flex"><i class="ti ti-external-link"></i> Abrir ${plat}</a>` : ''}
       </div>
     </div>`;
   } else {
