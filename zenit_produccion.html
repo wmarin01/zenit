@@ -8477,31 +8477,24 @@ async function reenviarAccesos(subId) {
     const platNom = (PLATAFORMAS||[]).find(p => p.codigo === s.plat)?.nombre || s.plat;
     const monto   = '$' + Number(s.monto).toFixed(2);
     let linkRenv = '';
-    let usuarioRenv = s.usuario || '—';
-    let claveRenv   = s.clave   || '—';
     if (s.plat === 'IP') {
       const cuentaIdRenv = s.perfil && s.perfil !== '—' ? s.perfil.slice(0, -1) : null;
       if (cuentaIdRenv) {
         // Buscar en INV_CACHE primero; si no está (aún no cargado), consultar Supabase
         const cached = INV_CACHE.find(x => x.id === cuentaIdRenv);
         if (cached) {
-          linkRenv    = cached.link   || '';
-          usuarioRenv = cached.correo || s.correo || '—';
-          claveRenv   = cached.clave  || s.clave  || '—';
+          linkRenv = cached.link || '';
         } else {
           const { data: ctaDB } = await supa.from('cuentas_inventario')
-            .select('link, correo, clave').eq('codigo', cuentaIdRenv).maybeSingle();
-          linkRenv    = ctaDB?.link   || '';
-          usuarioRenv = ctaDB?.correo || s.correo || '—';
-          claveRenv   = ctaDB?.clave  || s.clave  || '—';
+            .select('link').eq('codigo', cuentaIdRenv).maybeSingle();
+          linkRenv = ctaDB?.link || '';
         }
       }
     }
-    console.log('[IPTV DEBUG]', { correo: s.correo, clave: claveRenv, usuario: usuarioRenv, link: linkRenv });
     abrirWA(
       s.nombre, platNom, monto, 'reenvio_accesos',
-      { correo: s.correo||'—', clave: claveRenv, perfil: s.perfil||'—',
-        usuario: usuarioRenv, pin: s.pin||'—', fecha_vcto: s.fVcto||'—',
+      { correo: s.correo||'—', clave: s.clave||'—', perfil: s.perfil||'—',
+        usuario: s.usuario||'—', pin: s.pin||'—', fecha_vcto: s.fVcto||'—',
         monto, platCod: s.plat, link: linkRenv },
       meta
     );
