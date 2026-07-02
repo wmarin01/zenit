@@ -5038,6 +5038,38 @@ async function guardarCuenta(){
     closeModal('m-cuenta');
     cargarInventario();
     toast(codigo + ' registrada · ' + maxPerf + ' perfiles generados ✓','ok');
+    const _provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV' };
+    const _prov = _provMap[provNom] || (provNom||'').substring(0,3).toUpperCase();
+    const _correoCorto = (correo||'').split('@')[0];
+    const _dominio = (correo||'').split('@')[1] || '';
+    const _nombreChrome = platVal === 'LealTV'
+      ? `${platVal}-${codigo.replace(/^[A-Z]+/i,'').slice(0,-1)}-${correo}`
+      : `${platVal}-${_prov}-${_correoCorto}@${_dominio}`;
+    const _color = {NF:'#E50914',DS:'#FFD700',HB:'#720E9E',PV:'#00A8E1'}[platVal] || 'var(--accent)';
+    const _zenitUrl = `http://localhost:9999/chrome?plat=${platVal}&correo=${encodeURIComponent(correo)}&prov=${_prov}`;
+    setTimeout(() => {
+      const msg = `<div style="text-align:center;padding:8px 0">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Cuenta <strong>${codigo}</strong> registrada. Crea el perfil Chrome:</div>
+        <div style="font-size:11px;font-family:monospace;color:var(--text3);margin-bottom:14px">${_nombreChrome}</div>
+        <button class="btn" onclick="fetch('${_zenitUrl}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'));closeModal('m-chrome-cuenta')" style="width:100%;justify-content:center;padding:12px;background:${_color};border-color:${_color};color:${platVal==='DS'?'#000':'#fff'};font-size:14px">
+          <i class="ti ti-brand-chrome"></i> Crear perfil Chrome
+        </button>
+      </div>`;
+      // Reusar el modal de éxito de venta temporalmente
+      const overlay = document.createElement('div');
+      overlay.id = 'm-chrome-cuenta';
+      overlay.className = 'modal-overlay';
+      overlay.style.display = 'flex';
+      overlay.innerHTML = `<div class="modal" style="max-width:420px;padding:24px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-size:15px;font-weight:700">Perfil Chrome</div>
+          <button class="btn btn-sm btn-ic" onclick="document.getElementById('m-chrome-cuenta').remove();document.body.style.overflow=''"><i class="ti ti-x"></i></button>
+        </div>
+        ${msg}
+      </div>`;
+      document.body.appendChild(overlay);
+      document.body.style.overflow = 'hidden';
+    }, 600);
 
     // Prompt: registrar acceso del proveedor
     setTimeout(() => mostrarConfirmAcceso(correo, platVal, provNom), 400);
