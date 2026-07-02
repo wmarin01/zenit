@@ -888,6 +888,7 @@ function closeSidebarMobile() {
     <div class="ni" onclick="goTo('historial',this)"><i class="ti ti-history"></i>Historial</div>
     <div class="ni" onclick="goTo('usuarios',this)"><i class="ti ti-user-shield"></i>Usuarios</div>
     <div class="ni" onclick="goTo('ayuda',this)"><i class="ti ti-help"></i>Ayuda</div>
+    <div class="ni" onclick="zenitActualizar()" style="color:var(--accent)"><i class="ti ti-refresh"></i>Actualizar app</div>
   </div>
   <div class="sb-user"><div class="ua" id="sb-iniciales">--</div><div><div style="font-size:12px;font-weight:500" id="sb-nombre">Cargando...</div><div style="font-size:10px;color:var(--accent)" id="sb-rol">...</div></div><i class="ti ti-logout" style="margin-left:auto;color:var(--text3);font-size:15px;cursor:pointer" onclick="cerrarSesion()" title="Cerrar sesión"></i></div>
 </nav>
@@ -9802,6 +9803,29 @@ function iniciarRealtime() {
 }
 
 let _appIniciada = false;
+function mostrarBannerActualizacion() {
+  const existing = document.getElementById('zenit-update-banner');
+  if (existing) return;
+  const banner = document.createElement('div');
+  banner.id = 'zenit-update-banner';
+  banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1e40af;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;z-index:99999;font-size:13px;gap:12px;flex-wrap:wrap';
+  banner.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px">
+      <i class="ti ti-refresh" style="font-size:18px"></i>
+      <span>🎉 Nueva versión de Zenit disponible. Actualiza para ver los últimos cambios.</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button onclick="zenitActualizar()" style="background:#fff;color:#1e40af;border:none;padding:8px 16px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px">🔄 Actualizar ahora</button>
+      <button onclick="document.getElementById('zenit-update-banner').remove()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px">Más tarde</button>
+    </div>`;
+  document.body.appendChild(banner);
+}
+
+function zenitActualizar() {
+  localStorage.removeItem('zenit_version');
+  window.location.reload(true);
+}
+
 async function iniciarApp() {
   if (_appIniciada) { console.warn('[APP] iniciarApp() ya fue llamada — skip'); return; }
   _appIniciada = true;
@@ -9810,14 +9834,13 @@ async function iniciarApp() {
     const res = await fetch(window.location.href, { method: 'HEAD', cache: 'no-store' });
     const version = res.headers.get('etag') || res.headers.get('last-modified') || '';
     if (version) {
-      const stored = sessionStorage.getItem('zenit_version');
+      const stored = localStorage.getItem('zenit_version');
       if (stored && stored !== version) {
-        sessionStorage.setItem('zenit_version', version);
-        toast('Nueva versión disponible — actualizando...', 'ok');
-        setTimeout(() => window.location.reload(true), 1500);
+        localStorage.setItem('zenit_version', version);
+        mostrarBannerActualizacion();
         return;
       }
-      sessionStorage.setItem('zenit_version', version);
+      localStorage.setItem('zenit_version', version);
     }
   } catch(_) {}
   try {
