@@ -9854,6 +9854,7 @@ async function iniciarApp() {
     await dbCargarNextCodigos();
     await dbCargarPerfilesDisp();
     await cargarUsuariosSistema();
+    await cargarPlantillasWA();
     renderDashboard();
     if (typeof activarBotonesReutilizar === 'function') activarBotonesReutilizar();
     _aplicarFiltrosSubs();
@@ -11051,6 +11052,23 @@ let PLANTILLAS_WA = [
   {nombre:'Cambio de cuenta / plataforma', tipo:'Cambio', contenido:'Hola {nombre} 🔄 Actualizamos tu cuenta de {plataforma}.\n📧 Correo: {correo}\n🔑 Clave: {clave}\n👤 Usuario: {usuario}\n📌 PIN: {pin}\nTu vencimiento no cambia. Cualquier duda escríbenos. 🙏\n─────────────\n🔖 Ref: {perfil}'}
 ];
 let _plantillaEditIdx = -1;
+
+async function cargarPlantillasWA() {
+  try {
+    const { data, error } = await supa.from('plantillas_wa')
+      .select('id, nombre, tipo, contenido, estado, variables_disponibles')
+      .eq('estado', 'activa')
+      .order('id');
+    if (error) { console.warn('[PLANTILLAS_WA] Error cargando desde Supabase, se mantienen valores por defecto:', error.message); return; }
+    if (!data || !data.length) { console.warn('[PLANTILLAS_WA] Sin plantillas activas en Supabase, se mantienen valores por defecto'); return; }
+    PLANTILLAS_WA.length = 0;
+    data.forEach(p => PLANTILLAS_WA.push({ id: p.id, nombre: p.nombre, tipo: p.tipo, contenido: p.contenido, variables_disponibles: p.variables_disponibles }));
+    console.log('[PLANTILLAS_WA] Cargadas desde Supabase ✓', PLANTILLAS_WA.length, 'plantillas activas');
+    if (typeof renderPlantillasWA === 'function') renderPlantillasWA();
+  } catch (e) {
+    console.warn('[PLANTILLAS_WA] Excepción cargando desde Supabase, se mantienen valores por defecto:', e.message);
+  }
+}
 
 const _TIPO_BADGE = {Venta:'bi', Cobranza:'ba', 'Post pago':'bg', Cambio:'bpu', Seguridad:'bpu'};
 
