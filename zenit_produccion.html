@@ -6938,7 +6938,8 @@ async function renderSubsPago(clienteId) {
   pagoSubsActuales = rows;
   calcTotalPago(rows);
   updResumenPago(rows);
-  const hoy = new Date().toISOString().split('T')[0];
+  const _hoyLocal = new Date();
+  const hoy = _hoyLocal.getFullYear()+'-'+String(_hoyLocal.getMonth()+1).padStart(2,'0')+'-'+String(_hoyLocal.getDate()).padStart(2,'0');
   const fp = document.getElementById('pago-fecha');
   if (fp && !fp.value) fp.value = hoy;
   if (rows.length) {
@@ -11639,6 +11640,17 @@ function filtrarInventario() {
   renderInventario(lista);
 }
 
+function esMovil() {
+  return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+}
+
+async function abrirChromeInventario(cuentaId, plat, correo, proveedor) {
+  const provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV', 'EmTVpro':'ETV', 'WILDER':'WLD', 'Viva buy':'VIV', 'Niña':'NIN' };
+  const prov = provMap[proveedor] || (proveedor||'').substring(0,3).toUpperCase();
+  const url = `http://localhost:9999/chrome?plat=${plat}&correo=${encodeURIComponent(correo)}&prov=${prov}`;
+  fetch(url).then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'));
+}
+
 function renderInventario(lista) {
   const disp = lista.filter(i=>i.estado==='Activa').length;
   const ocup = lista.filter(i=>i.estado==='Ocupada').length;
@@ -11699,6 +11711,7 @@ function renderInventario(lista) {
           <td class="tda">
             <button class="btn btn-sm btn-ic" onclick="abrirEditarCuenta(this)"><i class="ti ti-edit"></i></button>
             ${inv.plataforma === 'NF' ? `<button class="btn btn-sm btn-ic" title="Renovar con pin" onclick="abrirRenovarPin('${inv.id}','${inv.fecha_vcto_prov||''}')"><i class="ti ti-rotate-clockwise"></i></button>` : ''}
+            ${!esMovil() ? `<button class="btn btn-sm btn-ic" title="Abrir Chrome" onclick="abrirChromeInventario('${inv.id}','${inv.plataforma}','${(inv.correo||'').replace(/'/g,"\\'")}','${(inv.proveedor||'').replace(/'/g,"\\'")}')"><i class="ti ti-brand-chrome"></i></button>` : ''}
           </td>`;
         tbody.appendChild(tr2);
       });
