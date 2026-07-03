@@ -8496,7 +8496,7 @@ async function reenviarAccesos(subId) {
     abrirWA(
       s.nombre, platNom, monto, 'reenvio_accesos',
       { correo: s.correo||'—', clave: s.clave||'—', perfil: s.perfil||'—',
-        usuario: s.usuario||'—', pin: s.pin||'—', fecha_vcto: s.fVcto||'—',
+        usuario: s.plat === 'IP' ? (s.correo || '—') : (s.usuario || '—'), pin: s.pin||'—', fecha_vcto: s.fVcto||'—',
         monto, platCod: s.plat, link: linkRenv },
       meta
     );
