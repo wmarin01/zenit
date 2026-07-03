@@ -3331,6 +3331,7 @@ const WA={
         correo:     ctx?.correo     || '—',
         clave:      ctx?.clave      || '—',
         perfil:     ctx?.perfil     || '—',
+        usuario:    ctx?.platCod === 'IP' ? (ctx?.correo || '—') : (ctx?.usuario || ctx?.perfil || '—'),
         pin:        ctx?.pin        || '—',
         fecha_vcto: ctx?.fecha_vcto || '—',
         monto:      ctx?.monto      || m,
@@ -3351,7 +3352,7 @@ const WA={
       }
       return result;
     }
-    return `Hola <span class="wav">${n}</span> 🎉\n\nTe reenviamos los accesos de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.perfil||'—'}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n📌 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n📅 Vence: <span class="wav">${ctx?.fecha_vcto||'—'}</span>\n💰 Monto: <span class="wav">${m}</span>`;
+    return `Hola <span class="wav">${n}</span> 🎉\n\nTe reenviamos los accesos de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.platCod === 'IP' ? (ctx?.correo||'—') : (ctx?.usuario||ctx?.perfil||'—')}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n📌 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n📅 Vence: <span class="wav">${ctx?.fecha_vcto||'—'}</span>\n💰 Monto: <span class="wav">${m}</span>`;
   },
 };
 // Fecha dinámica en el header
