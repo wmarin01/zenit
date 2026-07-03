@@ -1586,6 +1586,10 @@ function closeSidebarMobile() {
   <div class="pp" id="pp-plantillas">
     <div style="display:flex;justify-content:flex-end;margin-bottom:11px"><button class="btn btn-p btn-sm" onclick="abrirNuevaPlantillaWA()"><i class="ti ti-plus"></i>Nueva plantilla</button></div>
     <div id="plantillas-wa-lista" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div id="plantillas-wa-borradores-wrap" style="display:none;margin-top:20px">
+      <div style="font-size:12px;font-weight:600;color:var(--amber);margin-bottom:10px">📝 Borradores pendientes de revisión</div>
+      <div id="plantillas-wa-borradores" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
   </div>
   <div class="pp" id="pp-cats">
     <div style="display:flex;justify-content:flex-end;margin-bottom:11px"><button class="btn btn-p btn-sm" onclick="openModal('m-param-form','Nueva categoría')"><i class="ti ti-plus"></i>Nueva categoría</button></div>
@@ -3835,6 +3839,7 @@ function tabParam(el,id){
   el.classList.add('on');
   document.querySelectorAll('.pp').forEach(p=>{p.classList.remove('on');p.style.display='none';});
   const t=document.getElementById(id);if(t){t.classList.add('on');t.style.display='block';}
+  if (id === 'pp-plantillas' && typeof cargarBorradoresPlantillas === 'function') cargarBorradoresPlantillas();
 }
 
 function tabUsuario(el,id){
@@ -4905,7 +4910,7 @@ async function confirmarCambio(){
   }
 }
 function confirmarClave(){closeModal('m-clave');toast('Contraseña actualizada · 2 clientes notificados','ok');}
-function guardarParam(){
+async function guardarParam(){
   const modal = document.querySelector('.ov.on');
   const modalId = modal?.id;
   if (!modal) return;
@@ -4983,18 +4988,27 @@ function guardarParam(){
 
   // ── PLANTILLA WA ──────────────────────────────────────────
   if (modalId === 'm-plantilla-form') {
-    const nombre   = document.getElementById('plantilla-nombre')?.value?.trim();
-    const tipo     = document.getElementById('plantilla-tipo')?.value || 'Venta';
+    const nombre    = document.getElementById('plantilla-nombre')?.value?.trim();
+    const tipo      = document.getElementById('plantilla-tipo')?.value || 'Venta';
     const contenido = document.getElementById('plantilla-contenido')?.value?.trim();
     if (!nombre || !contenido) { toast('Nombre y contenido son requeridos', 'warn'); return; }
-    if (_plantillaEditIdx >= 0) {
-      PLANTILLAS_WA[_plantillaEditIdx] = {nombre, tipo, contenido};
-    } else {
-      PLANTILLAS_WA.push({nombre, tipo, contenido});
+    const idEnEdicion = (_plantillaEditIdx >= 0) ? PLANTILLAS_WA[_plantillaEditIdx]?.id : _plantillaEditIdBorrador;
+    try {
+      const payload = { nombre, tipo, contenido, estado: 'borrador' };
+      let error;
+      if (idEnEdicion) {
+        ({ error } = await supa.from('plantillas_wa').update(payload).eq('id', idEnEdicion));
+      } else {
+        ({ error } = await supa.from('plantillas_wa').insert(payload));
+      }
+      if (error) throw error;
+      closeModal(modalId);
+      toast('Plantilla guardada como borrador. No se usará en ventas hasta activarla.', 'ok');
+      _plantillaEditIdBorrador = null;
+      if (typeof cargarBorradoresPlantillas === 'function') cargarBorradoresPlantillas();
+    } catch (e) {
+      toast('Error guardando plantilla: ' + e.message, 'err');
     }
-    closeModal(modalId);
-    renderPlantillasWA();
-    toast('Plantilla guardada correctamente ✓', 'ok');
     return;
   }
 
@@ -11052,6 +11066,7 @@ let PLANTILLAS_WA = [
   {nombre:'Cambio de cuenta / plataforma', tipo:'Cambio', contenido:'Hola {nombre} 🔄 Actualizamos tu cuenta de {plataforma}.\n📧 Correo: {correo}\n🔑 Clave: {clave}\n👤 Usuario: {usuario}\n📌 PIN: {pin}\nTu vencimiento no cambia. Cualquier duda escríbenos. 🙏\n─────────────\n🔖 Ref: {perfil}'}
 ];
 let _plantillaEditIdx = -1;
+let _plantillaEditIdBorrador = null;
 
 async function cargarPlantillasWA() {
   try {
@@ -11071,6 +11086,84 @@ async function cargarPlantillasWA() {
 }
 
 const _TIPO_BADGE = {Venta:'bi', Cobranza:'ba', 'Post pago':'bg', Cambio:'bpu', Seguridad:'bpu'};
+
+async function cargarBorradoresPlantillas() {
+  try {
+    const { data, error } = await supa.from('plantillas_wa')
+      .select('id, nombre, tipo, contenido')
+      .eq('estado', 'borrador')
+      .order('id', { ascending: false });
+    const wrap = document.getElementById('plantillas-wa-borradores-wrap');
+    const cont = document.getElementById('plantillas-wa-borradores');
+    if (!wrap || !cont) return;
+    if (error || !data || !data.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    cont.innerHTML = data.map(p => {
+      const badge = _TIPO_BADGE[p.tipo] || 'bi';
+      const preview = p.contenido.replace(/\{(\w+)\}/g, '<span class="wav">{$1}</span>');
+      return `<div style="border:1px solid var(--amber);border-radius:var(--r);overflow:hidden">
+        <div style="padding:8px 13px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;font-weight:500">${p.nombre}</span>
+          <span class="b ${badge}" style="margin-left:auto">${p.tipo}</span>
+          <button class="btn btn-sm btn-ic" onclick="editarBorradorWA(${p.id})" title="Editar"><i class="ti ti-edit"></i></button>
+          <button class="btn btn-sm btn-ic" onclick="activarPlantillaWA(${p.id}, '${p.tipo}')" title="Activar"><i class="ti ti-circle-check" style="color:var(--green)"></i></button>
+          <button class="btn btn-sm btn-ic" onclick="descartarBorradorWA(${p.id})" title="Descartar"><i class="ti ti-trash" style="color:var(--red)"></i></button>
+        </div>
+        <div style="padding:12px 14px;font-size:12px;line-height:1.7;color:var(--text2)">${preview}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    console.warn('[BORRADORES] Error cargando:', e.message);
+  }
+}
+
+async function activarPlantillaWA(id, tipo) {
+  if (!confirm('¿Activar esta plantilla? Reemplazará la plantilla activa actual de tipo "' + tipo + '".')) return;
+  try {
+    const { error: e1 } = await supa.from('plantillas_wa').update({ estado: 'archivada' }).eq('tipo', tipo).eq('estado', 'activa');
+    if (e1) throw e1;
+    const { error: e2 } = await supa.from('plantillas_wa').update({ estado: 'activa' }).eq('id', id);
+    if (e2) throw e2;
+    toast('Plantilla activada ✓', 'ok');
+    await cargarPlantillasWA();
+    await cargarBorradoresPlantillas();
+  } catch (e) {
+    toast('Error activando plantilla: ' + e.message, 'err');
+  }
+}
+
+async function descartarBorradorWA(id) {
+  if (!confirm('¿Descartar este borrador? No se puede deshacer.')) return;
+  try {
+    const { error } = await supa.from('plantillas_wa').delete().eq('id', id).eq('estado', 'borrador');
+    if (error) throw error;
+    toast('Borrador descartado', 'ok');
+    await cargarBorradoresPlantillas();
+  } catch (e) {
+    toast('Error descartando borrador: ' + e.message, 'err');
+  }
+}
+
+async function editarBorradorWA(id) {
+  try {
+    const { data, error } = await supa.from('plantillas_wa').select('id, nombre, tipo, contenido').eq('id', id).maybeSingle();
+    if (error || !data) { toast('No se pudo cargar el borrador', 'err'); return; }
+    _plantillaEditIdx = -1;
+    _plantillaEditIdBorrador = data.id;
+    const nom = document.getElementById('plantilla-nombre');
+    const tip = document.getElementById('plantilla-tipo');
+    const cnt = document.getElementById('plantilla-contenido');
+    if (nom) nom.value = data.nombre;
+    if (tip) tip.value = data.tipo;
+    if (cnt) cnt.value = data.contenido;
+    const tit = document.querySelector('#m-plantilla-form .mtit');
+    if (tit) tit.textContent = 'Editar borrador';
+    openModal('m-plantilla-form');
+    actualizarPreviewPlantilla();
+  } catch (e) {
+    toast('Error cargando borrador: ' + e.message, 'err');
+  }
+}
 
 function renderPlantillasWA() {
   const lista = document.getElementById('plantillas-wa-lista');
@@ -11095,6 +11188,7 @@ function renderPlantillasWA() {
 
 function abrirNuevaPlantillaWA() {
   _plantillaEditIdx = -1;
+  _plantillaEditIdBorrador = null;
   const nom = document.getElementById('plantilla-nombre');
   const tip = document.getElementById('plantilla-tipo');
   const cnt = document.getElementById('plantilla-contenido');
