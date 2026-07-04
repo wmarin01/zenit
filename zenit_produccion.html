@@ -4732,7 +4732,15 @@ function mostrarResumenCambio() {
   const _correoNuevoR = correoNuevo !== '—' ? correoNuevo : '';
   const _fetchProvAnt = _correoAntR ? supa.from('accesos').select('proveedor,clave').eq('plataforma',_platCodR).eq('correo',_correoAntR).maybeSingle() : Promise.resolve({data:null});
   const _fetchProvNuevo = _correoNuevoR ? supa.from('accesos').select('proveedor,clave').eq('plataforma',_platCodR).eq('correo',_correoNuevoR).maybeSingle() : Promise.resolve({data:null});
-  Promise.all([_fetchProvAnt, _fetchProvNuevo]).then(([_rAnt, _rNuevo]) => {
+  const _cuentaAntCod = perfilAnterior !== '—' ? perfilAnterior.substring(0,6) : '';
+  const _cuentaNuevoCod = perfilNuevoCod !== '—' ? perfilNuevoCod.substring(0,6) : '';
+  const _fetchPinAnt = _cuentaAntCod ? supa.from('suscripciones').select('pin,estado').eq('perfil_id', _cuentaAntCod + '1').maybeSingle() : Promise.resolve({data:null});
+  const _fetchPinNuevo = _cuentaNuevoCod ? supa.from('suscripciones').select('pin,estado').eq('perfil_id', _cuentaNuevoCod + '1').maybeSingle() : Promise.resolve({data:null});
+  Promise.all([_fetchProvAnt, _fetchProvNuevo, _fetchPinAnt, _fetchPinNuevo]).then(([_rAnt, _rNuevo, _rPinAnt, _rPinNuevo]) => {
+    const _pinDig = (PLATAFORMAS||[]).find(x => x.codigo === _platCodR)?.digitos_pin ?? PLATS[_platCodR]?.pin_dig ?? 4;
+    const _pinDefault = String(9530).padStart(_pinDig, '0');
+    const _pin1Ant = (_rPinAnt?.data?.estado === 'activo') ? _rPinAnt.data.pin : _pinDefault;
+    const _pin1Nuevo = (_rPinNuevo?.data?.estado === 'activo') ? _rPinNuevo.data.pin : _pinDefault;
     const _pAnt = _provMap[_rAnt?.data?.proveedor] || (_rAnt?.data?.proveedor||'').substring(0,3).toUpperCase();
     const _pNuevo = _provMap[_rNuevo?.data?.proveedor] || (_rNuevo?.data?.proveedor||'').substring(0,3).toUpperCase();
     const _claveAnt = _rAnt?.data?.clave || '';
@@ -4748,11 +4756,11 @@ function mostrarResumenCambio() {
           <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:10px">🖥️ Verifica antes de confirmar</div>
           <div style="display:grid;gap:10px">
             <div>
-              <div style="font-size:11px;color:var(--text3);margin-bottom:5px">📤 Cuenta anterior — eliminar perfil cliente</div>
+              <div style="font-size:11px;color:var(--text3);margin-bottom:5px">📤 Cuenta anterior — eliminar perfil cliente · 🔢 PIN perfil 1: <strong style="color:var(--text)">${_pin1Ant}</strong></div>
               ${zenitChromeBtn(_platCodR, _correoAntR, _pAnt, _claveAnt, _nombreChromeAnt, 'Abrir perfil anterior (' + perfilAnterior + ')')}
             </div>
             <div>
-              <div style="font-size:11px;color:var(--text3);margin-bottom:5px">📥 Cuenta nueva — crear perfil cliente</div>
+              <div style="font-size:11px;color:var(--text3);margin-bottom:5px">📥 Cuenta nueva — crear perfil cliente · 🔢 PIN perfil 1: <strong style="color:var(--text)">${_pin1Nuevo}</strong></div>
               ${zenitChromeBtn(_platCodR, _correoNuevoR, _pNuevo, _claveNuevo, _nombreChromeNuevo, 'Abrir perfil nuevo (' + perfilNuevoCod + ')')}
             </div>
           </div>
