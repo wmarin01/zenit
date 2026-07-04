@@ -4020,9 +4020,13 @@ function zenitChromeBtn(plat, correo, prov, clave, nombreChrome, label) {
       </div>
     </div>`;
   } else {
-    return `<button class="btn" onclick="fetch('${zenitUrl}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))" style="flex:1;min-width:140px;justify-content:center;padding:10px;background:${color};border-color:${color};color:${txtColor};font-size:12px">
-      <i class="ti ti-brand-chrome"></i> ${label}
-    </button>`;
+    return `<div style="display:flex;gap:6px;align-items:center;flex:1;min-width:140px">
+      <button class="btn" onclick="fetch('${zenitUrl}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))" style="flex:1;justify-content:center;padding:10px;background:${color};border-color:${color};color:${txtColor};font-size:12px">
+        <i class="ti ti-brand-chrome"></i> ${label}
+      </button>
+      <button class="btn btn-sm btn-ic" title="Copiar correo" onclick="navigator.clipboard.writeText('${correo}').then(()=>toast('Correo copiado ✓','ok'))"><i class="ti ti-mail"></i></button>
+      <button class="btn btn-sm btn-ic" title="Copiar clave" onclick="navigator.clipboard.writeText('${clave}').then(()=>toast('Clave copiada ✓','ok'))"><i class="ti ti-key"></i></button>
+    </div>`;
   }
 }
 
