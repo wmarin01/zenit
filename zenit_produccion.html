@@ -4736,7 +4736,7 @@ function mostrarResumenCambio() {
     const _pAnt = _provMap[_rAnt?.data?.proveedor] || (_rAnt?.data?.proveedor||'').substring(0,3).toUpperCase();
     const _pNuevo = _provMap[_rNuevo?.data?.proveedor] || (_rNuevo?.data?.proveedor||'').substring(0,3).toUpperCase();
     const _claveAnt = _rAnt?.data?.clave || '';
-    const _claveNuevo = _rNuevo?.data?.clave || '';
+    const _claveNuevo = _rNuevo?.data?.clave || perfilNuevoEl.dataset.clave || '';
     const _correoAntCorto = (_correoAntR||'').split('@')[0];
     const _correoNuevoCorto = (_correoNuevoR||'').split('@')[0];
     const _nombreChromeAnt = `${_platCodR}-${_pAnt}-${_correoAntCorto}@${(_correoAntR||'').split('@')[1]||''}`;
