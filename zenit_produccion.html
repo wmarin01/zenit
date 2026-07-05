@@ -1007,7 +1007,18 @@ function closeSidebarMobile() {
     <div class="tab" onclick="tabCob(this,'tc-todos')">Todos<span class="tcnt">23</span></div>
     <div class="tab" onclick="tabCob(this,'tc-vencidos')" style="color:var(--red)">Vencidos<span class="tcnt" style="background:rgba(240,77,77,.15);color:var(--red)">0</span></div>
   </div>
-  <div id="tc-hoy"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob-hoy"></tbody></table></div></div></div>
+  <div id="tc-hoy">
+    <div id="cobhoy-bar" style="display:none;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:rgba(240,77,77,.07);border:1px solid rgba(240,77,77,.22);border-radius:var(--r)">
+      <i class="ti ti-checkbox" style="color:var(--red);font-size:16px"></i>
+      <span id="cobhoy-count" style="font-size:13px;color:var(--text);flex:1">0 seleccionados</span>
+      <button class="btn btn-sm" id="btn-marcar-sinrenovar-hoy" style="display:none;background:var(--red);color:#fff;border-color:var(--red)" onclick="marcarSinRenovarHoy()"><i class="ti ti-ban"></i>Marcar Sin renovar</button>
+      <button class="btn btn-sm" onclick="clearSelHoy()"><i class="ti ti-x"></i>Limpiar</button>
+    </div>
+    <div class="card"><div class="tw"><table><thead><tr>
+      <th style="width:36px;text-align:center"><input type="checkbox" id="chk-all-hoy" onchange="selAllCobHoy(this)" title="Seleccionar todos"></th>
+      <th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th>
+    </tr></thead><tbody id="tcob-hoy"></tbody></table></div></div>
+  </div>
   <div id="tc-1d" style="display:none"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob-1d"></tbody></table></div></div></div>
   <div id="tc-3d" style="display:none"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob-3d"></tbody></table></div></div></div>
   <div id="tc-todos" style="display:none"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob-todos"></tbody></table></div></div></div>
@@ -3711,6 +3722,30 @@ function tabCob(el,id){
   if (!filtrados.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No hay suscripciones en este período</td></tr>'; return; }
   const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
   // ── Render especial para pestaña Vencidos (con checkboxes y barra de acción) ──
+  if (id === 'tc-hoy') {
+    const chkAllH = document.getElementById('chk-all-hoy');
+    if (chkAllH) chkAllH.checked = false;
+    const barH = document.getElementById('cobhoy-bar');
+    if (barH) barH.style.display = 'none';
+    const btnMH = document.getElementById('btn-marcar-sinrenovar-hoy');
+    if (btnMH) btnMH.style.display = USUARIO_ACTIVO?.rol === 'Master' ? '' : 'none';
+    tbody.innerHTML = filtrados.map(s => {
+      const platDot = (s.plat||'').split('+').map(p=>`<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
+      return `<tr>
+        <td style="text-align:center"><input type="checkbox" class="chk-hoy" data-clienteid="${s.clienteId}" data-subid="${s.id}" onchange="onCobHoyChk()"></td>
+        <td><strong>${s.nombre}</strong></td>
+        <td style="font-size:12px">${formatTel(s.tel)}</td>
+        <td>${platDot}</td>
+        <td style="color:var(--green);font-weight:500">$${(s.monto||0).toFixed(2)}</td>
+        <td><span class="b br">Hoy</span></td>
+        <td><div class="rdots"><div class="rd p"></div><span class="rl">3d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd s" style="margin-left:3px"></div><span class="rl">hoy</span></div></td>
+        <td class="tda">
+          <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','vencimiento')"><i class="ti ti-brand-whatsapp"></i>WA</button>
+          <button class="btn btn-sm btn-s" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Pago</button>
+        </td></tr>`;
+    }).join('');
+    return;
+  }
   if (id === 'tc-vencidos') {
     const chkAll = document.getElementById('chk-all-vencidos');
     if (chkAll) chkAll.checked = false;
@@ -3768,6 +3803,35 @@ function clearSelVencidos() {
   if (allChk) { allChk.checked = false; allChk.indeterminate = false; }
   const bar = document.getElementById('cobvenc-bar');
   if (bar) bar.style.display = 'none';
+}
+
+function selAllCobHoy(chk) {
+  const isChecked = chk.checked;
+  document.querySelectorAll('.chk-hoy').forEach(c => c.checked = isChecked);
+  onCobHoyChk();
+}
+
+function clearSelHoy() {
+  document.querySelectorAll('.chk-hoy').forEach(c => c.checked = false);
+  const allChk = document.getElementById('chk-all-hoy');
+  if (allChk) { allChk.checked = false; allChk.indeterminate = false; }
+  const bar = document.getElementById('cobhoy-bar');
+  if (bar) bar.style.display = 'none';
+}
+
+function onCobHoyChk() {
+  const checks = document.querySelectorAll('.chk-hoy');
+  const checked = document.querySelectorAll('.chk-hoy:checked').length;
+  const bar = document.getElementById('cobhoy-bar');
+  if (!bar) return;
+  bar.style.display = checked > 0 ? 'flex' : 'none';
+  const cnt = document.getElementById('cobhoy-count');
+  if (cnt) cnt.textContent = checked + ' suscripci' + (checked !== 1 ? 'ones' : 'ón') + ' seleccionada' + (checked !== 1 ? 's' : '');
+  const chkAll = document.getElementById('chk-all-hoy');
+  if (chkAll) {
+    chkAll.indeterminate = checked > 0 && checked < checks.length;
+    if (!chkAll.indeterminate) chkAll.checked = checked === checks.length && checks.length > 0;
+  }
 }
 
 function onCobVencidoChk() {
@@ -3828,6 +3892,51 @@ async function marcarSinRenovar() {
     document.querySelector('#cobtabs .tab.on')?.click();
   } catch(e) {
     console.error('[SR] Error:', e);
+    toast('Error al actualizar: ' + (e.message || e), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-ban"></i>Marcar Sin renovar'; }
+  }
+}
+
+async function marcarSinRenovarHoy() {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede ejecutar esta acción', 'warn'); return; }
+  const checks = Array.from(document.querySelectorAll('.chk-hoy:checked'));
+  if (!checks.length) return;
+  const clienteIds = [...new Set(checks.map(c => c.dataset.clienteid).filter(Boolean))];
+  if (!clienteIds.length) return;
+  const hoy = new Date().toISOString().split('T')[0];
+  const btn = document.getElementById('btn-marcar-sinrenovar-hoy');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Procesando...'; }
+  let total = 0;
+  try {
+    for (const clienteId of clienteIds) {
+      const perfilIdsAfectados = SUBS_FULL
+        .filter(s => s.clienteId === clienteId && s.est === 'activo' && s.diasVcto === 0)
+        .map(s => s.perfil)
+        .filter(p => p && p !== '—');
+
+      const { error } = await supa
+        .from('suscripciones')
+        .update({ estado: 'sin_renovar' })
+        .eq('cliente_id', clienteId)
+        .eq('estado', 'activo')
+        .eq('fecha_vcto', hoy);
+      if (error) throw error;
+
+      for (const perfilId of perfilIdsAfectados) {
+        await supa.from('perfiles').update({ estado: 'disponible' }).eq('id', perfilId);
+      }
+
+      SUBS_FULL.forEach(s => {
+        if (s.clienteId === clienteId && s.est === 'activo' && s.diasVcto === 0) { s.est = 'sin_renovar'; total++; }
+      });
+    }
+    await dbCargarPerfilesDisp();
+    toast(`${total} suscripci${total === 1 ? 'ón marcada' : 'ones marcadas'} como Sin renovar ✓`, 'ok');
+    await dbGuardarHistorial('Marcado Sin renovar masivo (Hoy)', `${total} suscripciones · ${clienteIds.length} clientes`, 'var(--amber)');
+    document.querySelector('#cobtabs .tab.on')?.click();
+  } catch(e) {
+    console.error('[SR-HOY] Error:', e);
     toast('Error al actualizar: ' + (e.message || e), 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-ban"></i>Marcar Sin renovar'; }
