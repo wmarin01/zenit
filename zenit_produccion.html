@@ -279,11 +279,17 @@ async function dbCargarSuscripciones() {
     page++;
   }
 
-  const { data: cuentasClaves } = await supa.from('cuentas_inventario').select('codigo,clave,link');
+  const { data: cuentasClaves } = await supa.from('cuentas_inventario').select('codigo,clave,link,proveedor');
 
   // Mapa código_cuenta → clave para enriquecer suscripciones sin clave
   const _claveMap = {};
   (cuentasClaves || []).forEach(c => { if (c.codigo && c.clave) _claveMap[c.codigo] = c.clave; });
+  const _provMap2 = {};
+  const _linkMap2 = {};
+  (cuentasClaves || []).forEach(c => {
+    if (c.codigo && c.proveedor) _provMap2[c.codigo] = c.proveedor;
+    if (c.codigo && c.link) _linkMap2[c.codigo] = c.link;
+  });
 
   const data = allSubs;
   if (data && data.length > 0) {
@@ -298,6 +304,8 @@ async function dbCargarSuscripciones() {
         perfil: s.perfil_id || '—',
         correo: s.correo || '—',
         clave,
+        proveedor: (cuentaId ? _provMap2[cuentaId] : null) || '',
+        link: (cuentaId ? _linkMap2[cuentaId] : null) || '',
         nombre: s.clientes ? (s.clientes.nombre + ' ' + (s.clientes.apellido||'')).trim() : (s.nombre || '—'),
         tel: s.clientes ? normalizeTel(s.clientes.telefono) : normalizeTel(s.telefono||''),
         usuario: s.usuario || '—',
@@ -1016,7 +1024,7 @@ function closeSidebarMobile() {
     </div>
     <div class="card"><div class="tw"><table><thead><tr>
       <th style="width:36px;text-align:center"><input type="checkbox" id="chk-all-hoy" onchange="selAllCobHoy(this)" title="Seleccionar todos"></th>
-      <th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th>
+      <th>Cliente</th><th>Usuario</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Correo</th><th>Clave</th><th>Recordatorios</th><th>Acciones</th>
     </tr></thead><tbody id="tcob-hoy"></tbody></table></div></div>
   </div>
   <div id="tc-1d" style="display:none"><div class="card"><div class="tw"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Monto</th><th>Vence</th><th>Recordatorios</th><th>Acciones</th></tr></thead><tbody id="tcob-1d"></tbody></table></div></div></div>
@@ -1031,7 +1039,7 @@ function closeSidebarMobile() {
     </div>
     <div class="card"><div class="tw"><table><thead><tr>
       <th style="width:36px;text-align:center"><input type="checkbox" id="chk-all-vencidos" onchange="selAllCobVencidos(this)" title="Seleccionar todos"></th>
-      <th>Cliente</th><th>Teléfono</th><th>Plataformas</th><th>Suscripción</th><th>Monto</th><th>F. Vencimiento</th><th>Vencido hace</th><th>Acciones</th>
+      <th>Cliente</th><th>Usuario</th><th>Teléfono</th><th>Plataformas</th><th>Suscripción</th><th>Monto</th><th>F. Vencimiento</th><th>Correo</th><th>Clave</th><th>Vencido hace</th><th>Acciones</th>
     </tr></thead><tbody id="tcob-vencidos"></tbody></table></div></div>
   </div>
 </div>
@@ -3673,6 +3681,7 @@ function tabCob(el,id){
   ['tc-hoy','tc-1d','tc-3d','tc-todos','tc-vencidos'].forEach(x=>{const d=document.getElementById(x);if(d)d.style.display='none';});
   const t=document.getElementById(id);if(t)t.style.display='block';
   // Renderizar cobranza desde suscripciones activas de Supabase
+  const _provAbbrCob = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV', 'EmTVpro':'ETV', 'WILDER':'WLD', 'Viva buy':'VIV', 'Niña':'NIN' };
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const subsActivas = SUBS_FULL.filter(s => s.est === 'activo' && s.fVcto && s.fVcto !== '—');
   // Convertir fVcto dd/mm/yyyy → Date
@@ -3734,14 +3743,18 @@ function tabCob(el,id){
       return `<tr>
         <td style="text-align:center"><input type="checkbox" class="chk-hoy" data-clienteid="${s.clienteId}" data-subid="${s.id}" onchange="onCobHoyChk()"></td>
         <td><strong>${s.nombre}</strong></td>
+        <td style="font-size:12px;color:var(--text2)">${s.usuario||'—'}</td>
         <td style="font-size:12px">${formatTel(s.tel)}</td>
         <td>${platDot}</td>
         <td style="color:var(--green);font-weight:500">$${(s.monto||0).toFixed(2)}</td>
         <td><span class="b br">Hoy</span></td>
+        <td style="font-size:11px;white-space:nowrap">${s.correo} <button class="btn btn-sm btn-ic" title="Copiar correo" onclick="navigator.clipboard.writeText('${s.correo}').then(()=>toast('Correo copiado ✓','ok'))"><i class="ti ti-copy"></i></button></td>
+        <td style="font-size:11px;white-space:nowrap">${s.clave} <button class="btn btn-sm btn-ic" title="Copiar clave" onclick="navigator.clipboard.writeText('${s.clave}').then(()=>toast('Clave copiada ✓','ok'))"><i class="ti ti-copy"></i></button></td>
         <td><div class="rdots"><div class="rd p"></div><span class="rl">3d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd s" style="margin-left:3px"></div><span class="rl">hoy</span></div></td>
         <td class="tda">
           <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','vencimiento')"><i class="ti ti-brand-whatsapp"></i>WA</button>
           <button class="btn btn-sm btn-s" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Pago</button>
+          <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${s.plat}&correo=${encodeURIComponent(s.correo)}&prov=${encodeURIComponent(_provAbbrCob[s.proveedor] || (s.proveedor||'').substring(0,3).toUpperCase())}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
         </td></tr>`;
     }).join('');
     return;
@@ -3760,15 +3773,19 @@ function tabCob(el,id){
       return `<tr>
         <td style="text-align:center"><input type="checkbox" class="chk-vencido" data-clienteid="${s.clienteId}" data-subid="${s.id}" onchange="onCobVencidoChk()"></td>
         <td><strong>${s.nombre}</strong></td>
+        <td style="font-size:12px;color:var(--text2)">${s.usuario||'—'}</td>
         <td style="font-size:12px">${formatTel(s.tel)}</td>
         <td>${platDot}</td>
         <td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${s.perfil && s.perfil !== '—' ? s.perfil : (s.plat||'—')}</td>
         <td style="color:var(--red);font-weight:500">$${(s.monto||0).toFixed(2)}</td>
         <td style="font-size:12px;white-space:nowrap">${s.fVcto||'—'}</td>
+        <td style="font-size:11px;white-space:nowrap">${s.correo} <button class="btn btn-sm btn-ic" title="Copiar correo" onclick="navigator.clipboard.writeText('${s.correo}').then(()=>toast('Correo copiado ✓','ok'))"><i class="ti ti-copy"></i></button></td>
+        <td style="font-size:11px;white-space:nowrap">${s.clave} <button class="btn btn-sm btn-ic" title="Copiar clave" onclick="navigator.clipboard.writeText('${s.clave}').then(()=>toast('Clave copiada ✓','ok'))"><i class="ti ti-copy"></i></button></td>
         <td><span class="b br">Hace ${diasText}</span></td>
         <td class="tda">
           <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','vencimiento')"><i class="ti ti-brand-whatsapp"></i>WA</button>
           <button class="btn btn-sm btn-s" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Pago</button>
+          <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${s.plat}&correo=${encodeURIComponent(s.correo)}&prov=${encodeURIComponent(_provAbbrCob[s.proveedor] || (s.proveedor||'').substring(0,3).toUpperCase())}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
         </td></tr>`;
     }).join('');
     return;
@@ -3911,7 +3928,7 @@ async function marcarSinRenovarHoy() {
   try {
     for (const clienteId of clienteIds) {
       const perfilIdsAfectados = SUBS_FULL
-        .filter(s => s.clienteId === clienteId && s.est === 'activo' && s.diasVcto === 0)
+        .filter(s => s.clienteId === clienteId && s.est === 'activo' && s.dias === 0)
         .map(s => s.perfil)
         .filter(p => p && p !== '—');
 
@@ -3928,7 +3945,7 @@ async function marcarSinRenovarHoy() {
       }
 
       SUBS_FULL.forEach(s => {
-        if (s.clienteId === clienteId && s.est === 'activo' && s.diasVcto === 0) { s.est = 'sin_renovar'; total++; }
+        if (s.clienteId === clienteId && s.est === 'activo' && s.dias === 0) { s.est = 'sin_renovar'; total++; }
       });
     }
     await dbCargarPerfilesDisp();
@@ -4725,7 +4742,12 @@ async function confirmarPago() {
       if (tipoUpdate) payload.tipo = tipoUpdate;
       const _idsActualizar = cb.dataset.combosubids ? JSON.parse(cb.dataset.combosubids) : [subId];
       for (const _sid of _idsActualizar) {
-        await supa.from('suscripciones').update(payload).eq('id', _sid);
+        const { error: errVcto } = await supa.from('suscripciones').update(payload).eq('id', _sid);
+        if (errVcto) {
+          console.error('[PAGO] Error actualizando vencimiento de suscripción', _sid, errVcto.message);
+          toast('⚠️ El cobro se guardó, pero falló actualizar el vencimiento de la suscripción ' + _sid + '. Corrígelo manualmente.', 'error');
+          continue;
+        }
         const memIdx = SUBS_FULL.findIndex(s => s.id == _sid);
         if (memIdx !== -1) {
           if (nuevaFVcto) SUBS_FULL[memIdx].fVcto = nuevaFVcto.split('-').reverse().join('/');
