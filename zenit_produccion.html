@@ -5,8 +5,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ── CONFIGURACIÓN SUPABASE ────────────────────────────────────
-const SUPA_URL = 'https://epsmeemrqgihkqrwbfrm.supabase.co';
-const SUPA_KEY = 'sb_publishable_aG1RDYX0Vgq3_C23MGkbOA_bMJMxu7C';
+const SUPA_URL = 'https://gqnvocozmdtghuaojfgo.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxbnZvY296bWR0Z2h1YW9qZmdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNTYzNDYsImV4cCI6MjA5NTkzMjM0Nn0.hLEoqJbtpdemEAK4J780QUyz5o11lTvlm8Q7cGqzI4A';
 const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ── HELPERS DE BASE DE DATOS ──────────────────────────────────
@@ -5232,7 +5232,8 @@ async function guardarCuenta(){
           link: platVal === 'IP' ? (link || null) : null,
           max_perfiles: maxPerf,
           proveedor: provNom || null,
-          fecha_vcto_proveedor: fechaV ? fechaV.split('-').reverse().join('/') : null,
+          fecha_compra: fechaC || null,
+          fecha_vcto_proveedor: fechaV || null,
           costo_proveedor: costo,
           estado: estadoCta, notas
         }, { onConflict: 'codigo' });
@@ -5252,27 +5253,29 @@ async function guardarCuenta(){
         }, { onConflict: 'id' });
     if (e2) console.warn('inventario insert:', e2.message);
 
-    // 3. Generar perfiles automáticamente
-    const perfiles = Array.from({length: maxPerf}, (_, i) => ({
-      id: codigo + (i+1),
-      inventario_id: codigo,
-      numero: i+1,
-      estado: 'disponible'
-    }));
-    const {error: e3} = await supa.from('perfiles').insert(perfiles);
-    if (e3) console.warn('perfiles insert:', e3.message);
+    // 3. Generar perfiles automáticamente (SOLO para cuentas nuevas, no al editar)
+    if (!_editandoCuentaExistente) {
+      const perfiles = Array.from({length: maxPerf}, (_, i) => ({
+        id: codigo + (i+1),
+        inventario_id: codigo,
+        numero: i+1,
+        estado: 'disponible'
+      }));
+      const {error: e3} = await supa.from('perfiles').insert(perfiles);
+      if (e3) console.warn('perfiles insert:', e3.message);
 
-    // 4. Actualizar PERFILES_DISP en memoria
-    if (!PERFILES_DISP[platVal]) PERFILES_DISP[platVal] = [];
-    perfiles.forEach(p => PERFILES_DISP[platVal].push({
-      codigo: p.id, num: p.numero, cuenta: codigo,
-      correo, clave, link: platVal === 'IP' ? (link || '') : '',
-      origen: codigo + ' · perfil ' + p.numero
-    }));
+      // 4. Actualizar PERFILES_DISP en memoria
+      if (!PERFILES_DISP[platVal]) PERFILES_DISP[platVal] = [];
+      perfiles.forEach(p => PERFILES_DISP[platVal].push({
+        codigo: p.id, num: p.numero, cuenta: codigo,
+        correo, clave, link: platVal === 'IP' ? (link || '') : '',
+        origen: codigo + ' · perfil ' + p.numero
+      }));
 
-    // 5. Actualizar código siguiente
-    const num = parseInt(codigo.replace(/[^0-9]/g,'')) || 0;
-    NEXT_CODIGO[platVal] = platVal + String(num+1).padStart(4,'0');
+      // 5. Actualizar código siguiente
+      const num = parseInt(codigo.replace(/[^0-9]/g,'')) || 0;
+      NEXT_CODIGO[platVal] = platVal + String(num+1).padStart(4,'0');
+    }
 
     await dbGuardarHistorial('Nueva cuenta', codigo + ' · ' + (PLATS[platVal]?.nombre||platVal) + ' · ' + correo, 'var(--green)');
 
@@ -5287,34 +5290,39 @@ async function guardarCuenta(){
     updCuentaCodigo();
     closeModal('m-cuenta');
     cargarInventario();
-    toast(codigo + ' registrada · ' + maxPerf + ' perfiles generados ✓','ok');
-    const _provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV' };
-    const _prov = _provMap[provNom] || (provNom||'').substring(0,3).toUpperCase();
-    const _correoCorto = (correo||'').split('@')[0];
-    const _dominio = (correo||'').split('@')[1] || '';
-    const _nombreChrome = platVal === 'LealTV'
-      ? `${platVal}-${codigo.replace(/^[A-Z]+/i,'').slice(0,-1)}-${correo}`
-      : `${platVal}-${_prov}-${_correoCorto}@${_dominio}`;
-    setTimeout(() => {
-      const _btnChrome = zenitChromeBtn(platVal, correo, _prov, clave, _nombreChrome, 'Crear perfil Chrome');
-      const overlay = document.createElement('div');
-      overlay.id = 'm-chrome-cuenta';
-      overlay.className = 'modal-overlay';
-      overlay.style.display = 'flex';
-      overlay.innerHTML = `<div class="modal" style="max-width:420px;padding:24px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <div style="font-size:15px;font-weight:700">Perfil Chrome</div>
-          <button class="btn btn-sm btn-ic" onclick="document.getElementById('m-chrome-cuenta').remove();document.body.style.overflow=''"><i class="ti ti-x"></i></button>
-        </div>
-        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Cuenta <strong>${codigo}</strong> registrada.</div>
-        ${_btnChrome}
-      </div>`;
-      document.body.appendChild(overlay);
-      document.body.style.overflow = 'hidden';
-    }, 600);
 
-    // Prompt: registrar acceso del proveedor
-    setTimeout(() => mostrarConfirmAcceso(correo, platVal, provNom), 400);
+    if (!_editandoCuentaExistente) {
+      toast(codigo + ' registrada · ' + maxPerf + ' perfiles generados ✓','ok');
+      const _provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV' };
+      const _prov = _provMap[provNom] || (provNom||'').substring(0,3).toUpperCase();
+      const _correoCorto = (correo||'').split('@')[0];
+      const _dominio = (correo||'').split('@')[1] || '';
+      const _nombreChrome = platVal === 'LealTV'
+        ? `${platVal}-${codigo.replace(/^[A-Z]+/i,'').slice(0,-1)}-${correo}`
+        : `${platVal}-${_prov}-${_correoCorto}@${_dominio}`;
+      setTimeout(() => {
+        const _btnChrome = zenitChromeBtn(platVal, correo, _prov, clave, _nombreChrome, 'Crear perfil Chrome');
+        const overlay = document.createElement('div');
+        overlay.id = 'm-chrome-cuenta';
+        overlay.className = 'modal-overlay';
+        overlay.style.display = 'flex';
+        overlay.innerHTML = `<div class="modal" style="max-width:420px;padding:24px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div style="font-size:15px;font-weight:700">Perfil Chrome</div>
+            <button class="btn btn-sm btn-ic" onclick="document.getElementById('m-chrome-cuenta').remove();document.body.style.overflow=''"><i class="ti ti-x"></i></button>
+          </div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Cuenta <strong>${codigo}</strong> registrada.</div>
+          ${_btnChrome}
+        </div>`;
+        document.body.appendChild(overlay);
+        document.body.style.overflow = 'hidden';
+      }, 600);
+
+      // Prompt: registrar acceso del proveedor
+      setTimeout(() => mostrarConfirmAcceso(correo, platVal, provNom), 400);
+    } else {
+      toast(codigo + ' actualizada ✓', 'ok');
+    }
 
   } catch(e) {
     console.error('[CUENTA]', e);
@@ -5353,6 +5361,7 @@ function mostrarConfirmAcceso(correo, plataforma, proveedor) {
 }
 
 // ── EDITAR CUENTA ─────────────────────────────────────────────
+let _editandoCuentaExistente = false;
 function abrirEditarCuenta(btn) {
   const tr = btn.closest('tr');
   const cells = tr.querySelectorAll('td');
@@ -5386,6 +5395,17 @@ function abrirEditarCuenta(btn) {
   setVal('cuenta-costo',     costo);
   setVal('cuenta-notas',     notas);
   setVal('cuenta-link',      linkVal);
+  setVal('cuenta-fecha-compra2', fcCompra);
+  setVal('cuenta-vcto-prov',     fcVcto);
+  _editandoCuentaExistente = true;
+  const proveedorActual = tr.dataset.proveedor || '';
+  cargarSelectoresProveedores().then(() => {
+    const ps = document.getElementById('cuenta-prov');
+    if (ps && proveedorActual) {
+      const opt = Array.from(ps.options).find(o => o.text.split(' ·')[0].trim() === proveedorActual.trim());
+      if (opt) ps.value = opt.value;
+    }
+  });
   const grpLink2 = document.getElementById('grp-cuenta-link');
   if (grpLink2) grpLink2.style.display = platCode2 === 'IP' ? '' : 'none';
 
@@ -7839,6 +7859,7 @@ async function guardarProveedor() {
 }
 
 function abrirNuevaCuenta() {
+  _editandoCuentaExistente = false;
   cargarSelectoresProveedores();
   openModal('m-cuenta');
 }
@@ -11813,10 +11834,26 @@ async function cargarInventario() {
     let all = [];
     let page = 0;
     while(true) {
-      const {data, error} = await supa.from('inventario').select('*').order('plataforma').order('id').range(page*1000, page*1000+999);
+      const {data, error} = await supa.from('cuentas_inventario')
+        .select('codigo,plataforma,correo,clave,max_perfiles,fecha_compra,fecha_vcto_proveedor,costo_proveedor,proveedor,estado,notas,link')
+        .order('plataforma').order('codigo')
+        .range(page*1000, page*1000+999);
       if (error) throw error;
       if (!data || !data.length) break;
-      all = all.concat(data);
+      all = all.concat(data.map(c => ({
+        id: c.codigo,
+        plataforma: c.plataforma,
+        correo: c.correo,
+        clave: c.clave,
+        max_perfiles: c.max_perfiles,
+        fecha_compra: c.fecha_compra,
+        fecha_vcto_prov: c.fecha_vcto_proveedor,
+        costo: c.costo_proveedor,
+        proveedor: c.proveedor,
+        estado: c.estado,
+        notas: c.notas,
+        link: c.link
+      })));
       if (data.length < 1000) break;
       page++;
     }
@@ -11835,44 +11872,12 @@ async function cargarInventario() {
     }
     INV_SUBS_MAP = {};
     subs.forEach(s => {
-      // perfil_id "NF00571" → cuenta "NF0057" (quitar último dígito)
       const raw = (s.perfil_id || '').trim();
       if (!raw) return;
       const cuentaId = raw.slice(0, -1);
       if (!INV_SUBS_MAP[cuentaId]) INV_SUBS_MAP[cuentaId] = 0;
       if ((s.estado||'').toLowerCase() === 'activo') INV_SUBS_MAP[cuentaId]++;
     });
-
-    // Cargar claves y links desde cuentas_inventario
-    const { data: cuentasClaves } = await supa.from('cuentas_inventario').select('codigo,clave,link,notas,fecha_compra,fecha_vcto_proveedor,proveedor');
-    const _invClaveMap = {};
-    const _invLinkMap = {};
-    const _invMetaMap = {};
-    (cuentasClaves || []).forEach(c => {
-      if (c.codigo) {
-        if (c.clave) _invClaveMap[c.codigo] = c.clave;
-        if (c.link)  _invLinkMap[c.codigo]  = c.link;
-        _invMetaMap[c.codigo] = { notas: c.notas||'', fecha_compra: c.fecha_compra||'', fecha_vcto_prov: c.fecha_vcto_proveedor||'', proveedor: c.proveedor||'' };
-      }
-    });
-    // Enriquecer INV_CACHE con link y metadatos de cuentas_inventario
-    INV_CACHE.forEach(inv => {
-      if (_invLinkMap[inv.id]) inv.link = _invLinkMap[inv.id];
-      const meta = _invMetaMap[inv.id];
-      if (meta) {
-        if (!inv.notas) inv.notas = meta.notas;
-        if (!inv.fecha_compra) inv.fecha_compra = meta.fecha_compra;
-        if (!inv.fecha_vcto_prov) inv.fecha_vcto_prov = meta.fecha_vcto_prov;
-        if (!inv.proveedor) inv.proveedor = meta.proveedor;
-      }
-    });
-    SUBS_FULL.forEach(s => {
-      if (!s.clave || s.clave === '—') {
-        const cuentaId = s.perfil && s.perfil !== '—' ? s.perfil.slice(0, -1) : null;
-        if (cuentaId && _invClaveMap[cuentaId]) s.clave = _invClaveMap[cuentaId];
-      }
-    });
-
     filtrarInventario();
   } catch(e) {
     console.error('Error inventario:', e);
@@ -11950,6 +11955,7 @@ function renderInventario(lista) {
         tr2.dataset.fechaCompra = inv.fecha_compra || '';
         tr2.dataset.fechaVcto = inv.fecha_vcto_prov || '';
         tr2.dataset.link = inv.link || '';
+        tr2.dataset.proveedor = inv.proveedor || '';
         const correoCell = inv.plataforma === 'IP' && inv.link
           ? `${inv.correo||'—'}<br><a href="${inv.link}" target="_blank" rel="noopener" style="font-size:10px;color:var(--accent);word-break:break-all">${inv.link}</a>`
           : (inv.correo||'—');
