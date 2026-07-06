@@ -3053,12 +3053,14 @@ function closeSidebarMobile() {
       </div>
       <div class="fg" style="margin-bottom:11px">
         <label>Link / Página del bot<span class="req">*</span></label>
-        <input type="text" id="acceso-link" placeholder="Ej: t.me/nombre_bot o https://web.proveedor.com">
+        <input type="text" id="acceso-link" list="dl-acceso-link" placeholder="Ej: t.me/nombre_bot o https://web.proveedor.com">
+        <datalist id="dl-acceso-link"></datalist>
         <div class="hint">Puede ser un bot de Telegram, WhatsApp o página web</div>
       </div>
       <div class="fr c2">
         <div class="fg"><label>Correo / Usuario<span class="req">*</span></label>
-          <input type="text" id="acceso-usuario" placeholder="usuario@correo.com o @usuario">
+          <input type="text" id="acceso-usuario" list="dl-acceso-usuario" placeholder="usuario@correo.com o @usuario">
+          <datalist id="dl-acceso-usuario"></datalist>
         </div>
         <div class="fg"><label>Clave / Contraseña<span class="req">*</span></label>
           <div style="display:flex;gap:6px">
@@ -3555,7 +3557,7 @@ function goTo(v,el){
       else if (v==='pines')         { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoLotePines()"><i class="ti ti-plus"></i>Nuevo lote</button>`; cargarPines(); cargarTarifasPin(); }
       else if (v==='parametros')    { ha.innerHTML=''; cargarParametros(); cargarPlataformas(); cargarTarifasPin(); }
       else if (v==='accesos')       {
-        ha.innerHTML = `<button class="hbtn p" onclick="cargarSelectoresProveedores();openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`;
+        ha.innerHTML = `<button class="hbtn p" onclick="cargarSelectoresProveedores();cargarSugerenciasAcceso();openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`;
         cargarSelectoresProveedores();
         cargarMensajesWA();
       }
@@ -4404,6 +4406,7 @@ async function confirmarVentaDesdeModal(){
     const _waTel = ventaData.clienteTel;
     document.getElementById('exito-wa-btn').onclick = function() {
       document.getElementById('m-exito-venta').style.display = 'none';
+      document.body.style.overflow = '';
       const _waPerfilesSel = {};
       entries.forEach(e => { _waPerfilesSel[e.key] = e.perf; });
       const _refCompleto = entries.map(e => e.perf?.codigo).filter(Boolean).join(' + ');
@@ -5296,13 +5299,13 @@ function mostrarConfirmAcceso(correo, plataforma, proveedor) {
       <button class="btn btn-p" onclick="
         document.getElementById('${ovId}').remove();
         cargarSelectoresProveedores().then(()=>{
-          openModal('m-acceso');
+          cargarSugerenciasAcceso();openModal('m-acceso');
           const elC = document.getElementById('acceso-correo');
           if (elC) elC.value = '${correo.replace(/'/g,"\\'")}';
           const elP = document.getElementById('acceso-plat');
           if (elP) { for(let o of elP.options){ if(o.value==='${plataforma}'){elP.value='${plataforma}';break;} } }
           const elV = document.getElementById('acceso-prov');
-          if (elV) { for(let o of elV.options){ if(o.text==='${(proveedor||'').replace(/'/g,"\\'")}'){elV.value=o.value;break;} } }
+          if (elV) { for(let o of elV.options){ if(o.value==='${(proveedor||'').replace(/'/g,"\\'")}'){elV.value=o.value;break;} } }
         })
       ">Sí, registrar ahora</button>
     </div>
@@ -7324,6 +7327,7 @@ function openModal(id, title) {
   
   if (title) { const el = ov.querySelector('.mtit'); if(el && id !== 'm-param-form') el.textContent = title; }
   ov.classList.add('on');
+  ov.style.display = '';
   document.body.style.overflow = 'hidden';
 
   // Sincronizar roles al abrir modal usuario
@@ -9034,6 +9038,20 @@ function filtAccesosPlat(v) {
   });
 }
 
+async function cargarSugerenciasAcceso() {
+  try {
+    const { data, error } = await supa.from('accesos').select('link, usuario');
+    if (error) { console.warn('[SUGERENCIAS_ACCESO] Error:', error.message); return; }
+    const links = [...new Set((data||[]).map(d => d.link).filter(Boolean))];
+    const usuarios = [...new Set((data||[]).map(d => d.usuario).filter(Boolean))];
+    const dlLink = document.getElementById('dl-acceso-link');
+    const dlUsuario = document.getElementById('dl-acceso-usuario');
+    if (dlLink) dlLink.innerHTML = links.map(v => `<option value="${v.replace(/"/g,'&quot;')}">`).join('');
+    if (dlUsuario) dlUsuario.innerHTML = usuarios.map(v => `<option value="${v.replace(/"/g,'&quot;')}">`).join('');
+  } catch (e) {
+    console.warn('[SUGERENCIAS_ACCESO] Excepción:', e.message);
+  }
+}
 async function guardarAcceso() {
   const id      = document.getElementById('acceso-id')?.value?.trim();
   const prov    = document.getElementById('acceso-prov')?.value?.trim();
@@ -9046,6 +9064,10 @@ async function guardarAcceso() {
   const correo  = document.getElementById('acceso-correo')?.value?.trim() || null;
 
   if (!prov) { toast('Selecciona el proveedor', 'warn'); return; }
+  if (!id && correo) {
+    const { data: existente } = await supa.from('accesos').select('id').eq('correo', correo).maybeSingle();
+    if (existente) { toast('Ya existe un acceso registrado con este correo (id ' + existente.id + ')', 'warn'); return; }
+  }
 
   const payload = {
     proveedor:  prov,
@@ -9070,7 +9092,7 @@ async function guardarAcceso() {
 // Header accesos
 function updHeaderAccesos() {
   const ha = document.getElementById('hacts');
-  if (ha) ha.innerHTML = `<button class="hbtn p" onclick="cargarSelectoresProveedores();openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`;
+  if (ha) ha.innerHTML = `<button class="hbtn p" onclick="cargarSelectoresProveedores();cargarSugerenciasAcceso();openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`;
 }
 
 
@@ -12628,7 +12650,7 @@ async function codAccesoEditar(id) {
   document.getElementById('acceso-tipo').value    = data.tipo_bot  || '';
   document.getElementById('acceso-notas').value   = data.notas     || '';
   document.getElementById('acceso-title').textContent = 'Editar acceso';
-  openModal('m-acceso');
+  cargarSugerenciasAcceso();openModal('m-acceso');
 }
 
 async function codAccesoEliminar(id) {
@@ -12643,6 +12665,10 @@ async function codAccesoGuardar() {
   const id     = document.getElementById('caf-id').value.trim();
   const correo = document.getElementById('caf-correo').value.trim();
   if (!correo) { toast('El correo es requerido','warn'); return; }
+  if (!id) {
+    const { data: existente } = await supa.from('accesos').select('id').eq('correo', correo).maybeSingle();
+    if (existente) { toast('Ya existe un acceso registrado con este correo (id ' + existente.id + ')', 'warn'); return; }
+  }
   const payload = {
     correo,
     proveedor:  document.getElementById('caf-proveedor').value.trim()  || null,
