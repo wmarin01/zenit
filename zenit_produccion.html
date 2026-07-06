@@ -3866,101 +3866,55 @@ function onCobVencidoChk() {
   }
 }
 
-async function marcarSinRenovar() {
+async function marcarSinRenovarMasa(modo) {
   if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede ejecutar esta acción', 'warn'); return; }
-  const checks = Array.from(document.querySelectorAll('.chk-vencido:checked'));
+  const chkClass  = modo === 'hoy' ? '.chk-hoy' : '.chk-vencido';
+  const btnId     = modo === 'hoy' ? 'btn-marcar-sinrenovar-hoy' : 'btn-marcar-sinrenovar';
+  const tag       = modo === 'hoy' ? '[SR-HOY]' : '[SR]';
+  const histTexto = modo === 'hoy' ? 'Marcado Sin renovar masivo (Hoy)' : 'Marcado Sin renovar masivo';
+  const checks = Array.from(document.querySelectorAll(chkClass + ':checked'));
   if (!checks.length) return;
   const clienteIds = [...new Set(checks.map(c => c.dataset.clienteid).filter(Boolean))];
   if (!clienteIds.length) return;
   const hoy = new Date().toISOString().split('T')[0];
-  const btn = document.getElementById('btn-marcar-sinrenovar');
+  const btn = document.getElementById(btnId);
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Procesando...'; }
   let total = 0;
   try {
     for (const clienteId of clienteIds) {
-      // Recolectar perfil_ids afectados ANTES de modificar SUBS_FULL
       const perfilIdsAfectados = SUBS_FULL
-        .filter(s => s.clienteId === clienteId && s.est === 'activo' && s.dias < 0)
+        .filter(s => s.clienteId === clienteId && s.est === 'activo' && (modo === 'hoy' ? s.dias === 0 : s.dias < 0))
         .map(s => s.perfil)
         .filter(p => p && p !== '—');
 
-      const { error } = await supa
-        .from('suscripciones')
-        .update({ estado: 'sin_renovar' })
-        .eq('cliente_id', clienteId)
-        .eq('estado', 'activo')
-        .lt('fecha_vcto', hoy);
+      let q = supa.from('suscripciones').update({ estado: 'sin_renovar' }).eq('cliente_id', clienteId).eq('estado', 'activo');
+      q = modo === 'hoy' ? q.eq('fecha_vcto', hoy) : q.lt('fecha_vcto', hoy);
+      const { error } = await q;
       if (error) throw error;
 
-      // Liberar perfiles en Supabase
       for (const perfilId of perfilIdsAfectados) {
-        const { error: eLibV } = await supa.from('perfiles').update({ estado: 'disponible' }).eq('id', perfilId);
-        if (eLibV) console.warn('[SR] Error liberando perfil', perfilId, ':', eLibV.message);
+        const { error: eLib } = await supa.from('perfiles').update({ estado: 'disponible' }).eq('id', perfilId);
+        if (eLib) console.warn(tag, 'Error liberando perfil', perfilId, ':', eLib.message);
       }
 
-      // Actualizar SUBS_FULL en memoria
       SUBS_FULL.forEach(s => {
-        if (s.clienteId === clienteId && s.est === 'activo' && s.dias < 0) { s.est = 'sin_renovar'; total++; }
+        if (s.clienteId === clienteId && s.est === 'activo' && (modo === 'hoy' ? s.dias === 0 : s.dias < 0)) { s.est = 'sin_renovar'; total++; }
       });
     }
-    // Reconstruir PERFILES_DISP para reflejar los perfiles liberados
     await dbCargarPerfilesDisp();
     toast(`${total} suscripci${total === 1 ? 'ón marcada' : 'ones marcadas'} como Sin renovar ✓`, 'ok');
-    await dbGuardarHistorial('Marcado Sin renovar masivo', `${total} suscripciones · ${clienteIds.length} clientes`, 'var(--amber)');
+    await dbGuardarHistorial(histTexto, `${total} suscripciones · ${clienteIds.length} clientes`, 'var(--amber)');
     document.querySelector('#cobtabs .tab.on')?.click();
   } catch(e) {
-    console.error('[SR] Error:', e);
+    console.error(tag, 'Error:', e);
     toast('Error al actualizar: ' + (e.message || e), 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-ban"></i>Marcar Sin renovar'; }
   }
 }
 
-async function marcarSinRenovarHoy() {
-  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede ejecutar esta acción', 'warn'); return; }
-  const checks = Array.from(document.querySelectorAll('.chk-hoy:checked'));
-  if (!checks.length) return;
-  const clienteIds = [...new Set(checks.map(c => c.dataset.clienteid).filter(Boolean))];
-  if (!clienteIds.length) return;
-  const hoy = new Date().toISOString().split('T')[0];
-  const btn = document.getElementById('btn-marcar-sinrenovar-hoy');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Procesando...'; }
-  let total = 0;
-  try {
-    for (const clienteId of clienteIds) {
-      const perfilIdsAfectados = SUBS_FULL
-        .filter(s => s.clienteId === clienteId && s.est === 'activo' && s.dias === 0)
-        .map(s => s.perfil)
-        .filter(p => p && p !== '—');
-
-      const { error } = await supa
-        .from('suscripciones')
-        .update({ estado: 'sin_renovar' })
-        .eq('cliente_id', clienteId)
-        .eq('estado', 'activo')
-        .eq('fecha_vcto', hoy);
-      if (error) throw error;
-
-      for (const perfilId of perfilIdsAfectados) {
-        const { error: eLibH } = await supa.from('perfiles').update({ estado: 'disponible' }).eq('id', perfilId);
-        if (eLibH) console.warn('[SR-HOY] Error liberando perfil', perfilId, ':', eLibH.message);
-      }
-
-      SUBS_FULL.forEach(s => {
-        if (s.clienteId === clienteId && s.est === 'activo' && s.dias === 0) { s.est = 'sin_renovar'; total++; }
-      });
-    }
-    await dbCargarPerfilesDisp();
-    toast(`${total} suscripci${total === 1 ? 'ón marcada' : 'ones marcadas'} como Sin renovar ✓`, 'ok');
-    await dbGuardarHistorial('Marcado Sin renovar masivo (Hoy)', `${total} suscripciones · ${clienteIds.length} clientes`, 'var(--amber)');
-    document.querySelector('#cobtabs .tab.on')?.click();
-  } catch(e) {
-    console.error('[SR-HOY] Error:', e);
-    toast('Error al actualizar: ' + (e.message || e), 'error');
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-ban"></i>Marcar Sin renovar'; }
-  }
-}
+function marcarSinRenovar()    { return marcarSinRenovarMasa('vencidos'); }
+function marcarSinRenovarHoy() { return marcarSinRenovarMasa('hoy'); }
 
 function tabParam(el,id){
   document.getElementById('ptabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
