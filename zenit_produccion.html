@@ -3894,7 +3894,8 @@ async function marcarSinRenovar() {
 
       // Liberar perfiles en Supabase
       for (const perfilId of perfilIdsAfectados) {
-        await supa.from('perfiles').update({ estado: 'disponible' }).eq('id', perfilId);
+        const { error: eLibV } = await supa.from('perfiles').update({ estado: 'disponible' }).eq('id', perfilId);
+        if (eLibV) console.warn('[SR] Error liberando perfil', perfilId, ':', eLibV.message);
       }
 
       // Actualizar SUBS_FULL en memoria
@@ -3941,7 +3942,8 @@ async function marcarSinRenovarHoy() {
       if (error) throw error;
 
       for (const perfilId of perfilIdsAfectados) {
-        await supa.from('perfiles').update({ estado: 'disponible' }).eq('id', perfilId);
+        const { error: eLibH } = await supa.from('perfiles').update({ estado: 'disponible' }).eq('id', perfilId);
+        if (eLibH) console.warn('[SR-HOY] Error liberando perfil', perfilId, ':', eLibH.message);
       }
 
       SUBS_FULL.forEach(s => {
@@ -4762,7 +4764,8 @@ async function confirmarPago() {
     // Plataformas de combo NO seleccionadas → sin_renovar
     for (const [, cg] of comboAnalysis) {
       for (const r of cg.unchecked) {
-        await supa.from('suscripciones').update({ estado: 'sin_renovar' }).eq('id', r.subId);
+        const { error: eCombo } = await supa.from('suscripciones').update({ estado: 'sin_renovar' }).eq('id', r.subId);
+        if (eCombo) { console.error('[COMBO] Error marcando sin_renovar:', eCombo.message); toast('⚠️ Error actualizando plataforma no renovada del combo (id ' + r.subId + '). Verifica manualmente.', 'error'); }
         if (r.perfil && r.perfil !== '—') {
           const { error: ep } = await supa.from('perfiles')
             .update({ estado: 'disponible' })
@@ -4981,10 +4984,12 @@ async function confirmarCambio(){
     // 1b. Actualizar estados en tabla perfiles
     const perfilOrigen = subActual.perfil;
     if (perfilNuevoCod) {
-      await supa.from('perfiles').update({ estado: 'ocupado' }).eq('id', perfilNuevoCod);
+      const { error: eOcup } = await supa.from('perfiles').update({ estado: 'ocupado' }).eq('id', perfilNuevoCod);
+      if (eOcup) { console.error('[CAMBIO] Error marcando perfil nuevo ocupado:', eOcup.message); toast('⚠️ El cambio se guardó, pero falló marcar el perfil ' + perfilNuevoCod + ' como ocupado. Verifica manualmente para evitar venderlo por error.', 'error'); }
     }
     if (perfilOrigen && perfilOrigen !== perfilNuevoCod) {
-      await supa.from('perfiles').update({ estado: 'disponible' }).eq('id', perfilOrigen);
+      const { error: eLib } = await supa.from('perfiles').update({ estado: 'disponible' }).eq('id', perfilOrigen);
+      if (eLib) console.warn('[CAMBIO] Error liberando perfil origen', perfilOrigen, ':', eLib.message);
     }
 
     // 2. Registrar en historial
