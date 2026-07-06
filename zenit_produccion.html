@@ -4119,7 +4119,6 @@ async function mostrarExitoVenta(datosArray, esPreview) {
   const nombresPlats = lista.map(d => PLATS[d.plat]?.nombre || d.plat).join(' + ');
   document.getElementById('exito-cliente-nombre').textContent = primero.clienteNombre + ' · ' + nombresPlats;
 
-  const provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV' };
   const PICO = {NF:'🔴',DS:'🔵',HB:'🟣',PV:'🔷',IP:'⚪'};
 
   const container = document.getElementById('exito-datos-container');
@@ -4128,7 +4127,7 @@ async function mostrarExitoVenta(datosArray, esPreview) {
   for (let idx = 0; idx < lista.length; idx++) {
     const datos = lista[idx];
     const { correo, clave, usuario, pin, plat, perf } = datos;
-    const prov = provMap[datos.proveedor] || (datos.proveedor||'').substring(0,3).toUpperCase();
+    const prov = PROVEEDORES_ABBR[datos.proveedor] || (datos.proveedor||'').substring(0,3).toUpperCase();
     let nombreChrome = '';
     if (datos.proveedor === 'LealTV') {
       const numInv = (perf||'').replace(/^[A-Z]+/i, '').slice(0, -1);
@@ -4232,9 +4231,8 @@ async function mostrarExitoVenta(datosArray, esPreview) {
   const chromeBtns = document.getElementById('exito-chrome-btns');
   if (chromeBtns) {
     if (esPreview) {
-      const provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV' };
       chromeBtns.innerHTML = lista.map(d => {
-        const prov = provMap[d.proveedor] || (d.proveedor||'').substring(0,3).toUpperCase();
+        const prov = PROVEEDORES_ABBR[d.proveedor] || (d.proveedor||'').substring(0,3).toUpperCase();
         const correoCorto = (d.correo||'').split('@')[0];
         const dominio = (d.correo||'').split('@')[1] || '';
         const nombreChrome = d.proveedor === 'LealTV'
@@ -4812,7 +4810,6 @@ function mostrarResumenCambio() {
     </div>`
   ).join('');
 
-  const _provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV' };
   const _colorMap = {NF:'#E50914',DS:'#FFD700',HB:'#720E9E',PV:'#00A8E1'};
   const _platCodR = perfilNuevoCod.substring(0,2);
   const _colorR = _colorMap[_platCodR] || 'var(--accent)';
@@ -4829,8 +4826,8 @@ function mostrarResumenCambio() {
     const _pinDefault = String(9530).padStart(_pinDig, '0');
     const _pin1Ant = (_rPinAnt?.data?.estado === 'activo') ? _rPinAnt.data.pin : _pinDefault;
     const _pin1Nuevo = (_rPinNuevo?.data?.estado === 'activo') ? _rPinNuevo.data.pin : _pinDefault;
-    const _pAnt = _provMap[_rAnt?.data?.proveedor] || (_rAnt?.data?.proveedor||'').substring(0,3).toUpperCase();
-    const _pNuevo = _provMap[_rNuevo?.data?.proveedor] || (_rNuevo?.data?.proveedor||'').substring(0,3).toUpperCase();
+    const _pAnt = PROVEEDORES_ABBR[_rAnt?.data?.proveedor] || (_rAnt?.data?.proveedor||'').substring(0,3).toUpperCase();
+    const _pNuevo = PROVEEDORES_ABBR[_rNuevo?.data?.proveedor] || (_rNuevo?.data?.proveedor||'').substring(0,3).toUpperCase();
     const _claveAnt = _rAnt?.data?.clave || '';
     const _claveNuevo = _rNuevo?.data?.clave || perfilNuevoEl.dataset.clave || '';
     const _correoAntCorto = (_correoAntR||'').split('@')[0];
@@ -5247,8 +5244,7 @@ async function guardarCuenta(){
 
     if (!_editandoCuentaExistente) {
       toast(codigo + ' registrada · ' + maxPerf + ' perfiles generados ✓','ok');
-      const _provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV' };
-      const _prov = _provMap[provNom] || (provNom||'').substring(0,3).toUpperCase();
+      const _prov = PROVEEDORES_ABBR[provNom] || (provNom||'').substring(0,3).toUpperCase();
       const _correoCorto = (correo||'').split('@')[0];
       const _dominio = (correo||'').split('@')[1] || '';
       const _nombreChrome = platVal === 'LealTV'
@@ -5678,6 +5674,18 @@ let _idleTimer = null;
 let _idleListenersActivos = false;
 let _editUsuarioId = null;
 
+let PROVEEDORES_ABBR = {};
+async function cargarProveedoresAbbr() {
+  try {
+    const { data, error } = await supa.from('proveedores').select('nombre, abreviatura');
+    if (error) { console.warn('[PROVEEDORES_ABBR] Error cargando:', error.message); return; }
+    PROVEEDORES_ABBR = {};
+    (data || []).forEach(p => { if (p.nombre && p.abreviatura) PROVEEDORES_ABBR[p.nombre] = p.abreviatura; });
+    console.log('[PROVEEDORES_ABBR] Cargadas ✓', Object.keys(PROVEEDORES_ABBR).length);
+  } catch (e) {
+    console.warn('[PROVEEDORES_ABBR] Excepción:', e.message);
+  }
+}
 async function cargarUsuariosSistema() {
   try {
     const {data, error} = await supa.from('usuarios_sistema').select('*').eq('estado','Activo').order('nombre');
@@ -9986,6 +9994,7 @@ async function iniciarApp() {
     await dbCargarNextCodigos();
     await dbCargarPerfilesDisp();
     await cargarUsuariosSistema();
+    await cargarProveedoresAbbr();
     await cargarPlantillasWA();
     renderDashboard();
     if (typeof activarBotonesReutilizar === 'function') activarBotonesReutilizar();
@@ -11863,8 +11872,7 @@ function esMovil() {
 }
 
 async function abrirChromeInventario(cuentaId, plat, correo, proveedor) {
-  const provMap = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV', 'EmTVpro':'ETV', 'WILDER':'WLD', 'Viva buy':'VIV', 'Niña':'NIN' };
-  const prov = provMap[proveedor] || (proveedor||'').substring(0,3).toUpperCase();
+  const prov = PROVEEDORES_ABBR[proveedor] || (proveedor||'').substring(0,3).toUpperCase();
   const url = `http://localhost:9999/chrome?plat=${plat}&correo=${encodeURIComponent(correo)}&prov=${prov}`;
   fetch(url).then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'));
 }
