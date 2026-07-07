@@ -34,10 +34,21 @@ async function dbGuardarContactos(clienteId, contactos) {
   if (error) console.error('Error guardando contactos:', error);
 }
 
+function hoyPanamaDate() {
+  const [mm, dd, yyyy] = new Date().toLocaleDateString('en-US', { timeZone: 'America/Panama' }).split('/');
+  return new Date(+yyyy, +mm - 1, +dd);
+}
+function hoyPanama() {
+  return fechaAISO(hoyPanamaDate());
+}
+function fechaAISO(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
 // Guardar cobro
 async function dbGuardarCobro(cobro) {
   const { error } = await supa.from('cobros').insert({
-    fecha: cobro.fechaIni || new Date().toISOString().split('T')[0],
+    fecha: cobro.fechaIni || hoyPanama(),
     tipo: cobro.tipo,
     cliente_id: cobro.clienteId,
     nombre: cobro.nombre,
@@ -60,7 +71,7 @@ async function dbGuardarCobro(cobro) {
 // Guardar venta
 async function dbGuardarVenta(venta) {
   const { error } = await supa.from('ventas').insert({
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: hoyPanama(),
     cliente_id: venta.clienteId,
     nombre: venta.nombre,
     plataformas: venta.plats,
@@ -106,7 +117,7 @@ async function dbGuardarSuscripcion(sub) {
 // Guardar egreso
 async function dbGuardarEgreso(egr) {
   const { data, error } = await supa.from('egresos').insert({
-    fecha: egr.fecha || new Date().toISOString().split('T')[0],
+    fecha: egr.fecha || hoyPanama(),
     categoria: egr.categoria,
     descripcion: egr.descripcion,
     proveedor: egr.proveedor,
@@ -3878,8 +3889,7 @@ async function marcarSinRenovarMasa(modo) {
   if (!checks.length) return;
   const clienteIds = [...new Set(checks.map(c => c.dataset.clienteid).filter(Boolean))];
   if (!clienteIds.length) return;
-  const _d = new Date();
-  const hoy = _d.getFullYear() + '-' + String(_d.getMonth()+1).padStart(2,'0') + '-' + String(_d.getDate()).padStart(2,'0');
+  const hoy = hoyPanama();
   const btn = document.getElementById(btnId);
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Procesando...'; }
   let total = 0;
@@ -4310,7 +4320,7 @@ async function verDatosAccesoVenta(){
       clienteNombre: ventaData.clienteNombre,
       correo:   entry.perf?.correo || '—',
       clave:    entry.perf?.clave || _acc?.data?.clave || '—',
-      usuario:  usuarios[entry.key] || usuarios[entry.p] || '—',
+      usuario:  entry.p === 'IP' ? (entry.perf?.correo || '—') : (usuarios[entry.key] || usuarios[entry.p] || '—'),
       pin:      pins[entry.key] || '—',
       plat:     entry.p,
       perf:     entry.perf?.codigo || '—',
@@ -4387,7 +4397,7 @@ async function confirmarVentaDesdeModal(){
         clienteNombre: ventaData.clienteNombre,
         correo:   entry.perf?.correo || '—',
         clave:    entry.perf?.clave || _acc?.data?.clave || '—',
-        usuario:  usuarios[entry.key] || usuarios[entry.p] || '—',
+        usuario:  entry.p === 'IP' ? (entry.perf?.correo || '—') : (usuarios[entry.key] || usuarios[entry.p] || '—'),
         pin:      pins[entry.key] || '—',
         plat:     entry.p,
         perf:     entry.perf?.codigo || '—',
@@ -4659,7 +4669,7 @@ async function confirmarPago() {
       comboAnalysis.get(r.comboKey)[chk?.checked ? 'checked' : 'unchecked'].push(r);
     });
 
-    const fechaPago = document.getElementById('pago-fecha')?.value || new Date().toISOString().split('T')[0];
+    const fechaPago = document.getElementById('pago-fecha')?.value || hoyPanama();
     const fechaVctoNueva = document.getElementById('pago-fecha-vcto')?.value || null;
     const ok = await dbGuardarCobro({
       tipo: 'Renovación', clienteId, nombre, tel: normalizeTel(tel), plat: plats,
@@ -4692,7 +4702,7 @@ async function confirmarPago() {
           const [dd,mm,yy] = (subActual.fVcto||'').split('/');
           const base = new Date(+yy, +mm-1, +dd);
           base.setMonth(base.getMonth() + meses);
-          nuevaFVcto = base.toISOString().split('T')[0];
+          nuevaFVcto = fechaAISO(base);
         }
       }
 
@@ -4819,10 +4829,10 @@ function mostrarResumenCambio() {
   const _colorR = _colorMap[_platCodR] || 'var(--accent)';
   const _correoAntR = correoAnterior !== '—' ? correoAnterior : '';
   const _correoNuevoR = correoNuevo !== '—' ? correoNuevo : '';
-  const _fetchProvAnt = _correoAntR ? supa.from('accesos').select('proveedor,clave').eq('plataforma',_platCodR).eq('correo',_correoAntR).maybeSingle() : Promise.resolve({data:null});
-  const _fetchProvNuevo = _correoNuevoR ? supa.from('accesos').select('proveedor,clave').eq('plataforma',_platCodR).eq('correo',_correoNuevoR).maybeSingle() : Promise.resolve({data:null});
   const _cuentaAntCod = perfilAnterior !== '—' ? perfilAnterior.substring(0,6) : '';
   const _cuentaNuevoCod = perfilNuevoCod !== '—' ? perfilNuevoCod.substring(0,6) : '';
+  const _fetchProvAnt = _cuentaAntCod ? supa.from('cuentas_inventario').select('proveedor,clave').eq('codigo',_cuentaAntCod).maybeSingle() : Promise.resolve({data:null});
+  const _fetchProvNuevo = _cuentaNuevoCod ? supa.from('cuentas_inventario').select('proveedor,clave').eq('codigo',_cuentaNuevoCod).maybeSingle() : Promise.resolve({data:null});
   const _fetchPinAnt = _cuentaAntCod ? supa.from('suscripciones').select('pin,estado').eq('perfil_id', _cuentaAntCod + '1').maybeSingle() : Promise.resolve({data:null});
   const _fetchPinNuevo = _cuentaNuevoCod ? supa.from('suscripciones').select('pin,estado').eq('perfil_id', _cuentaNuevoCod + '1').maybeSingle() : Promise.resolve({data:null});
   Promise.all([_fetchProvAnt, _fetchProvNuevo, _fetchPinAnt, _fetchPinNuevo]).then(([_rAnt, _rNuevo, _rPinAnt, _rPinNuevo]) => {
@@ -7921,7 +7931,7 @@ async function guardarEgreso() {
   const proveedor = (proveedorTxt === '— Seleccionar —' || !proveedorTxt) ? '—' : proveedorTxt;
 
   const fechaEl = document.getElementById('cuenta-fecha-compra') || modal.querySelector('input[type=date]');
-  const fecha = fechaEl?.value || new Date().toISOString().split('T')[0];
+  const fecha = fechaEl?.value || hoyPanama();
 
   const banco = document.getElementById('egreso-banco')?.value || 'Banco General';
 
@@ -8140,7 +8150,7 @@ function selClienteCambio(id, nombre, tel) {
   document.getElementById('cambio-busq').value = '';
   document.getElementById('cambio-sub').textContent = nombre + ' · ' + id;
   // Cargar suscripciones del cliente desde SUBS_FULL (incluye vencidas)
-  const subs = SUBS_FULL.filter(s => s.clienteId === id && (s.est === 'activo' || s.est === 'sin_renovar' || s.est === 'inactivo'));
+  const subs = SUBS_FULL.filter(s => s.clienteId === id && s.est === 'activo');
   const subSel = document.getElementById('acceso-sub-sel');
   if (subSel) {
     if (subs.length) {
@@ -10612,9 +10622,9 @@ function tabRpt(el, id) {
 }
 
 function rptGetRango(periodo) {
-  const hoy = new Date();
+  const hoy = hoyPanamaDate();
   const y = hoy.getFullYear(), m = hoy.getMonth();
-  const iso = d => new Date(d).toISOString().split('T')[0];
+  const iso = d => fechaAISO(new Date(d));
   switch (periodo) {
     case 'hoy':
       return { ini: iso(hoy), fin: iso(hoy) };
@@ -10971,9 +10981,9 @@ async function rptiVencProvGenerar() {
   const resDiv = document.getElementById('rpti-vp-res');
   if (resDiv) resDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
   try {
-    const hoy    = new Date(); hoy.setHours(0,0,0,0);
+    const hoy    = hoyPanamaDate();
     const limite = new Date(hoy); limite.setDate(limite.getDate() + dias);
-    const iso    = d => d.toISOString().split('T')[0];
+    const iso    = d => fechaAISO(d);
     const { data: cuentasRaw, error } = await supa.from('cuentas_inventario')
       .select('codigo, plataforma, correo, proveedor, fecha_vcto_proveedor')
       .eq('estado', 'Activa')
@@ -11160,11 +11170,11 @@ async function rptfProyeccionGenerar() {
   const resDiv = document.getElementById('rptf-proy-res');
   if (resDiv) resDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
   try {
-    const hoy    = new Date(); hoy.setHours(0,0,0,0);
+    const hoy    = hoyPanamaDate();
     const y = hoy.getFullYear(), m = hoy.getMonth();
-    const mesIni = new Date(y, m, 1).toISOString().split('T')[0];
-    const mesFin = new Date(y, m+1, 0).toISOString().split('T')[0];
-    const hoyISO = hoy.toISOString().split('T')[0];
+    const mesIni = fechaAISO(new Date(y, m, 1));
+    const mesFin = fechaAISO(new Date(y, m+1, 0));
+    const hoyISO = fechaAISO(hoy);
     const fmt = n => '$' + n.toFixed(2);
 
     const { data: cobrosMes, error } = await supa.from('cobros')
@@ -12016,7 +12026,7 @@ function updRenovarFecha() {
   const base = new Date(vctoActual + 'T00:00:00');
   if (isNaN(base.getTime())) return;
   base.setDate(base.getDate() + dias);
-  document.getElementById('renovar-vcto-nuevo').value = base.toISOString().split('T')[0];
+  document.getElementById('renovar-vcto-nuevo').value = fechaAISO(base);
 }
 
 async function guardarRenovarPin() {
