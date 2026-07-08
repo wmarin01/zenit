@@ -142,18 +142,6 @@ async function dbGuardarHistorial(accion, detalle, color) {
   });
 }
 
-// Registrar comprobante usado
-async function dbRegistrarComprobante(doc) {
-  const { error } = await supa.from('comprobantes').insert({ documento: doc });
-  return !error;
-}
-
-// Verificar comprobante duplicado
-async function dbCheckComprobante(doc) {
-  const { data } = await supa.from('comprobantes').select('documento').eq('documento', doc).single();
-  return !!data;
-}
-
 // Cargar clientes al iniciar
 async function dbCargarClientes() {
   const { data, error } = await supa.from('clientes').select('*').order('created_at');
@@ -1712,7 +1700,6 @@ function closeSidebarMobile() {
       <option value="PV">Prime Video</option>
       <option value="IP">IPTV</option>
     </select>
-    <button class="btn btn-sm btn-s" onclick="codAccesoFormAbrir(null)"><i class="ti ti-plus"></i> Nuevo acceso</button>
     <button class="btn btn-sm btn-ic" onclick="dbCargarAccesos()" title="Actualizar"><i class="ti ti-refresh"></i></button>
   </div>
   <div class="card" style="padding:0;overflow-x:auto">
@@ -1829,7 +1816,6 @@ function closeSidebarMobile() {
       <button class="btn btn-sm" onclick="codCfgToggle()"><i class="ti ti-settings" id="cod-cfg-chev"></i></button>
     </div>
     <div id="ac-accesos-cfg-body" style="display:none">
-      <button class="btn btn-s btn-sm" onclick="codAccesoFormAbrir(null)" style="margin-bottom:10px"><i class="ti ti-plus"></i> Nuevo acceso</button>
       <div id="ac-accesos-list"></div>
     </div>
   </div>
@@ -3590,7 +3576,7 @@ function renderC(data){
     const chips=c.contactos.map(ct=>`<span class="chip">${CI[ct.t]||'<i class="ti ti-dots"></i>'} ${ct.v}</span>`).join('');
     const vb=c.dias===0?`<span class="b br">Hoy</span>`:c.dias===1?`<span class="b ba">Mañana</span>`:c.dias<=3?`<span class="b" style="background:rgba(245,200,35,.15);color:#f5c842">${c.dias} días</span>`:`<span class="b bp">${c.dias} días</span>`;
     const eb=c.est==='activo'?'<span class="b bg">Activo</span>':c.est==='sin_renovar'?'<span class="b ba">Sin renovar</span>':'<span class="b bp">Inactivo</span>';
-    return `<tr><td style="font-family:var(--mono);font-size:11px">${c.id}</td><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${formatTel(c.tel)}</td><td><div class="chips" style="margin:0">${chips}</div></td><td>${plats}</td><td>${vb}</td><td>${eb}</td><td class="tda"><button class="btn btn-sm btn-ic" onclick="abrirEditarCliente('${c.id}')"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago')"><i class="ti ti-cash"></i></button><button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${c.n} ${c.a}','${c.plats.join('+')}','$${c.plats.length*9}.00','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i></button><button class="btn btn-sm btn-ic" onclick="openModal('m-cambio')"><i class="ti ti-arrows-exchange"></i></button></td></tr>`;
+    return `<tr><td style="font-family:var(--mono);font-size:11px">${c.id}</td><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${formatTel(c.tel)}</td><td><div class="chips" style="margin:0">${chips}</div></td><td>${plats}</td><td>${vb}</td><td>${eb}</td><td class="tda"><button class="btn btn-sm btn-ic" onclick="abrirEditarCliente('${c.id}')"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago');selClientePago('${c.id}','${c.n} ${c.a}','${c.tel}')"><i class="ti ti-cash"></i></button><button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${c.n} ${c.a}','${c.plats.join('+')}','$${c.plats.length*9}.00','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i></button><button class="btn btn-sm btn-ic" onclick="openModal('m-cambio');cargarMotivosCambio();selClienteCambio('${c.id}','${c.n} ${c.a}','${c.tel}')"><i class="ti ti-arrows-exchange"></i></button></td></tr>`;
   }).join('');
 }
 function filtC(q){
@@ -3679,15 +3665,6 @@ function filtCEst(e){
   renderC(data);
 }
 
-function renderCob(data){
-  const _tcob = document.getElementById('tcob-hoy') || document.getElementById('tcob'); if(!_tcob) return;
-  _tcob.innerHTML=data.map(c=>{
-    const plats=c.plats.map(p=>`<span class="pd"><span class="dot" style="background:${PC[p]}"></span>${p}</span>`).join('');
-    const vb=c.dias===0?`<span class="b br">Hoy</span>`:c.dias===1?`<span class="b ba">Mañana</span>`:`<span class="b" style="background:rgba(245,200,35,.15);color:#f5c842">${c.dias} días</span>`;
-    return `<tr><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${formatTel(c.tel)}</td><td>${plats}</td><td style="color:var(--green);font-weight:500">$${c.plats.length*9}.00</td><td>${vb}</td><td><div class="rdots"><div class="rd ${c.dias<=2?'s':'p'}"></div><span class="rl">3d</span><div class="rd ${c.dias===0?'s':'p'}" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">hoy</span></div></td><td class="tda"><button class="btn btn-sm btn-a" onclick="abrirWA('${c.n} ${c.a}','${c.plats.join('+')}','$${c.plats.length*9}.00','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i>WA</button><button class="btn btn-sm btn-s" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Pago</button><button class="btn btn-sm btn-d btn-ic" onclick="toast('Marcado como sugerido vencido','info')"><i class="ti ti-alert-circle"></i></button></td></tr>`;
-  }).join('');
-}
-
 function tabCob(el,id){
   document.getElementById('cobtabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   el.classList.add('on');
@@ -3766,7 +3743,7 @@ function tabCob(el,id){
         <td><div class="rdots"><div class="rd p"></div><span class="rl">3d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd s" style="margin-left:3px"></div><span class="rl">hoy</span></div></td>
         <td class="tda">
           <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','vencimiento')"><i class="ti ti-brand-whatsapp"></i>WA</button>
-          <button class="btn btn-sm btn-s" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Pago</button>
+          <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
           <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${s.plat}&correo=${encodeURIComponent(s.correo)}&prov=${encodeURIComponent(_provAbbrCob[s.proveedor] || (s.proveedor||'').substring(0,3).toUpperCase())}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
         </td></tr>`;
     }).join('');
@@ -3797,7 +3774,7 @@ function tabCob(el,id){
         <td><span class="b br">Hace ${diasText}</span></td>
         <td class="tda">
           <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','vencimiento')"><i class="ti ti-brand-whatsapp"></i>WA</button>
-          <button class="btn btn-sm btn-s" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Pago</button>
+          <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
           <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${s.plat}&correo=${encodeURIComponent(s.correo)}&prov=${encodeURIComponent(_provAbbrCob[s.proveedor] || (s.proveedor||'').substring(0,3).toUpperCase())}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
         </td></tr>`;
     }).join('');
@@ -3815,7 +3792,7 @@ function tabCob(el,id){
       <td><div class="rdots"><div class="rd p"></div><span class="rl">3d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd ${s.diasVcto===0?'s':'p'}" style="margin-left:3px"></div><span class="rl">hoy</span></div></td>
       <td class="tda">
         <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','${s.diasVcto===0?'vencimiento':s.diasVcto===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i>WA</button>
-        <button class="btn btn-sm btn-s" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Pago</button>
+        <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
       </td></tr>`;
   }).join('');
 }
@@ -4013,24 +3990,6 @@ function valComp(input,hid){
   }
 }
 
-function comprobantesValidos(modalId) {
-  // Solo valida que el campo no esté vacío
-  // El duplicado se maneja con la alerta interactiva en ventaPaso5
-  const modal = document.getElementById(modalId);
-  if (!modal) return true;
-  const inputs = modal.querySelectorAll('input[oninput*="valComp"]');
-  for (const inp of inputs) {
-    const v = inp.value.trim();
-    if (v.length < 4) {
-      toast('Ingresa el número de comprobante', 'warn');
-      inp.focus();
-      return false;
-    }
-  }
-  return true;
-}
-
-function selPerfil(el){el.closest('.modal').querySelectorAll('.pi').forEach(p=>p.classList.remove('on'));el.classList.add('on');}
 function selCat(el){el.closest('.fsec').querySelectorAll('.cat-btn').forEach(d=>d.classList.remove('on'));el.classList.add('on');}
 
 function chkCrypto(sel,cxId){
@@ -5929,48 +5888,6 @@ function _reconstruirDropdownPlats() {
   if (planWrap) planWrap.style.display = 'none';
 }
 
-// Al seleccionar plataforma, puebla el dropdown de planes específicos
-function updPlanesDePlat(plat) {
-  const planWrap = document.getElementById('v-plan-wrap');
-  const selPlan  = document.getElementById('v-plan-sel');
-  const prev     = document.getElementById('v-precio-preview');
-  if (!selPlan) return;
-
-  if (!plat) {
-    if (planWrap) planWrap.style.display = 'none';
-    selPlan.innerHTML = '<option value="">— Selecciona plan —</option>';
-    if (prev) prev.textContent = '';
-    return;
-  }
-
-  const planes = PRECIOS_IND[plat] || [];
-  selPlan.innerHTML = '<option value="">— Selecciona plan —</option>';
-
-  if (planes.length === 0) {
-    // Fallback: un único plan con precio_ind de PLATS
-    const precio = PLATS[plat]?.precio_ind || 0;
-    const opt = document.createElement('option');
-    opt.value = precio.toFixed(2);
-    opt.dataset.perfiles = '1';
-    opt.textContent = `1 perfil — $${precio.toFixed(2)}`;
-    selPlan.appendChild(opt);
-  } else {
-    planes.forEach(plan => {
-      const opt = document.createElement('option');
-      opt.value = plan.precio.toFixed(2);
-      opt.dataset.perfiles = String(plan.perfiles);
-      const pluralP = plan.perfiles === 1 ? 'perfil' : 'perfiles';
-      opt.textContent = `${plan.perfiles} ${pluralP} — $${plan.precio.toFixed(2)}`;
-      selPlan.appendChild(opt);
-    });
-    // Auto-seleccionar si solo hay 1 plan
-    if (planes.length === 1) selPlan.selectedIndex = 1;
-  }
-
-  if (planWrap) planWrap.style.display = 'block';
-  updPerfilesVenta();
-}
-
 // Perfiles disponibles por plataforma — se puebla dinámicamente desde Supabase
 let PERFILES_DISP = {};
 
@@ -6151,17 +6068,6 @@ function getPerfByIdx(perfilesSel, plats, plat, idx) {
   const key = getPerfKey(plats, plat, idx);
   return perfilesSel[key] || perfilesSel[plat] || null;
 }
-function getAllPerfsForPlat(perfilesSel, plats, plat) {
-  const count = plats.filter(x => x === plat).length;
-  const result = [];
-  for (let i = 0; i < count; i++) {
-    const perf = getPerfByIdx(perfilesSel, plats, plat, i);
-    if (perf) result.push({key: getPerfKey(plats, plat, i), perf, idx: i});
-  }
-  return result;
-}
-
-
 function ventaPaso1() {
   ['vpaso1','vpaso2','vpaso3','vpaso4','vpaso5'].forEach((id,i) => {
     document.getElementById(id).style.display = i===0 ? 'block' : 'none';
@@ -8306,25 +8212,6 @@ function agregarHistorial(accion, detalle, color) {
 }
 
 
-// ── VER / OCULTAR CLAVE EN INVENTARIO ────────────────────────
-function toggleClave(btn) {
-  const tr = btn.closest('tr');
-  const span = btn.previousElementSibling;
-  if (!span) return;
-  const clave = tr.dataset.clave || '';
-  if (!clave) { toast('Clave no disponible — edita la cuenta para ingresarla','warn'); return; }
-  const visible = span.textContent !== '••••••';
-  if (visible) {
-    span.textContent = '••••••';
-    btn.querySelector('i').className = 'ti ti-eye';
-    btn.title = 'Ver clave';
-  } else {
-    span.textContent = clave;
-    btn.querySelector('i').className = 'ti ti-eye-off';
-    btn.title = 'Ocultar clave';
-  }
-}
-
 // ── VER / OCULTAR CLAVE EN CAMBIO DE CUENTA ──────────────────
 function toggleClaveCambio(btn, inputId) {
   const inp = document.getElementById(inputId);
@@ -8593,7 +8480,7 @@ function renderSubs(data) {
       <td>${estBadge}</td>
       <td class="tda">
         <button class="btn btn-sm btn-ic" onclick="abrirEditarSubById(${s.id})" title="Editar"><i class="ti ti-edit"></i></button>
-        <button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago')" title="Registrar pago"><i class="ti ti-cash"></i></button>
+        <button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${_sNom}','${s.tel}')" title="Registrar pago"><i class="ti ti-cash"></i></button>
         <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${_sNom}','${_sPlat}','$${s.monto.toFixed(2)}','${s.dias===0?'vencimiento':s.dias<=1?'1d':'3d'}',{correo:'${_sCorreo}',clave:'${_sClave}',perfil:'${_sPerfil}',pin:'${_sPin}',vcto:'${_sVcto}',fecha_vcto:'${_sVcto}',usuario:'${_sUsuario}',link:'${_sLink}',platCod:'${s.plat}'})" title="WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>
         <button class="btn btn-sm btn-ic" onclick="reenviarAccesos(${s.id})" title="Reenviar accesos"><i class="ti ti-send"></i></button>
       </td>
@@ -8936,7 +8823,7 @@ async function registrarNuevoCliente() {
       <td>—</td>
       <td><span class="b bg">Activo</span></td>
       <td class="tda">
-        <button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago')"><i class="ti ti-cash"></i></button>
+        <button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago');selClientePago('${newId}','${nombre} ${apellido}','${tel}')"><i class="ti ti-cash"></i></button>
         <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${nombre} ${apellido}','—','—','entrega')"><i class="ti ti-brand-whatsapp"></i></button>
       </td>`;
     tbody.appendChild(tr);
@@ -8968,25 +8855,6 @@ async function registrarNuevoCliente() {
 }
 
 
-// ── MÓDULO ACCESOS / BOTS ────────────────────────────────────
-function toggleClaveAcceso(btn) {
-  const span = btn.previousElementSibling;
-  if (!span) return;
-  const tr = btn.closest('tr');
-  const clave = tr?.dataset?.clave || '';
-  const visible = span.textContent !== '••••••••';
-  if (visible) {
-    span.textContent = '••••••••';
-    btn.querySelector('i').className = 'ti ti-eye';
-    btn.title = 'Ver clave';
-  } else {
-    if (!clave) { toast('Clave no disponible','warn'); return; }
-    span.textContent = clave;
-    btn.querySelector('i').className = 'ti ti-eye-off';
-    btn.title = 'Ocultar clave';
-  }
-}
-
 function togglePassInput(inputId, btn) {
   const inp = document.getElementById(inputId);
   if (!inp) return;
@@ -8994,10 +8862,6 @@ function togglePassInput(inputId, btn) {
   inp.type = isPass ? 'text' : 'password';
   btn.querySelector('i').className = isPass ? 'ti ti-eye-off' : 'ti ti-eye';
   btn.title = isPass ? 'Ocultar clave' : 'Ver clave';
-}
-
-function copiarLink(link) {
-  navigator.clipboard.writeText(link).then(() => toast('Link copiado al portapapeles','ok'));
 }
 
 async function dbCargarAccesos() {
@@ -9100,11 +8964,6 @@ async function guardarAcceso() {
   codLoadAccesos();
 }
 
-// Header accesos
-function updHeaderAccesos() {
-  const ha = document.getElementById('hacts');
-  if (ha) ha.innerHTML = `<button class="hbtn p" onclick="cargarSelectoresProveedores();cargarSugerenciasAcceso();openModal('m-acceso')"><i class="ti ti-plus"></i>Nuevo acceso</button>`;
-}
 
 
 // ── COMBOS PREDEFINIDOS (sincronizados con Parámetros) ────────
@@ -9126,45 +8985,6 @@ function normalizarCombo(plataformas) {
     return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
   });
   return parts.join('+');
-}
-
-function parsearDesgloseCombo(desglose) {
-  const map = {};
-  const re = /([A-Z]+)\s*\$([0-9.]+)/g;
-  let m;
-  while ((m = re.exec(desglose)) !== null) map[m[1]] = parseFloat(m[2]);
-  return map;
-}
-
-function getPrecioInd(plat, numPerfiles) {
-  const lista = PRECIOS_IND[plat] || [];
-  const match = lista.find(p => p.perfiles === numPerfiles);
-  if (match) return match.precio;
-  if (lista[0]?.precio) return lista[0].precio;
-  return PLATS[plat]?.precio_ind || 0;
-}
-
-function renderCombosVenta() {
-  const cont = document.getElementById('v-combos-lista');
-  if (!cont) return;
-  if (!COMBOS.length) {
-    cont.innerHTML = '<div class="ab w"><i class="ti ti-alert-triangle"></i>No hay combos definidos. Ve a Parámetros → Planes y precios para crear uno.</div>';
-    return;
-  }
-  cont.innerHTML = COMBOS.map((c, i) => {
-    const dots = c.plats.map(p => `<span class="dot" style="background:${PLATS[p]?.color||'var(--accent)'};width:9px;height:9px;border-radius:50%;display:inline-block"></span>`).join('');
-    const nombres = c.plats.map(p => PLATS[p]?.nombre || p).join(' + ');
-    return `<div class="pi" id="combo-opt-${i}" onclick="selComboVenta(${i})" style="padding:10px 13px">
-      <div style="display:flex;align-items:center;gap:7px;flex:1">
-        <div style="display:flex;gap:4px">${dots}</div>
-        <div>
-          <div style="font-size:13px;font-weight:500;color:var(--text)">${nombres}</div>
-          <div style="font-size:11px;color:var(--text3)">${c.desglose} · ${c.perfiles} perfil(es)</div>
-        </div>
-      </div>
-      <span style="font-size:15px;font-weight:600;color:var(--green)">$${c.precio.toFixed(2)}</span>
-    </div>`;
-  }).join('');
 }
 
 let comboSelIdx = -1;
@@ -9730,36 +9550,6 @@ function editarFila(btn, tipo) {
 
 // ── INCIDENCIAS DE PROVEEDOR ─────────────────────────────────
 let incidenciaData = { tr: null, tipo: null };
-
-function abrirIncidencia(btn) {
-  const tr = btn.closest('tr');
-  incidenciaData.tr   = tr;
-  incidenciaData.tipo = null;
-
-  const cells   = tr.querySelectorAll('td');
-  const codigo  = cells[0]?.textContent?.trim() || '—';
-  const platNom = cells[1]?.textContent?.trim() || '—';
-  const correo  = cells[2]?.textContent?.trim() || '—';
-  const costo   = cells[9]?.textContent?.trim() || '—';
-
-  // Pre-llenar info
-  document.getElementById('inc-sub').textContent = codigo + ' · ' + platNom;
-  document.getElementById('inc-cuenta-info').textContent = codigo + ' · ' + correo;
-  document.getElementById('inc-proveedor-info').textContent = 'Costo registrado: ' + costo;
-  document.getElementById('inc-codigo-disp').value = codigo;
-
-  // Pre-llenar monto con el costo
-  const costoVal = costo.replace(/[^0-9.]/g, '');
-  const montoInp = document.getElementById('inc-monto-dev');
-  if (montoInp) montoInp.value = costoVal ? '$' + costoVal : '';
-
-  // Reset tipo
-  selTipoIncidencia(null);
-  document.getElementById('inc-sec-a').style.display = 'none';
-  document.getElementById('inc-sec-b').style.display = 'none';
-
-  openModal('m-incidencia');
-}
 
 function selTipoIncidencia(tipo) {
   incidenciaData.tipo = tipo;
@@ -12101,21 +11891,6 @@ async function cargarMensajesWA() {
   }
 }
 
-function filtMensajesWA() {
-  const q    = (document.getElementById('wa-busq')?.value || '').toLowerCase().trim();
-  const tipo = document.getElementById('wa-filtro-tipo')?.value || '';
-  const est  = document.getElementById('wa-filtro-est')?.value  || '';
-  let data = MENSAJES_WA_CACHE;
-  if (tipo) data = data.filter(m => m.tipo === tipo);
-  if (est)  data = data.filter(m => m.estado === est);
-  if (q)    data = data.filter(m =>
-    (m.cliente_nombre||'').toLowerCase().includes(q) ||
-    (m.tipo||'').toLowerCase().includes(q) ||
-    (m.telefono||'').includes(q)
-  );
-  _renderMensajesWA(data);
-}
-
 function _renderMensajesWA(data) {
   const tbody = document.getElementById('tb-mensajes-wa');
   if (!tbody) return;
@@ -12184,31 +11959,6 @@ function tabAccesos(el, id) {
   const panel = document.getElementById(id);
   if (panel) panel.style.display = 'block';
   if (id === 'ac-accesos-lista') dbCargarAccesos();
-}
-
-async function renderAccesos() {
-  const wrap = document.getElementById('ac-accesos-list');
-  if (!wrap) return;
-  wrap.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</div>';
-  const { data, error } = await supa.from('accesos').select('*').order('correo');
-  if (error) { wrap.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i> ${error.message}</div>`; return; }
-  if (!data || !data.length) { wrap.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0">Sin registros</div>'; return; }
-  const TL = { correo_propio:'✉️ Correo propio', web:'🌐 Web', telegram:'✈️ Telegram', manual:'✍️ Manual' };
-  wrap.innerHTML = data.map(a => `<div class="card" style="padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
-    <div style="flex:1;min-width:0">
-      <div style="font-size:12px;font-family:var(--mono);color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.correo||'—'}</div>
-      <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;align-items:center">
-        <span class="b bi" style="font-size:10px">${a.plataforma||'—'}</span>
-        <span style="font-size:11px;color:var(--text3)">${TL[a.tipo_bot]||a.tipo_bot||'—'}</span>
-        ${a.proveedor ? `<span style="font-size:11px;color:var(--text3)">${a.proveedor}</span>` : ''}
-        ${a.link ? `<a href="${a.link}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent)">Abrir</a>` : ''}
-      </div>
-    </div>
-    <div style="display:flex;gap:6px;flex-shrink:0">
-      <button class="btn btn-sm btn-ic" onclick="codAccesoEditar('${a.id}')" title="Editar"><i class="ti ti-edit"></i></button>
-      <button class="btn btn-sm btn-ic" style="color:var(--red)" onclick="codAccesoEliminar('${a.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
-    </div>
-  </div>`).join('');
 }
 
 // ── CÓDIGOS DE VERIFICACIÓN ─────────────────────────────────────────────────
@@ -12562,39 +12312,7 @@ function zcodReset() {
   const det  = document.getElementById('zcod-detalle'); if(det) det.style.display='none';
 }
 
-async function codEnviarWA() {
-  const { cli, sub, codigo, tipo } = _cod;
-  if (!cli || !sub || !codigo) { toast('Completa todos los pasos primero','warn'); return; }
-  const platNom = (PLATAFORMAS||[]).find(p=>p.codigo===sub.plat)?.nombre || sub.plat;
-  const msg = `Hola ${cli.n} 🔐 Tu código de ${platNom} es: ${codigo}\nTipo: ${tipo||'código'}\n⏱ Válido por pocos minutos, úsalo de inmediato.\n─────────────\n🔖 Ref: ${sub.perfil}`;
-  await Promise.all([
-    guardarMensajeWA(cli.id, (cli.n+' '+(cli.a||'')).trim(), cli.tel, 'codigo', msg),
-    dbGuardarHistorial('Código enviado', `${cli.n} — ${platNom} — ${tipo||'código'}`, 'var(--accent)')
-  ]);
-  const tel = (cli.tel||'').replace(/[^0-9+]/g,'').replace('+','');
-  if (!tel) { toast('Este cliente no tiene teléfono registrado','warn'); return; }
-  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
-  toast('Mensaje generado y guardado ✓','ok');
-}
-
-function codReset() {
-  _cod = {};
-  const b = document.getElementById('cod-busq'); if(b) b.value='';
-  const r = document.getElementById('cod-resultados'); if(r) r.innerHTML='';
-  const d = document.getElementById('ac-cod-detalle'); if(d) d.style.display='none';
-}
-
 // ─── GESTIÓN TABLA ACCESOS ───────────────────────────────────────────────────
-
-function codToggleConfig(btn) {
-  const body = document.getElementById('ac-accesos-cfg-body');
-  const chev = document.getElementById('cod-cfg-chev');
-  if (!body) return;
-  const open = body.style.display !== 'none';
-  body.style.display   = open ? 'none' : 'block';
-  if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
-  if (!open) codLoadAccesos();
-}
 
 async function codLoadAccesos() {
   const tbody = document.getElementById('tb-accesos-body');
@@ -12616,35 +12334,6 @@ async function codLoadAccesos() {
       <button class="btn btn-sm btn-ic" style="color:var(--red)" onclick="codAccesoEliminar('${a.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
     </td>
   </tr>`).join('');
-}
-
-async function codAccesoFormAbrir(data) {
-  const fw = document.getElementById('cod-acceso-form-wrap');
-  if (!fw) return;
-
-  const { data: provs } = await supa.from('proveedores').select('id, nombre').eq('estado','activo').order('nombre');
-  const sel = document.getElementById('caf-proveedor');
-  if (sel && provs) {
-    sel.innerHTML = '<option value="">— Seleccionar —</option>' +
-      provs.map(p => `<option value="${p.nombre}">${p.nombre}</option>`).join('');
-  }
-
-  document.getElementById('caf-id').value         = data?.id || '';
-  document.getElementById('caf-correo').value     = data?.correo || '';
-  if (sel) sel.value                              = data?.proveedor || '';
-  document.getElementById('caf-plataforma').value = data?.plataforma || '';
-  document.getElementById('caf-tipo_bot').value   = data?.tipo_bot || 'correo_propio';
-  document.getElementById('caf-link').value       = data?.link || '';
-  document.getElementById('caf-usuario').value    = data?.usuario || '';
-  document.getElementById('caf-clave').value      = data?.clave || '';
-  document.getElementById('caf-notas').value      = data?.notas || '';
-  fw.style.display = 'block';
-  fw.scrollIntoView({ behavior:'smooth', block:'nearest' });
-}
-
-function codAccesoFormCerrar() {
-  const fw = document.getElementById('cod-acceso-form-wrap');
-  if (fw) fw.style.display = 'none';
 }
 
 async function codAccesoEditar(id) {
@@ -12669,33 +12358,6 @@ async function codAccesoEliminar(id) {
   const { error } = await supa.from('accesos').delete().eq('id', id);
   if (error) { toast('Error: ' + error.message,'err'); return; }
   toast('Eliminado ✓','ok');
-  codLoadAccesos();
-}
-
-async function codAccesoGuardar() {
-  const id     = document.getElementById('caf-id').value.trim();
-  const correo = document.getElementById('caf-correo').value.trim();
-  if (!correo) { toast('El correo es requerido','warn'); return; }
-  if (!id) {
-    const { data: existente } = await supa.from('accesos').select('id').eq('correo', correo).maybeSingle();
-    if (existente) { toast('Ya existe un acceso registrado con este correo (id ' + existente.id + ')', 'warn'); return; }
-  }
-  const payload = {
-    correo,
-    proveedor:  document.getElementById('caf-proveedor').value.trim()  || null,
-    plataforma: document.getElementById('caf-plataforma').value.trim() || null,
-    tipo_bot:   document.getElementById('caf-tipo_bot').value,
-    link:       document.getElementById('caf-link').value.trim()       || null,
-    usuario:    document.getElementById('caf-usuario').value.trim()    || null,
-    clave:      document.getElementById('caf-clave').value.trim()      || null,
-    notas:      document.getElementById('caf-notas').value.trim()      || null
-  };
-  const { error } = id
-    ? await supa.from('accesos').update(payload).eq('id', id)
-    : await supa.from('accesos').insert(payload);
-  if (error) { toast('Error: ' + error.message,'err'); return; }
-  toast(id ? 'Actualizado ✓' : 'Registro creado ✓','ok');
-  codAccesoFormCerrar();
   codLoadAccesos();
 }
 
