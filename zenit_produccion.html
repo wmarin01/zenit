@@ -1060,8 +1060,7 @@ function closeSidebarMobile() {
 </div>
 <!-- PROVEEDORES -->
 <div class="view" id="v-proveedores">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn btn-p" onclick="openModal('m-proveedor')"><i class="ti ti-plus"></i>Nuevo proveedor</button></div>
-  <div class="card"><div class="tw"><table><thead><tr><th>Proveedor</th><th>Contacto</th><th>Teléfono</th><th>Plataformas</th><th>Cuentas</th><th>Métodos pago</th><th>Próx. vcto</th><th>Estado</th><th></th></tr></thead><tbody id="tb-proveedores"></tbody></table></div></div>
+  <div class="card"><div class="tw"><table><thead><tr><th>Abrev.</th><th>Proveedor</th><th>Contacto</th><th>Teléfono</th><th>Plataformas</th><th>Cuentas</th><th>Métodos pago</th><th>Próx. vcto</th><th>Estado</th><th></th></tr></thead><tbody id="tb-proveedores"></tbody></table></div></div>
 </div>
 <!-- EGRESOS -->
 <div class="view" id="v-egresos">
@@ -1323,11 +1322,15 @@ function closeSidebarMobile() {
     <!-- Sub-tab 3: Cuentas próximas a vencer (Master only) -->
     <div class="pp" id="rpti-vencprov" style="display:none">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-        <select id="rpti-vp-dias" style="width:auto">
+        <select id="rpti-vp-dias-preset" style="width:auto" onchange="if(this.value){document.getElementById('rpti-vp-dias').value=this.value}">
+          <option value="">Personalizado</option>
           <option value="7">7 días</option>
           <option value="15" selected>15 días</option>
           <option value="30">30 días</option>
+          <option value="60">60 días</option>
+          <option value="90">90 días</option>
         </select>
+        <input type="number" id="rpti-vp-dias" value="15" min="1" max="365" style="width:80px" placeholder="Días">
         <button class="btn" onclick="rptiVencProvGenerar()"><i class="ti ti-refresh"></i> Generar</button>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
@@ -2309,8 +2312,13 @@ function closeSidebarMobile() {
   <div class="mb">
     <input type="hidden" id="prov-edit-id">
     <div class="fr c2">
-      <div class="fg"><label>Nombre<span class="req">*</span></label><input type="text" id="prov-nombre" placeholder="Ej: Proveedor D"></div>
+      <div class="fg"><label>Nombre<span class="req">*</span></label><input type="text" id="prov-nombre" placeholder="Ej: Proveedor D" oninput="sugerirAbreviaturaProveedor()"></div>
       <div class="fg"><label>Contacto</label><input type="text" id="prov-contacto" placeholder="Nombre de la persona"></div>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Abreviatura (para perfiles de Chrome)</label><input type="text" id="prov-abbr" placeholder="Ej: REC" maxlength="6" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();this.dataset.editadoManual='1'">
+        <div class="hint" id="prov-abbr-hint">Se sugiere automáticamente al escribir el nombre</div>
+      </div>
     </div>
     <div class="fr c2">
       <div class="fg"><label>Teléfono / WhatsApp</label>
@@ -2330,20 +2338,10 @@ function closeSidebarMobile() {
       </div>
     </div>
     <div class="fg" style="margin-bottom:11px"><label>Plataformas que provee</label>
-      <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap">
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-plat-NF" style="width:auto"><span class="dot nf" style="width:9px;height:9px"></span>Netflix</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-plat-DS" style="width:auto"><span class="dot ds" style="width:9px;height:9px"></span>Disney+</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-plat-HB" style="width:auto"><span class="dot hb" style="width:9px;height:9px"></span>HBO Max</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-plat-PV" style="width:auto"><span class="dot pv" style="width:9px;height:9px"></span>Prime Video</label>
-      </div>
+      <div id="prov-plats-list" style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap"></div>
     </div>
     <div class="fg" style="margin-bottom:11px"><label>Métodos de pago aceptados</label>
-      <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap">
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-met-ACH" style="width:auto">ACH</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-met-Yappy" style="width:auto">Yappy</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-met-Binance" style="width:auto">Binance Pay</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" id="prov-met-Efectivo" style="width:auto">Efectivo</label>
-      </div>
+      <div id="prov-mets-list" style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap"></div>
     </div>
     <div class="fg"><label>Notas</label><textarea id="prov-notas" rows="2" placeholder="Condiciones, acuerdos..."></textarea></div>
   </div>
@@ -7704,6 +7702,40 @@ function filtrarCuentasEgreso(provId) {
     cuentas.map(c => `<option value="${c.id}">${c.id} · ${c.plataforma} · ${c.correo}</option>`).join('');
 }
 
+function sugerirAbreviaturaProveedor() {
+  const abbrEl = document.getElementById('prov-abbr');
+  if (!abbrEl || abbrEl.dataset.editadoManual === '1') return;
+  const nombre = document.getElementById('prov-nombre')?.value?.trim() || '';
+  if (!nombre) { abbrEl.value = ''; return; }
+  const existentes = Object.values(PROVEEDORES_ABBR || {}).map(v => (v||'').toUpperCase());
+  const base = nombre.replace(/[^a-zA-Z]/g, '').substring(0,3).toUpperCase() || 'PRV';
+  let candidato = base;
+  let i = 1;
+  while (existentes.includes(candidato)) {
+    candidato = base.substring(0,2) + i;
+    i++;
+  }
+  abbrEl.value = candidato;
+}
+
+async function cargarOpcionesProveedorForm() {
+  const plCont = document.getElementById('prov-plats-list');
+  if (plCont) {
+    plCont.innerHTML = (PLATAFORMAS||[]).filter(p => (p.estado||'').toLowerCase()==='activa').map(p =>
+      `<label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" class="prov-plat-chk" value="${p.codigo}" style="width:auto">${p.nombre}</label>`
+    ).join('');
+  }
+  const metCont = document.getElementById('prov-mets-list');
+  if (metCont) {
+    try {
+      const { data } = await supa.from('formas_pago').select('nombre').eq('estado', 'Activa').order('nombre');
+      metCont.innerHTML = (data||[]).map(f =>
+        `<label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" class="prov-met-chk" value="${f.nombre}" style="width:auto">${f.nombre}</label>`
+      ).join('');
+    } catch(e) { console.warn('[PROVEEDOR] Error cargando formas de pago:', e.message); }
+  }
+}
+
 async function guardarProveedor() {
   const id       = document.getElementById('prov-edit-id')?.value;
   const nombre   = document.getElementById('prov-nombre')?.value?.trim();
@@ -7711,12 +7743,20 @@ async function guardarProveedor() {
   const telefono = normalizeTel(getPhoneValue('prov-tel-num','prov-tel-pais'));
   const estado   = document.getElementById('prov-estado')?.value || 'activo';
   const notas    = document.getElementById('prov-notas')?.value?.trim() || '';
+  const abreviatura = document.getElementById('prov-abbr')?.value?.trim().toUpperCase() || null;
 
   if (!nombre) { toast('El nombre del proveedor es requerido','warn'); return; }
 
+  if (abreviatura) {
+    let dupQuery = supa.from('proveedores').select('id, nombre').eq('abreviatura', abreviatura);
+    if (id) dupQuery = dupQuery.neq('id', id);
+    const { data: dupAbbr } = await dupQuery.maybeSingle();
+    if (dupAbbr) { toast('La abreviatura "' + abreviatura + '" ya la usa "' + dupAbbr.nombre + '". Cambia una de las dos.', 'warn'); return; }
+  }
+
   // Plataformas y métodos
-  const plataformas = ['NF','DS','HB','PV'].filter(p => document.getElementById('prov-plat-'+p)?.checked);
-  const metodos     = ['ACH','Yappy','Binance','Efectivo'].filter(m => document.getElementById('prov-met-'+m)?.checked);
+  const plataformas = Array.from(document.querySelectorAll('.prov-plat-chk:checked')).map(el => el.value);
+  const metodos     = Array.from(document.querySelectorAll('.prov-met-chk:checked')).map(el => el.value);
 
   const btn = document.getElementById('btn-guardar-prov');
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
@@ -7724,15 +7764,16 @@ async function guardarProveedor() {
   try {
     let error;
     if (id) {
-      ({error} = await supa.from('proveedores').update({nombre, contacto, telefono, plataformas, metodos, estado}).eq('id', id));
+      ({error} = await supa.from('proveedores').update({nombre, contacto, telefono, plataformas, metodos, estado, abreviatura}).eq('id', id));
     } else {
-      ({error} = await supa.from('proveedores').insert({nombre, contacto, telefono, plataformas, metodos, estado}));
+      ({error} = await supa.from('proveedores').insert({nombre, contacto, telefono, plataformas, metodos, estado, abreviatura}));
     }
     if (error) throw error;
     await dbGuardarHistorial(id?'Editar proveedor':'Nuevo proveedor', nombre, 'var(--accent)');
     closeModal('m-proveedor');
     dbCargarProveedores();
     cargarSelectoresProveedores(); // actualizar todos los selects
+    await cargarProveedoresAbbr(); // refrescar abreviaturas en memoria
     toast((id?'Proveedor actualizado':'Proveedor "'+nombre+'" creado')+' ✓','ok');
   } catch(e) {
     toast('Error: '+(e.message||e),'error');
@@ -7768,9 +7809,10 @@ function abrirNuevoProveedor() {
   document.getElementById('prov-tel-num').value = '';
   document.getElementById('prov-notas').value = '';
   document.getElementById('prov-estado').value = 'activo';
-  ['NF','DS','HB','PV'].forEach(p => { const el=document.getElementById('prov-plat-'+p); if(el) el.checked=false; });
-  ['ACH','Yappy','Binance','Efectivo'].forEach(m => { const el=document.getElementById('prov-met-'+m); if(el) el.checked=false; });
+  const _abbrEl = document.getElementById('prov-abbr');
+  if (_abbrEl) { _abbrEl.value = ''; delete _abbrEl.dataset.editadoManual; }
   document.getElementById('prov-titulo').textContent = 'Nuevo proveedor';
+  cargarOpcionesProveedorForm();
   openModal('m-proveedor');
 }
 
@@ -7783,27 +7825,36 @@ async function editarProveedor(id) {
   document.getElementById('prov-contacto').value = data.contacto||'';
   document.getElementById('prov-notas').value = data.notas||'';
   document.getElementById('prov-estado').value = data.estado||'activo';
+  const _abbrElEdit = document.getElementById('prov-abbr');
+  if (_abbrElEdit) { _abbrElEdit.value = data.abreviatura||''; _abbrElEdit.dataset.editadoManual = '1'; }
   document.getElementById('prov-titulo').textContent = 'Editar proveedor';
   // Teléfono
   if (data.telefono) {
     const t = data.telefono.replace(/[^\d]/g,'');
     document.getElementById('prov-tel-num').value = t.slice(-8);
   }
+  await cargarOpcionesProveedorForm();
   // Plataformas
-  (data.plataformas||[]).forEach(p => { const el=document.getElementById('prov-plat-'+p); if(el) el.checked=true; });
+  (data.plataformas||[]).forEach(p => {
+    const el = document.querySelector('.prov-plat-chk[value="'+p+'"]');
+    if (el) el.checked = true;
+  });
   // Métodos
-  (data.metodos||[]).forEach(m => { const el=document.getElementById('prov-met-'+m); if(el) el.checked=true; });
+  (data.metodos||[]).forEach(m => {
+    const el = document.querySelector('.prov-met-chk[value="'+m+'"]');
+    if (el) el.checked = true;
+  });
   openModal('m-proveedor');
 }
 
 async function dbCargarProveedores() {
   const tbody = document.getElementById('tb-proveedores');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
   const { data, error } = await supa.from('proveedores').select('*').order('nombre');
-  if (error) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:20px">Error: '+error.message+'</td></tr>'; return; }
+  if (error) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--red);padding:20px">Error: '+error.message+'</td></tr>'; return; }
   if (!data || !data.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">No hay proveedores registrados</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">No hay proveedores registrados</td></tr>';
     return;
   }
   const PC = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
@@ -7812,6 +7863,7 @@ async function dbCargarProveedores() {
     const mets  = (p.metodos||[]).map(x=>`<span class="b bi" style="margin-right:2px">${x}</span>`).join('')||'—';
     const est   = (p.estado||'activo').toLowerCase()==='activo'?'bg':'ba';
     return `<tr>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${p.abreviatura||'—'}</td>
       <td><strong>${p.nombre||'—'}</strong></td>
       <td style="font-size:12px">${p.contacto||'—'}</td>
       <td style="font-size:12px">${formatTel(p.telefono||'')}</td>
@@ -10771,14 +10823,13 @@ async function rptiVencProvGenerar() {
   const resDiv = document.getElementById('rpti-vp-res');
   if (resDiv) resDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
   try {
-    const hoy    = hoyPanamaDate();
-    const limite = new Date(hoy); limite.setDate(limite.getDate() + dias);
-    const iso    = d => fechaAISO(d);
+    const hoy      = hoyPanamaDate();
+    const objetivo = new Date(hoy); objetivo.setDate(objetivo.getDate() + dias);
+    const iso      = d => fechaAISO(d);
     const { data: cuentasRaw, error } = await supa.from('cuentas_inventario')
       .select('codigo, plataforma, correo, proveedor, fecha_vcto_proveedor')
       .eq('estado', 'Activa')
-      .gte('fecha_vcto_proveedor', iso(hoy))
-      .lte('fecha_vcto_proveedor', iso(limite))
+      .eq('fecha_vcto_proveedor', iso(objetivo))
       .order('fecha_vcto_proveedor', { ascending: true });
     if (error) throw error;
     const cuentas = (cuentasRaw || []).map(c => ({ id: c.codigo, plataforma: c.plataforma, correo: c.correo, proveedor: c.proveedor, fecha_vcto_prov: c.fecha_vcto_proveedor }));
