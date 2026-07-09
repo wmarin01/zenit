@@ -590,26 +590,6 @@ select option{background:var(--bg3)}
     z-index: 100 !important;
   }
 
-  /* FASE 1 — LOGIN: Corregir pantalla de acceso */
-  #login-screen {
-    flex-direction: column !important;
-    height: auto !important;
-    min-height: 100vh !important;
-    overflow-y: auto !important;
-  }
-  #login-screen > div:first-child {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 28px 20px !important;
-    text-align: center !important;
-  }
-  #login-screen > div:last-child {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 24px 20px 32px !important;
-    box-sizing: border-box !important;
-  }
-
   /* SIDEBAR */
   #sb {
     transform: translateX(-100%);
@@ -684,10 +664,10 @@ select option{background:var(--bg3)}
   /* Login responsive */
   #zenit-welcome { overflow-y: auto !important; align-items: flex-start !important; }
   #login-container { flex-direction: column !important; min-height: auto !important; width: 100% !important; max-width: 100% !important; }
-  #login-left { display: none !important; }
+  #login-left { display: flex !important; width: 100% !important; max-width: 100% !important; padding: 32px 20px !important; text-align: center !important; box-sizing: border-box !important; }
   #login-divider { display: none !important; }
-  #login-right { width: 100% !important; max-width: 100% !important; min-height: 100vh !important; padding: 40px 24px !important; box-sizing: border-box !important; }
-  .login-mobile-title { display: block !important; }
+  #login-right { width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 24px 20px 40px !important; box-sizing: border-box !important; }
+  .login-mobile-title { display: none !important; }
 
   /* FASE 6 — HEADER MÓVIL */
   #hdr {
@@ -713,10 +693,6 @@ select option{background:var(--bg3)}
 
   /* FASE 5 — ORIENTACIÓN landscape */
   @media(orientation: landscape) {
-    #login-screen > div:last-child {
-      min-height: auto !important;
-      padding: 20px !important;
-    }
     #content { padding: 10px !important; }
   }
 }
