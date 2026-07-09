@@ -656,6 +656,21 @@ select option{background:var(--bg3)}
     max-height: none !important;
     margin: 0 auto 20px !important;
   }
+  .pi {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+  }
+  .pcode {
+    flex: 1 1 100% !important;
+    margin-bottom: 3px !important;
+  }
+  .porig {
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 60% !important;
+  }
   input, select, textarea {
     font-size: 16px !important;
   }
@@ -5405,9 +5420,10 @@ async function reutilizarCuenta(btn) {
   // Guardar en Supabase si está disponible
   try {
     await supa.from('historial').insert([{
-      tipo: 'cuenta_reutilizada',
-      descripcion: codigo + ' · correo anterior: ' + correoAnterior,
-      reutilizacion_num: nuevasReutilizaciones,
+      accion: 'Cuenta reutilizada',
+      detalle: codigo + ' · correo anterior: ' + correoAnterior + ' · reutilización #' + nuevasReutilizaciones,
+      operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
+      color: 'var(--accent)',
       fecha: new Date().toISOString()
     }]);
   } catch(e) {}
@@ -6061,10 +6077,6 @@ let ventaData = {clienteId:'', clienteNombre:'', clienteTel:'', tipo:'individual
 function getPerfKey(plats, plat, idx) {
   const count = plats.filter(x => x === plat).length;
   return count > 1 ? plat + '_' + idx : plat;
-}
-function getPerfByIdx(perfilesSel, plats, plat, idx) {
-  const key = getPerfKey(plats, plat, idx);
-  return perfilesSel[key] || perfilesSel[plat] || null;
 }
 function ventaPaso1() {
   ['vpaso1','vpaso2','vpaso3','vpaso4','vpaso5'].forEach((id,i) => {
@@ -9041,20 +9053,6 @@ function normalizarCombo(plataformas) {
 
 let comboSelIdx = -1;
 
-function selComboVenta(idx) {
-  comboSelIdx = idx;
-  document.querySelectorAll('#v-combos-lista .pi').forEach((el,i) => {
-    el.classList.toggle('on', i === idx);
-  });
-  const combo = COMBOS[idx];
-  ventaData.plats = combo.plats;
-  ventaData.comboId = combo.id;
-  // Mostrar precio
-  const prev = document.getElementById('v-precio-preview');
-  if (prev) prev.textContent = combo.id + ' — $' + combo.precio.toFixed(2) + ' (' + combo.desglose + ')';
-}
-
-
 // ── COBROS ────────────────────────────────────────────────────
 const COBROS = [];
 
@@ -11888,8 +11886,10 @@ async function guardarRenovarPin() {
     const { data: pinData, error: e2 } = await supa.from('pines').update({ estado: 'usado', cuenta_id: _renovarCuentaId, fecha_uso: hoy }).eq('id', pinId).select('costo').single();
     if (e2) throw e2;
     if (pinData?.costo != null) {
-      await supa.from('inventario').update({ costo: pinData.costo }).eq('id', _renovarCuentaId);
-      await supa.from('cuentas_inventario').update({ costo_proveedor: pinData.costo }).eq('codigo', _renovarCuentaId);
+      const { error: eCosto1 } = await supa.from('inventario').update({ costo: pinData.costo }).eq('id', _renovarCuentaId);
+      if (eCosto1) console.warn('[renovar] Error actualizando costo en inventario:', eCosto1.message);
+      const { error: eCosto2 } = await supa.from('cuentas_inventario').update({ costo_proveedor: pinData.costo }).eq('codigo', _renovarCuentaId);
+      if (eCosto2) console.warn('[renovar] Error actualizando costo en cuentas_inventario:', eCosto2.message);
     }
     await cargarPines();
     await cargarInventario();
