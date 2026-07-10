@@ -157,6 +157,7 @@ async function dbCargarClientes() {
         plats: [],
         dias: 0,
         est: c.estado,
+        createdAt: c.created_at,
         contactos: (c.contactos || []).map(ct => ({ t: ct.tipo, v: ct.valor }))
       });
     });
@@ -418,7 +419,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .ct{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;gap:6px}
 .ct i{font-size:14px}
 .mg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin-bottom:16px}
-.mc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden}
+.mc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.mc:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.3);border-color:var(--mc-c,var(--accent))}
 .mc::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--mc-c,var(--accent));border-radius:2px 2px 0 0}
 .ml{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
 .mv{font-size:22px;font-weight:600;line-height:1;margin-bottom:3px}
@@ -871,7 +873,7 @@ function closeSidebarMobile() {
     <div class="ni" onclick="goTo('ventas',this)"><i class="ti ti-shopping-cart"></i>Ventas</div>
     <div class="ni" onclick="goTo('cobros',this)"><i class="ti ti-receipt"></i>Cobros</div>
     <div class="ni" onclick="goTo('suscripciones',this)"><i class="ti ti-list-details"></i>Suscripciones</div>
-    <div class="ni" onclick="goTo('cobranza',this)"><i class="ti ti-cash"></i>Cobranza<span class="nb">3</span></div>
+    <div class="ni" onclick="goTo('cobranza',this)"><i class="ti ti-cash"></i>Cobranza<span class="nb" id="badge-cobranza">0</span></div>
     <div class="ni" onclick="goTo('inventario',this)"><i class="ti ti-server"></i>Inventario</div>
     <div class="ni" onclick="goTo('codigos',this)"><i class="ti ti-shield-lock"></i>Códigos</div>
   </div>
@@ -906,12 +908,12 @@ function closeSidebarMobile() {
 <!-- DASHBOARD -->
 <div class="view on" id="v-dashboard">
   <div class="mg">
-    <div class="mc" style="--mc-c:var(--accent)"><div class="ml">Clientes activos</div><div class="mv" id="dash-cli-activos">—</div><div class="ms" id="dash-cli-semana">cargando...</div></div>
-    <div class="mc" style="--mc-c:var(--red)"><div class="ml">Vencen hoy</div><div class="mv" style="color:var(--red)" id="dash-vence-hoy">—</div><div class="ms">Sin pago</div></div>
-    <div class="mc" style="--mc-c:var(--amber)"><div class="ml">Vencen en 3 días</div><div class="mv" style="color:var(--amber)" id="dash-vence-3d">—</div><div class="ms">Recordatorios</div></div>
-    <div class="mc" style="--mc-c:var(--green)"><div class="ml" id="dash-cobrado-label">Cobrado este mes</div><div class="mv" style="color:var(--green)" id="dash-cobrado">—</div><div class="ms" id="dash-cobrado-sub">cargando...</div></div>
-    <div class="mc" style="--mc-c:var(--purple)"><div class="ml">Perfiles disponibles</div><div class="mv" id="dash-perfiles">—</div><div class="ms">En inventario</div></div>
-    <div class="mc" style="--mc-c:var(--teal)"><div class="ml">Ganancia neta</div><div class="mv" style="color:var(--teal)" id="dash-ganancia">—</div><div class="ms" id="dash-margen">cargando...</div></div>
+    <div class="mc" style="--mc-c:var(--accent)"><div class="ml"><i class="ti ti-users" style="margin-right:5px"></i>Clientes activos</div><div class="mv" id="dash-cli-activos">—</div><div class="ms" id="dash-cli-semana">cargando...</div></div>
+    <div class="mc" style="--mc-c:var(--red)"><div class="ml"><i class="ti ti-alert-circle" style="margin-right:5px"></i>Vencen hoy</div><div class="mv" style="color:var(--red)" id="dash-vence-hoy">—</div><div class="ms">Sin pago</div></div>
+    <div class="mc" style="--mc-c:var(--amber)"><div class="ml"><i class="ti ti-clock" style="margin-right:5px"></i>Vencen en 3 días</div><div class="mv" style="color:var(--amber)" id="dash-vence-3d">—</div><div class="ms">Recordatorios</div></div>
+    <div class="mc" style="--mc-c:var(--green)"><div class="ml" id="dash-cobrado-label"><i class="ti ti-cash" style="margin-right:5px"></i>Cobrado este mes</div><div class="mv" style="color:var(--green)" id="dash-cobrado">—</div><div class="ms" id="dash-cobrado-sub">cargando...</div></div>
+    <div class="mc" style="--mc-c:var(--purple)"><div class="ml"><i class="ti ti-device-tv" style="margin-right:5px"></i>Perfiles disponibles</div><div class="mv" id="dash-perfiles">—</div><div class="ms">En inventario</div></div>
+    <div class="mc" style="--mc-c:var(--teal)"><div class="ml"><i class="ti ti-trending-up" style="margin-right:5px"></i>Ganancia neta</div><div class="mv" style="color:var(--teal)" id="dash-ganancia">—</div><div class="ms" id="dash-margen">cargando...</div></div>
   </div>
   <div class="g2">
     <div class="card">
@@ -3381,7 +3383,7 @@ actualizarFechaHeader();
 const TITLES={dashboard:'Dashboard',clientes:'Clientes',ventas:'Ventas',cobranza:'Cobranza',inventario:'Inventario',proveedores:'Proveedores',egresos:'Egresos',pines:'Pines',reportes:'Reportes',tablas:'Tablas',parametros:'Parámetros',historial:'Historial',usuarios:'Usuarios y permisos',ayuda:'Ayuda'};
 
 // ── DASHBOARD DINÁMICO ──────────────────────────────────────────
-function renderDashboard() {
+async function renderDashboard() {
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const mesActual = hoy.getMonth() + 1;
   const anioActual = hoy.getFullYear();
@@ -3392,12 +3394,16 @@ function renderDashboard() {
   const cliActivos = CLIENTES.filter(c => c.est === 'activo').length;
   const hace7 = new Date(hoy); hace7.setDate(hace7.getDate()-7);
   const nuevosEstaSemana = CLIENTES.filter(c => {
-    if (!c.est === 'activo') return false;
-    // Aproximar con el ID: IDs altos = más recientes
-    return false; // sin fecha de creación en memoria, omitir
+    if (!c.createdAt) return false;
+    const fc = new Date(c.createdAt);
+    return fc >= hace7;
   }).length;
   set('dash-cli-activos', cliActivos);
-  set('dash-cli-semana', 'Total en sistema');
+  const _tendCli = nuevosEstaSemana > 0
+    ? '<i class="ti ti-trending-up" style="color:var(--green);margin-right:3px"></i>+' + nuevosEstaSemana + ' nuevos esta semana'
+    : 'Sin nuevos esta semana';
+  const _elCliSemana = document.getElementById('dash-cli-semana');
+  if (_elCliSemana) _elCliSemana.innerHTML = _tendCli;
 
   // ── Vencimientos ─────────────────────────────────────────────
   const subsActivas = SUBS_FULL.filter(s => s.est === 'activo' && s.fVcto && s.fVcto !== '—');
@@ -3408,6 +3414,9 @@ function renderDashboard() {
   });
   set('dash-vence-hoy',  withDays.filter(d => d === 0).length);
   set('dash-vence-3d',   withDays.filter(d => d <= 3 && d >= 0).length);
+  const pendientesCobranza = withDays.filter(d => d <= 0).length;
+  const badgeCob = document.getElementById('badge-cobranza');
+  if (badgeCob) badgeCob.textContent = pendientesCobranza;
 
   // ── Cobrado este mes ──────────────────────────────────────────
   const cobradoMes = COBROS.filter(c => {
@@ -3424,13 +3433,23 @@ function renderDashboard() {
   set('dash-cobrado-sub', 'De $'+esperadoMes.toFixed(2)+' esperado');
 
   // ── Perfiles disponibles ──────────────────────────────────────
-  const totalPerfiles = ['NF','DS','HB','PV'].reduce((s,p) => s + (PERFILES_DISP[p]||[]).length, 0);
+  const totalPerfiles = (PLATAFORMAS||[]).reduce((s,p) => s + (PERFILES_DISP[p.codigo]||[]).length, 0);
   set('dash-perfiles', totalPerfiles);
 
   // ── Ganancia neta ─────────────────────────────────────────────
-  // Ingresos - egresos (egresos se cargan async, usar cobradoMes como aproximación)
-  set('dash-ganancia', '$'+cobradoMes.toFixed(2));
-  set('dash-margen', 'Ingresos '+mesNombre);
+  let egresosMes = 0;
+  try {
+    const { data: egresosData } = await supa.from('egresos').select('total, fecha')
+      .gte('fecha', anioActual + '-' + String(mesActual).padStart(2,'0') + '-01');
+    egresosMes = (egresosData || []).reduce((s,e) => s + (parseFloat(e.total) || 0), 0);
+  } catch (e) { console.warn('[DASH] Error cargando egresos:', e.message); }
+  const gananciaNeta = cobradoMes - egresosMes;
+  set('dash-ganancia', '$'+gananciaNeta.toFixed(2));
+  const _tendGanancia = gananciaNeta >= cobradoMes * 0.7
+    ? '<i class="ti ti-trending-up" style="color:var(--green);margin-right:3px"></i>'
+    : '<i class="ti ti-trending-down" style="color:var(--amber);margin-right:3px"></i>';
+  const _elMargen = document.getElementById('dash-margen');
+  if (_elMargen) _elMargen.innerHTML = _tendGanancia + 'Ingresos $'+cobradoMes.toFixed(2)+' − Egresos $'+egresosMes.toFixed(2);
 
   // ── Vencimientos críticos (hoy y mañana) ─────────────────────
   const vcTbody = document.getElementById('dash-venc-criticos');
