@@ -4091,7 +4091,7 @@ function zenitChromeBtn(plat, correo, prov, clave, nombreChrome, label) {
     PV: 'https://www.primevideo.com/region/eu/profiles?step=edit'
   };
   const link = platLinks[plat] || '';
-  const zenitUrl = `http://localhost:9999/chrome?plat=${plat}&correo=${encodeURIComponent(correo)}&prov=${prov}`;
+  const zenitUrl = `http://localhost:9999/chrome?plat=${plat}&nombre=${encodeURIComponent(nombreChrome)}`;
 
   if (esDispositivoMovil()) {
     return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;margin-top:6px">
@@ -5277,6 +5277,7 @@ async function guardarCuenta(){
       const _prov = PROVEEDORES_ABBR[provNom] || (provNom||'').substring(0,3).toUpperCase();
       const _correoCorto = (correo||'').split('@')[0];
       const _dominio = (correo||'').split('@')[1] || '';
+      console.log('[DEBUG LealTV]', JSON.stringify(provNom), Array.from(provNom).map(c => c.charCodeAt(0)));
       const _nombreChrome = provNom === 'LealTV'
         ? `${platVal}-${codigo.replace(/^[A-Z]+/i,'').slice(0,-1)}-${correo}`
         : `${platVal}-${_prov}-${_correoCorto}@${_dominio}`;
