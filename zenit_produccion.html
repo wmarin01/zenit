@@ -5279,7 +5279,7 @@ async function guardarCuenta(){
       const _dominio = (correo||'').split('@')[1] || '';
       console.log('[DEBUG LealTV]', JSON.stringify(provNom), Array.from(provNom).map(c => c.charCodeAt(0)));
       const _nombreChrome = provNom === 'LealTV'
-        ? `${platVal}-${codigo.replace(/^[A-Z]+/i,'').slice(0,-1)}-${correo}`
+        ? `${platVal}-${codigo.replace(/^[A-Z]+/i,'')}-${correo}`
         : `${platVal}-${_prov}-${_correoCorto}@${_dominio}`;
       setTimeout(() => {
         const _btnChrome = zenitChromeBtn(platVal, correo, _prov, clave, _nombreChrome, 'Crear perfil Chrome');
