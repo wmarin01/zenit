@@ -3521,22 +3521,42 @@ async function renderDashboard() {
   }
 
   // ── Alertas proveedores (cuentas próximas a vencer) ───────────
-  // Se actualizan cuando cargarInventario() trae datos
-  // Por ahora mostrar placeholder hasta que inventario cargue
   const apTbody = document.getElementById('dash-alertas-prov');
-  if (apTbody && apTbody.innerHTML.includes('Cargando'))
-    apTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">Ve a Inventario para cargar datos</td></tr>';
+  if (apTbody) {
+    const hoyDate = hoyPanamaDate();
+    const limiteDate = new Date(hoyDate); limiteDate.setDate(limiteDate.getDate() + 15);
+    const proximasVcto = (INV_CACHE || [])
+      .filter(c => (c.estado||'').toLowerCase() === 'activa' && c.fecha_vcto_prov)
+      .map(c => ({ ...c, _vctoDate: new Date(c.fecha_vcto_prov + 'T00:00:00') }))
+      .filter(c => c._vctoDate >= hoyDate && c._vctoDate <= limiteDate)
+      .sort((a,b) => a._vctoDate - b._vctoDate)
+      .slice(0, 6);
+    if (!proximasVcto.length) {
+      apTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">Sin cuentas próximas a vencer en los próximos 15 días</td></tr>';
+    } else {
+      apTbody.innerHTML = proximasVcto.map(c => {
+        const clientesCount = SUBS_FULL.filter(s => s.est === 'activo' && s.perfil && s.perfil !== '—' && s.perfil.slice(0,-1) === c.id).length;
+        const vctoFmt = c.fecha_vcto_prov.split('-').reverse().join('/');
+        return `<tr>
+          <td style="font-family:var(--mono);font-size:12px">${c.id}</td>
+          <td style="font-size:12px">${c.proveedor||'—'}</td>
+          <td style="text-align:center">${clientesCount}</td>
+          <td style="font-size:12px">${vctoFmt}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
 
   // ── Inventario por plataforma ─────────────────────────────────
   const invDiv = document.getElementById('dash-inventario');
   if (invDiv) {
-    const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
-    const plats = [{c:'NF',n:'Netflix'},{c:'DS',n:'Disney+'},{c:'HB',n:'HBO Max'},{c:'PV',n:'Prime Video'}];
+    const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)',IP:'var(--teal)'};
+    const plats = (PLATAFORMAS||[]).filter(p => p.estado !== 'inactiva').map(p => ({c: p.codigo, n: p.nombre}));
     invDiv.innerHTML = plats.map(p => {
       const cnt = (PERFILES_DISP[p.c]||[]).length;
       const badge = cnt === 0 ? '<span class="b br">Agotado</span>' : cnt <= 3 ? '<span class="b ba">Bajo</span>' : '<span class="b bg">OK</span>';
       return `<div style="display:flex;align-items:center;gap:8px;font-size:12px">
-        <span class="dot" style="background:${PC2[p.c]};width:9px;height:9px;border-radius:50%;display:inline-block"></span>
+        <span class="dot" style="background:${PC2[p.c]||'var(--accent)'};width:9px;height:9px;border-radius:50%;display:inline-block"></span>
         <span style="flex:1;color:var(--text2)">${p.n}</span>
         <span>${cnt}</span>${badge}
       </div>`;
@@ -3724,7 +3744,6 @@ function tabCob(el,id){
   ['tc-hoy','tc-1d','tc-3d','tc-todos','tc-vencidos'].forEach(x=>{const d=document.getElementById(x);if(d)d.style.display='none';});
   const t=document.getElementById(id);if(t)t.style.display='block';
   // Renderizar cobranza desde suscripciones activas de Supabase
-  const _provAbbrCob = { 'Recursera':'REC', 'Wilfredo Marin':'WM', 'IJAS (Telg)':'IJS', 'Daniela (Telg)':'DAN', 'LealTV':'LEA', 'Store-Lobo':'SLB', 'Cine en Casa (WhatSapp)':'CEC', 'Moviax (Telg)':'MOV', 'EmTVpro':'ETV', 'WILDER':'WLD', 'Viva buy':'VIV', 'Niña':'NIN' };
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const subsActivas = SUBS_FULL.filter(s => s.est === 'activo' && s.fVcto && s.fVcto !== '—');
   // Convertir fVcto dd/mm/yyyy → Date
@@ -3797,7 +3816,7 @@ function tabCob(el,id){
         <td class="tda">
           <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','vencimiento')"><i class="ti ti-brand-whatsapp"></i>WA</button>
           <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
-          <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${s.plat}&correo=${encodeURIComponent(s.correo)}&prov=${encodeURIComponent(_provAbbrCob[s.proveedor] || (s.proveedor||'').substring(0,3).toUpperCase())}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
+          <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${s.plat}&correo=${encodeURIComponent(s.correo)}&prov=${encodeURIComponent(PROVEEDORES_ABBR[s.proveedor] || (s.proveedor||'').substring(0,3).toUpperCase())}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
         </td></tr>`;
     }).join('');
     return;
@@ -3828,7 +3847,7 @@ function tabCob(el,id){
         <td class="tda">
           <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','vencimiento')"><i class="ti ti-brand-whatsapp"></i>WA</button>
           <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
-          <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${s.plat}&correo=${encodeURIComponent(s.correo)}&prov=${encodeURIComponent(_provAbbrCob[s.proveedor] || (s.proveedor||'').substring(0,3).toUpperCase())}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
+          <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${s.plat}&correo=${encodeURIComponent(s.correo)}&prov=${encodeURIComponent(PROVEEDORES_ABBR[s.proveedor] || (s.proveedor||'').substring(0,3).toUpperCase())}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
         </td></tr>`;
     }).join('');
     return;
@@ -6094,7 +6113,7 @@ let NEXT_CLI_ID = 1; // Se actualiza al cargar clientes desde Supabase
 
 // Cargar siguiente código disponible desde Supabase para cada plataforma
 async function dbCargarNextCodigos() {
-  const plats = ['NF', 'DS', 'HB', 'PV'];
+  const plats = (PLATAFORMAS||[]).filter(p => p.estado !== 'inactiva').map(p => p.codigo);
   for (const p of plats) {
     try {
       const { data } = await supa
@@ -11833,7 +11852,7 @@ async function cargarParametros() {
             const val = f.nombre.toLowerCase().includes('binance') ? 'bin' : f.nombre;
             return `<option value="${val}" ${f.nombre==='Yappy'?'selected':''}>${f.nombre}</option>`;
           }).join('');
-          document.querySelectorAll('select[onchange*="chkCrypto"], #pago-forma, #v-forma, #inc-forma-dev').forEach(sel => sel.innerHTML = optsFormas);
+          document.querySelectorAll('select[onchange*="chkCrypto"], #pago-forma, #v-forma, #inc-forma-dev, #edit-cobro-forma').forEach(sel => sel.innerHTML = optsFormas);
 
       document.getElementById('tb-formas').innerHTML = data.map(f=>`
         <tr data-id="${f.id}">
@@ -12073,7 +12092,7 @@ const _origGoToParam = goTo;
 // ═══════════════════════════════════════════════════════════
 // INVENTARIO — CARGAR DESDE SUPABASE
 // ═══════════════════════════════════════════════════════════
-const PLAT_NAMES = {NF:'Netflix', DS:'Disney+', HB:'HBO Max', PV:'Prime Video'};
+const platNombre = codigo => (PLATAFORMAS||[]).find(p=>p.codigo===codigo)?.nombre || codigo;
 
 // Cache global del inventario y subs para filtrado rápido
 let INV_CACHE = [];
@@ -12188,7 +12207,7 @@ function renderInventario(lista) {
     .sort((a,b) => platOrder.indexOf(a[0]) - platOrder.indexOf(b[0]))
     .forEach(([plat, cuentas]) => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="12" style="background:var(--bg3);font-weight:600;font-size:12px;padding:8px 12px;color:var(--accent)">${PLAT_NAMES[plat]||plat} (${cuentas.length})</td>`;
+      tr.innerHTML = `<td colspan="12" style="background:var(--bg3);font-weight:600;font-size:12px;padding:8px 12px;color:var(--accent)">${platNombre(plat)} (${cuentas.length})</td>`;
       tbody.appendChild(tr);
 
       cuentas.forEach(inv => {
@@ -12210,7 +12229,7 @@ function renderInventario(lista) {
           : (inv.correo||'—');
         tr2.innerHTML = `
           <td><strong>${inv.id}</strong></td>
-          <td>${PLAT_NAMES[inv.plataforma]||inv.plataforma||'—'}</td>
+          <td>${inv.plataforma ? platNombre(inv.plataforma) : '—'}</td>
           <td style="font-size:11px">${correoCell}</td>
           <td style="font-size:11px;color:var(--text3)">${inv.clave||'—'}</td>
           <td style="text-align:center">${maxP||'—'}</td>
