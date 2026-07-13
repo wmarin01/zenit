@@ -4168,7 +4168,7 @@ async function mostrarExitoVenta(datosArray, esPreview) {
   const lista = Array.isArray(datosArray) ? datosArray : [datosArray];
   const primero = lista[0];
 
-  const nombresPlats = lista.map(d => PLATS[d.plat]?.nombre || d.plat).join(' + ');
+  const nombresPlats = lista.map(d => platNombre(d.plat)).join(' + ');
   document.getElementById('exito-cliente-nombre').textContent = primero.clienteNombre + ' · ' + nombresPlats;
 
   const PICO = {NF:'🔴',DS:'🔵',HB:'🟣',PV:'🔷',IP:'⚪'};
@@ -4205,7 +4205,7 @@ async function mostrarExitoVenta(datosArray, esPreview) {
     const sfx = idx;
     html += `
     <div class="card" style="padding:16px;margin-bottom:14px">
-      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:12px">${PICO[plat]||'▶️'} ${PLATS[plat]?.nombre||plat}</div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:12px">${PICO[plat]||'▶️'} ${platNombre(plat)}</div>
       <div style="display:grid;gap:10px">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:12px;color:var(--text3)">Correo</span>
@@ -4229,7 +4229,7 @@ async function mostrarExitoVenta(datosArray, esPreview) {
           </div>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border)">
-          <span style="font-size:12px;color:var(--text3)">Perfil ${PLATS[plat]?.nombre||plat} (cliente)</span>
+          <span style="font-size:12px;color:var(--text3)">Perfil ${platNombre(plat)} (cliente)</span>
           <div style="display:flex;align-items:center;gap:6px">
             <span style="font-size:13px;color:var(--text)" id="exito-usuario-${sfx}">${usuario||'—'}</span>
             <button class="btn btn-sm btn-ic" onclick="copiarDato('exito-usuario-${sfx}')" title="Copiar"><i class="ti ti-copy"></i></button>
@@ -4291,7 +4291,7 @@ async function mostrarExitoVenta(datosArray, esPreview) {
         const nombreChrome = d.proveedor === 'LealTV'
           ? `${d.plat}-${(d.perf||'').replace(/^[A-Z]+/i,'').slice(0,-1)}-${d.correo||''}`
           : `${d.plat}-${prov}-${correoCorto}@${dominio}`;
-        return zenitChromeBtn(d.plat, d.correo||'', prov, d.clave||'', nombreChrome, 'Chrome ' + (PLATS[d.plat]?.nombre||d.plat));
+        return zenitChromeBtn(d.plat, d.correo||'', prov, d.clave||'', nombreChrome, 'Chrome ' + platNombre(d.plat));
       }).join('');
       chromeBtns.style.display = esDispositivoMovil() ? 'block' : 'flex';
     } else {
@@ -4325,9 +4325,9 @@ async function verDatosAccesoVenta(){
     if (perf) pins[key] = ventaData.pins?.[key] || ventaData.pins?.[p] || generarPIN(ventaData.clienteId, p, perf.num);
   });
   const faltaPerfil = entries.find(e => !e.perf);
-  if (faltaPerfil) { toast('Selecciona un perfil para ' + (PLATS[faltaPerfil.p]?.nombre || faltaPerfil.p), 'warn'); return; }
+  if (faltaPerfil) { toast('Selecciona un perfil para ' + (platNombre(faltaPerfil.p)), 'warn'); return; }
   const faltaUsuario = entries.find(e => !usuarios[e.key] || usuarios[e.key].length < 1);
-  if (faltaUsuario) { toast('Ingresa el usuario para ' + (PLATS[faltaUsuario.p]?.nombre || faltaUsuario.p), 'warn'); return; }
+  if (faltaUsuario) { toast('Ingresa el usuario para ' + (platNombre(faltaUsuario.p)), 'warn'); return; }
   const fIniEl  = document.getElementById('v-fecha-ini');
   const fVctoEl = document.getElementById('v-fecha-vcto');
   if (!fIniEl?.value || !fVctoEl?.value) { toast('Completa las fechas de vigencia', 'warn'); return; }
@@ -4463,7 +4463,7 @@ async function confirmarVentaDesdeModal(){
       const _waPerfilesSel = {};
       entries.forEach(e => { _waPerfilesSel[e.key] = e.perf; });
       const _refCompleto = entries.map(e => e.perf?.codigo).filter(Boolean).join(' + ');
-      abrirWA(_waNombre, PLATS[_exitoEntry.p]?.nombre || _exitoEntry.p, '$'+monto.toFixed(2), 'entrega', {
+      abrirWA(_waNombre, platNombre(_exitoEntry.p), '$'+monto.toFixed(2), 'entrega', {
         plats: plats,
         perfilesSel: _waPerfilesSel,
         correo: _exitoEntry.perf?.correo, clave: _exitoEntry.perf?.clave,
@@ -4513,9 +4513,9 @@ async function confirmarVenta(){
 
   // Validaciones
   const faltaPerfil = entries.find(e => !e.perf);
-  if (faltaPerfil) { toast('Selecciona un perfil para ' + (PLATS[faltaPerfil.p]?.nombre || faltaPerfil.p), 'warn'); return; }
+  if (faltaPerfil) { toast('Selecciona un perfil para ' + (platNombre(faltaPerfil.p)), 'warn'); return; }
   const faltaUsuario = entries.find(e => !usuarios[e.key] || usuarios[e.key].length < 1);
-  if (faltaUsuario) { toast('Ingresa el usuario para ' + (PLATS[faltaUsuario.p]?.nombre || faltaUsuario.p), 'warn'); return; }
+  if (faltaUsuario) { toast('Ingresa el usuario para ' + (platNombre(faltaUsuario.p)), 'warn'); return; }
 
   // Fechas
   const fIniEl  = document.getElementById('v-fecha-ini');
@@ -4644,7 +4644,7 @@ async function confirmarVenta(){
     setTimeout(() => {
       abrirWA(
         _waNombre,
-        PLATS[firstEntry.p]?.nombre || firstEntry.p,
+        platNombre(firstEntry.p),
         '$' + monto.toFixed(2),
         'entrega',
         {
@@ -4880,7 +4880,7 @@ function mostrarResumenCambio() {
   const _fetchPinAnt = _cuentaAntCod ? supa.from('suscripciones').select('pin,estado').eq('perfil_id', _cuentaAntCod + '1').maybeSingle() : Promise.resolve({data:null});
   const _fetchPinNuevo = _cuentaNuevoCod ? supa.from('suscripciones').select('pin,estado').eq('perfil_id', _cuentaNuevoCod + '1').maybeSingle() : Promise.resolve({data:null});
   Promise.all([_fetchProvAnt, _fetchProvNuevo, _fetchPinAnt, _fetchPinNuevo]).then(([_rAnt, _rNuevo, _rPinAnt, _rPinNuevo]) => {
-    const _pinDig = (PLATAFORMAS||[]).find(x => x.codigo === _platCodR)?.digitos_pin ?? PLATS[_platCodR]?.pin_dig ?? 4;
+    const _pinDig = (PLATAFORMAS||[]).find(x => x.codigo === _platCodR)?.digitos_pin ?? 4;
     const _pinDefault = String(9530).padStart(_pinDig, '0');
     const _pin1Ant = (_rPinAnt?.data?.estado === 'activo') ? _rPinAnt.data.pin : _pinDefault;
     const _pin1Nuevo = (_rPinNuevo?.data?.estado === 'activo') ? _rPinNuevo.data.pin : _pinDefault;
@@ -5045,7 +5045,7 @@ async function confirmarCambio(){
 
     // 5. Abrir WA con datos reales (nombre capturado antes del reset; plataforma real del perfil nuevo)
     const monto = subActual.monto || 0;
-    const platNom = PLATS[perfilNuevoPlat]?.nombre || perfilNuevoPlat;
+    const platNom = platNombre(perfilNuevoPlat);
     setTimeout(() => abrirWA(clienteNombreWA, platNom, '$'+monto.toFixed(2), 'cambio', {
       correo:  correoNuevo,
       clave:   claveNueva,
@@ -5285,7 +5285,7 @@ async function guardarCuenta(){
       const duplicado = INV_CACHE.find(c => c.correo.toLowerCase() === correo.toLowerCase() && c.plataforma === platVal && c.id !== codigo && c.estado !== 'Inactiva');
       if (duplicado) { toast('Este correo ya está registrado en la cuenta ' + duplicado.id + ' (' + platVal + ')', 'warn'); return; }
 
-      const maxPerf = (PLATAFORMAS||[]).find(x => x.codigo === platVal)?.max_perfiles ?? PLATS[platVal]?.max_perfiles ?? 5;
+      const maxPerf = (PLATAFORMAS||[]).find(x => x.codigo === platVal)?.max_perfiles ?? 5;
 
       const btn = document.querySelector('#m-cuenta .btn-p');
       btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
@@ -5337,7 +5337,7 @@ async function guardarCuenta(){
       NEXT_CODIGO[platVal] = platVal + String(num+1).padStart(4,'0');
     }
 
-    await dbGuardarHistorial('Nueva cuenta', codigo + ' · ' + (PLATS[platVal]?.nombre||platVal) + ' · ' + correo, 'var(--green)');
+    await dbGuardarHistorial('Nueva cuenta', codigo + ' · ' + platNombre(platVal) + ' · ' + correo, 'var(--green)');
 
     // Limpiar y recargar
     document.getElementById('cuenta-codigo').value = '';
@@ -5781,10 +5781,10 @@ function toast(msg,tipo){
 
 // ── DATOS DE PLATAFORMAS ──────────────────────────────────────
 let PLATS = {
-  NF: {nombre:'Netflix', color:'var(--nf)', precio_ind:4.99, precio_combo:4.99, pin_dig:4, max_perfiles:5},
-  DS: {nombre:'Disney+', color:'var(--ds)', precio_ind:4.25, precio_combo:4.25, pin_dig:4, max_perfiles:7},
-  HB: {nombre:'HBO Max', color:'var(--hb)', precio_ind:3.25, precio_combo:3.25, pin_dig:4, max_perfiles:5},
-  PV: {nombre:'Prime Video', color:'var(--pv)', precio_ind:2.75, precio_combo:2.75, pin_dig:5, max_perfiles:6},
+  NF: {color:'var(--nf)', precio_ind:4.99},
+  DS: {color:'var(--ds)', precio_ind:4.25},
+  HB: {color:'var(--hb)', precio_ind:3.25},
+  PV: {color:'var(--pv)', precio_ind:2.75},
 };
 
 // ── USUARIOS DEL SISTEMA ─────────────────────────────────────
@@ -6293,9 +6293,9 @@ function ventaPaso4() {
   if (platSinPerfil) {
     const perfsDisp = PERFILES_DISP[platSinPerfil] || [];
     if (perfsDisp.length === 0) {
-      toast('No hay perfiles disponibles para ' + (PLATS[platSinPerfil]?.nombre || platSinPerfil) + '. Agrega cuentas en Inventario.', 'warn');
+      toast('No hay perfiles disponibles para ' + (platNombre(platSinPerfil)) + '. Agrega cuentas en Inventario.', 'warn');
     } else {
-      toast('Selecciona un perfil para ' + (PLATS[platSinPerfil]?.nombre || platSinPerfil), 'warn');
+      toast('Selecciona un perfil para ' + (platNombre(platSinPerfil)), 'warn');
     }
     return;
   }
@@ -6307,7 +6307,7 @@ function ventaPaso4() {
     return !usuarios[key] || usuarios[key].length < 1;
   });
   if (faltaUsuario) {
-    toast('Ingresa el usuario (nombre en pantalla) para ' + (PLATS[faltaUsuario]?.nombre || faltaUsuario), 'warn');
+    toast('Ingresa el usuario (nombre en pantalla) para ' + platNombre(faltaUsuario), 'warn');
     // Enfocar el campo vacío
     const inp = document.getElementById('v-usuario-' + faltaUsuario);
     if (inp) { inp.focus(); inp.style.borderColor = 'var(--red)'; setTimeout(()=>inp.style.borderColor='',2000); }
@@ -6401,8 +6401,8 @@ function ventaPaso5Resumen() {
     const usu  = usuarios[key] || usuarios[p] || '—';
     const pin  = ventaData.pins?.[key] || ventaData.pins?.[p] || '—';
     const label = plats.filter(x=>x===p).length > 1
-      ? `${PLATS[p]?.nombre||p} ${idxEnPlat+1}`
-      : (PLATS[p]?.nombre||p);
+      ? `${platNombre(p)} ${idxEnPlat+1}`
+      : (platNombre(p));
     return {p, key, perf, usu, pin, label};
   });
 
@@ -6583,7 +6583,7 @@ function poblarPlanesPorTipo(tipo) {
         opt.value = 'COMBO|' + i;
         opt.dataset.comboIdx = String(i);
         opt.dataset.precio = c.precio.toFixed(2);
-        const nombres = c.plats.map(p => (PLATAFORMAS||[]).find(x => x.codigo === p)?.nombre || PLATS[p]?.nombre || p).join(' + ');
+        const nombres = c.plats.map(p => platNombre(p)).join(' + ');
         opt.textContent = `${nombres} — $${c.precio.toFixed(2)} (${c.desglose})`;
         selPlan.appendChild(opt);
       });
@@ -6617,7 +6617,7 @@ function updPerfilesVenta() {
     ventaData.plats = Array(perfiles).fill(plat);
     if (prev && plat) {
       const pluralP = perfiles === 1 ? 'perfil' : 'perfiles';
-      prev.textContent = `${PLATS[plat]?.nombre || plat} · ${perfiles} ${pluralP} — $${precio.toFixed(2)}`;
+      prev.textContent = `${platNombre(plat)} · ${perfiles} ${pluralP} — $${precio.toFixed(2)}`;
     }
   } else {
     // Combo
@@ -6630,7 +6630,7 @@ function updPerfilesVenta() {
     ventaData.plats = combo.plats;
     ventaData.comboId = combo.id;
     if (prev) {
-      const nombres = combo.plats.map(p => PLATS[p]?.nombre || p).join(' + ');
+      const nombres = combo.plats.map(p => platNombre(p)).join(' + ');
       prev.textContent = `${nombres} — $${combo.precio.toFixed(2)} (${combo.desglose})`;
     }
   }
@@ -6646,7 +6646,7 @@ function renderUsuariosVenta() {
   if (plats.length === 1) {
     const p = plats[0];
     wrap.innerHTML = `
-      <label>Usuario en ${PLATS[p]?.nombre || p} (nombre en pantalla)<span class="req">*</span></label>
+      <label>Usuario en ${platNombre(p)} (nombre en pantalla)<span class="req">*</span></label>
       <input type="text" id="v-usu-${p}" placeholder="Ej: Juan, Perfil 1, Maria..." value="${nombreBase}">
       <div class="hint">Nombre visible en la plataforma. No se puede cambiar después.</div>`;
   } else {
@@ -6657,14 +6657,14 @@ function renderUsuariosVenta() {
           const idxEnPlat = plats.slice(0,i).filter(x=>x===p).length;
           const key = plats.filter(x=>x===p).length > 1 ? p+'_'+idxEnPlat : p;
           const label = plats.filter(x=>x===p).length > 1
-            ? `${PLATS[p]?.nombre||p} ${idxEnPlat+1}`
-            : (PLATS[p]?.nombre||p);
+            ? `${platNombre(p)} ${idxEnPlat+1}`
+            : (platNombre(p));
           const sugerido = idxEnPlat === 0 ? nombreBase : (nombreBase ? nombreBase+' '+(idxEnPlat+1) : '');
           return `
           <div style="display:flex;align-items:center;gap:9px">
             <span class="dot" style="background:${PLATS[p]?.color||'var(--accent)'};width:9px;height:9px;border-radius:50%;flex-shrink:0"></span>
             <span style="font-size:12px;color:var(--text2);width:90px;flex-shrink:0">${label}</span>
-            <input type="text" id="v-usu-${key}" placeholder="Nombre en ${PLATS[p]?.nombre||p}" style="flex:1" value="${sugerido}">
+            <input type="text" id="v-usu-${key}" placeholder="Nombre en ${platNombre(p)}" style="flex:1" value="${sugerido}">
           </div>`;
         }).join('')}
       </div>
@@ -6699,7 +6699,7 @@ function renderPerfilesVenta() {
     });
 
     const platObj = (PLATAFORMAS||[]).find(x => x.codigo === p);
-    const platNom = platObj?.nombre || PLATS[p]?.nombre || p;
+    const platNom = platObj?.nombre || p;
     const platColor = PLATS[p]?.color || 'var(--accent)';
     html += `<div style="margin-bottom:10px">
       <div style="font-size:11px;color:var(--text3);padding:3px 0 6px;border-bottom:1px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:6px">
@@ -6752,7 +6752,7 @@ function renderPerfilesVenta() {
 }
 
 function generarPIN(clienteId, plat, num) {
-  const digitosPIN = (PLATAFORMAS||[]).find(x => x.codigo === plat)?.digitos_pin ?? PLATS[plat]?.pin_dig ?? 4;
+  const digitosPIN = (PLATAFORMAS||[]).find(x => x.codigo === plat)?.digitos_pin ?? 4;
   if (digitosPIN === 0) return '';
   // Buscar cliente en array, o usar nombre del ventaData como fallback
   let cliente = CLIENTES.find(c => c.id === clienteId);
@@ -6802,7 +6802,7 @@ function renderPinsVenta() {
   }
 
   const dotC = p => PLATS[p]?.color || 'var(--accent)';
-  const nomP = p => PLATS[p]?.nombre || p;
+  const nomP = p => platNombre(p);
   ventaData.pins = ventaData.pins || {};
 
   // Un solo perfil único (Individual 1 perfil)
@@ -6896,7 +6896,7 @@ function selPerfilVenta(el, codigo, num, plat) {
       return;
     }
     if (yaSeleccionados.length >= maxPerfs) {
-      toast(`Solo puedes seleccionar ${maxPerfs} perfil(es) de ${PLATS[plat]?.nombre}`, 'warn');
+      toast(`Solo puedes seleccionar ${maxPerfs} perfil(es) de ${platNombre(plat)}`, 'warn');
       return;
     }
     const idx = yaSeleccionados.length;
@@ -7108,7 +7108,7 @@ async function renderSubsPago(clienteId) {
   }
 
   lista.innerHTML = rows.map((r, i) => {
-    const platNom = PLATS[r.plat]?.nombre || r.plat;
+    const platNom = platNombre(r.plat);
     const lbl = r.esCombo
       ? `${platNom} <span style="font-size:10px;color:var(--text3)">(combo)</span>${r.perfil && r.perfil !== '—' ? ' · ' + r.perfil : ''}`
       : `${platNom} · ${r.perfil}`;
@@ -7129,7 +7129,7 @@ async function renderSubsPago(clienteId) {
   }).join('');
 
   mesesLista.innerHTML = rows.map((r, i) => {
-    const lbl = (PLATS[r.plat]?.nombre || r.plat) + (r.esCombo
+    const lbl = (platNombre(r.plat)) + (r.esCombo
       ? ' (combo)' + (r.perfil && r.perfil !== '—' ? ' · ' + r.perfil : '')
       : ' · ' + r.perfil);
     return `<div class="fg" id="meses-row-${i}">
@@ -7235,12 +7235,12 @@ function updResumenPago(rows) {
       if (combosSumados.has(r.comboKey)) return;
       combosSumados.add(r.comboKey);
       const comboPlats = JSON.parse(r.comboPlats || '[]');
-      const lbl = comboPlats.map(p => PLATS[p]?.nombre || p).join(' + ') + ' (combo)';
+      const lbl = comboPlats.map(p => platNombre(p)).join(' + ') + ' (combo)';
       total += r.precio;
       html += `<div class="sr"><span class="sl">${lbl}</span><span>${r.vcto} → ${vctoNuevo} · $${r.precio.toFixed(2)}</span></div>`;
     } else {
       total += r.precio;
-      const lbl = (PLATS[r.plat]?.nombre || r.plat) + ' · ' + r.perfil;
+      const lbl = (platNombre(r.plat)) + ' · ' + r.perfil;
       html += `<div class="sr"><span class="sl">${lbl}</span><span>${r.vcto} → ${vctoNuevo} · $${r.precio.toFixed(2)}</span></div>`;
     }
   });
@@ -7576,7 +7576,7 @@ function updPrecioTipo(v) {
 function updPrecioPerfiles(platCod) {
   const sel = document.getElementById('precio-perfiles');
   if (!sel) return;
-  const max = (PLATAFORMAS||[]).find(x => x.codigo === platCod)?.max_perfiles ?? PLATS[platCod]?.max_perfiles ?? 7;
+  const max = (PLATAFORMAS||[]).find(x => x.codigo === platCod)?.max_perfiles ?? 7;
   const current = parseInt(sel.value) || 1;
   sel.innerHTML = Array.from({length: max}, (_, i) => {
     const n = i + 1;
@@ -7655,7 +7655,7 @@ function guardarPrecio() {
   if (tipo === 'combo' && selected.length > 0) {
     const comboId = normalizarCombo(selected.join('+'));
     const totalCombo = parseFloat(document.getElementById('precio-combo-total')?.textContent?.replace('$','')) || 0;
-    const desgloseCombo = selected.map(p => (PLATS[p]?.nombre||p)+' incluido').join(' + ');
+    const desgloseCombo = selected.map(p => (platNombre(p))+' incluido').join(' + ');
     const existeIdx = COMBOS.findIndex(c => c.id === comboId);
     if (existeIdx >= 0) {
       COMBOS[existeIdx].precio = totalCombo;
@@ -8255,7 +8255,7 @@ function poblarPerfilesDisponiblesCambio(plat) {
   if (!lista) return;
   const perfs = PERFILES_DISP[plat] || [];
   if (!perfs.length) {
-    lista.innerHTML = '<div style="color:var(--amber);font-size:12px;padding:8px">Sin perfiles disponibles para ' + (PLATS[plat]?.nombre || plat) + '</div>';
+    lista.innerHTML = '<div style="color:var(--amber);font-size:12px;padding:8px">Sin perfiles disponibles para ' + (platNombre(plat)) + '</div>';
     return;
   }
   const grupos = {};
@@ -8332,7 +8332,7 @@ function selClienteCambio(id, nombre, tel) {
         poblarPerfilesDisponiblesCambio(platBase0);
       }
       subSel.innerHTML = subs.map(s => {
-        const platNom = PLATS[s.plat]?.nombre || s.plat;
+        const platNom = platNombre(s.plat);
         const dias = s.dias < 0 ? ` (vencida hace ${Math.abs(s.dias)}d)` : s.dias === 0 ? ' (vence hoy)' : ` (${s.dias}d)`;
         return `<option value="${s.clienteId}|${s.plat}|${s.perfil}" data-plat="${s.plat}" data-perfil="${s.perfil||'—'}" data-correo="${s.correo||''}" data-vcto="${s.fVcto||''}">${platNom} · ${s.perfil||'—'}${dias}</option>`;
       }).join('');
@@ -8709,7 +8709,7 @@ function renderSubs(data) {
     const tcBadge = s.tipoCliente==='Nuevo' ? '<span class="b bg">Nuevo</span>' : '<span class="b bp">Renovación</span>';
     const comboStr = s.combo && s.combo !== '—' && s.combo !== 'undefined' ? `<span style="font-size:11px;color:var(--purple)">${s.combo}</span>` : '—';
     const _sNom     = (s.nombre   ||'').replace(/'/g,"\\'");
-    const _sPlat    = (PLATS[s.plat]?.nombre || s.plat).replace(/'/g,"\\'");
+    const _sPlat    = (platNombre(s.plat)).replace(/'/g,"\\'");
     const _sCorreo  = (s.correo   ||'').replace(/'/g,"\\'");
     const _sClave   = (s.clave    ||'').replace(/'/g,"\\'");
     const _sPerfil  = (s.perfil   ||'').replace(/'/g,"\\'");
