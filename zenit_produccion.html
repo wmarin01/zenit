@@ -1335,15 +1335,16 @@ function closeSidebarMobile() {
     <!-- Sub-tab 3: Cuentas próximas a vencer (Master only) -->
     <div class="pp" id="rpti-vencprov" style="display:none">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-        <select id="rpti-vp-dias-preset" style="width:auto" onchange="if(this.value){document.getElementById('rpti-vp-dias').value=this.value}">
+        <select id="rpti-vp-dias-preset" style="width:auto" onchange="rptiVpPresetChange(this.value)">
           <option value="">Personalizado</option>
-          <option value="7">7 días</option>
-          <option value="15" selected>15 días</option>
-          <option value="30">30 días</option>
-          <option value="60">60 días</option>
-          <option value="90">90 días</option>
+          <option value="1">1 día</option>
+          <option value="3">3 días</option>
+          <option value="7" selected>7 días</option>
         </select>
-        <input type="number" id="rpti-vp-dias" value="15" min="1" max="365" style="width:80px" placeholder="Días">
+        <input type="number" id="rpti-vp-dias" value="7" min="1" max="365" style="width:80px" placeholder="Días">
+        <input type="date" id="rpti-vp-desde" style="width:150px;display:none">
+        <span id="rpti-vp-hasta-lbl" style="color:var(--text3);font-size:12px;display:none">hasta</span>
+        <input type="date" id="rpti-vp-hasta" style="width:150px;display:none">
         <button class="btn" onclick="rptiVencProvGenerar()"><i class="ti ti-refresh"></i> Generar</button>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
@@ -11076,23 +11077,54 @@ async function rptiOcupacionGenerar() {
   }
 }
 
+function rptiVpPresetChange(v) {
+  const diasEl    = document.getElementById('rpti-vp-dias');
+  const desdeEl   = document.getElementById('rpti-vp-desde');
+  const hastaEl   = document.getElementById('rpti-vp-hasta');
+  const hastaLbl  = document.getElementById('rpti-vp-hasta-lbl');
+  if (v) {
+    if (diasEl) { diasEl.value = v; diasEl.style.display = ''; }
+    if (desdeEl) desdeEl.style.display = 'none';
+    if (hastaEl) hastaEl.style.display = 'none';
+    if (hastaLbl) hastaLbl.style.display = 'none';
+  } else {
+    if (diasEl) diasEl.style.display = 'none';
+    if (desdeEl) desdeEl.style.display = '';
+    if (hastaEl) hastaEl.style.display = '';
+    if (hastaLbl) hastaLbl.style.display = '';
+  }
+}
+
 async function rptiVencProvGenerar() {
-  const dias   = parseInt(document.getElementById('rpti-vp-dias')?.value || '15');
+  const desdeEl = document.getElementById('rpti-vp-desde');
+  const hastaEl = document.getElementById('rpti-vp-hasta');
+  const modoPersonalizado = !!(desdeEl && desdeEl.style.display !== 'none');
+  const desde = desdeEl?.value || '';
+  const hasta = hastaEl?.value || '';
+  if (modoPersonalizado && (!desde || !hasta)) {
+    toast('Selecciona ambas fechas (desde y hasta)', 'warn');
+    return;
+  }
+
+  const dias   = parseInt(document.getElementById('rpti-vp-dias')?.value || '7');
   const resDiv = document.getElementById('rpti-vp-res');
   if (resDiv) resDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
   try {
     const hoy      = hoyPanamaDate();
     const objetivo = new Date(hoy); objetivo.setDate(objetivo.getDate() + dias);
     const iso      = d => fechaAISO(d);
-    const { data: cuentasRaw, error } = await supa.from('cuentas_inventario')
+    let query = supa.from('cuentas_inventario')
       .select('codigo, plataforma, correo, proveedor, fecha_vcto_proveedor')
-      .eq('estado', 'Activa')
-      .eq('fecha_vcto_proveedor', iso(objetivo))
-      .order('fecha_vcto_proveedor', { ascending: true });
+      .eq('estado', 'Activa');
+    query = modoPersonalizado
+      ? query.gte('fecha_vcto_proveedor', desde).lte('fecha_vcto_proveedor', hasta)
+      : query.eq('fecha_vcto_proveedor', iso(objetivo));
+    const { data: cuentasRaw, error } = await query.order('fecha_vcto_proveedor', { ascending: true });
     if (error) throw error;
     const cuentas = (cuentasRaw || []).map(c => ({ id: c.codigo, plataforma: c.plataforma, correo: c.correo, proveedor: c.proveedor, fecha_vcto_prov: c.fecha_vcto_proveedor }));
 
     const cnt  = (cuentas||[]).length;
+    const rangoLbl = modoPersonalizado ? `del ${desde.split('-').reverse().join('/')} al ${hasta.split('-').reverse().join('/')}` : `en ${dias} días`;
     const rows = (cuentas||[]).map(c => {
       const fv       = c.fecha_vcto_prov || '';
       const vctoDate = fv ? new Date(fv + 'T00:00:00') : null;
@@ -11110,9 +11142,9 @@ async function rptiVencProvGenerar() {
         <td>${vctoFmt}</td>
         <td style="text-align:center;font-weight:600;color:${diasCol}">${diasR < 999 ? diasR+'d' : '—'}</td>
       </tr>`;
-    }).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:16px">Sin cuentas próximas a vencer en ${dias} días</td></tr>`;
+    }).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:16px">Sin cuentas próximas a vencer ${rangoLbl}</td></tr>`;
 
-    if (resDiv) resDiv.innerHTML = `<div style="font-size:13px;color:var(--text2);margin-bottom:10px"><strong>${cnt}</strong> cuenta${cnt!==1?'s':''} próxima${cnt!==1?'s':''} a vencer en ${dias} días</div><div class="card"><div class="tw"><table><thead><tr><th>Código</th><th>Plataforma</th><th>Correo</th><th>Proveedor</th><th>F. Vencimiento</th><th style="text-align:center">Días</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    if (resDiv) resDiv.innerHTML = `<div style="font-size:13px;color:var(--text2);margin-bottom:10px"><strong>${cnt}</strong> cuenta${cnt!==1?'s':''} próxima${cnt!==1?'s':''} a vencer ${rangoLbl}</div><div class="card"><div class="tw"><table><thead><tr><th>Código</th><th>Plataforma</th><th>Correo</th><th>Proveedor</th><th>F. Vencimiento</th><th style="text-align:center">Días</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   } catch(e) {
     if (resDiv) resDiv.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>Error: ${e.message}</div>`;
   }
