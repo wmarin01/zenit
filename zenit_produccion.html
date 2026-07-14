@@ -1526,6 +1526,7 @@ function closeSidebarMobile() {
   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
     <select id="pines-filtro-plat" onchange="renderPines()" style="min-width:130px"><option value="">Todas las plataformas</option></select>
     <select id="pines-filtro-est" onchange="renderPines()" style="min-width:130px"><option value="">Todos los estados</option><option value="disponible">Disponible</option><option value="usado">Usado</option></select>
+    <input type="text" id="pines-filtro-cod" placeholder="Buscar código..." oninput="renderPines()">
   </div>
   <div id="pines-contadores" style="display:flex;gap:12px;margin-bottom:14px;font-size:13px"></div>
   <div class="card"><div class="tw"><table><thead><tr><th>Código</th><th>Plataforma</th><th>Tarifa</th><th>Proveedor</th><th>F. Compra</th><th>Estado</th><th>Cuenta asignada</th><th>Egreso</th><th>F. Uso</th></tr></thead><tbody id="tb-pines"><tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr></tbody></table></div></div>
@@ -4089,11 +4090,16 @@ function updTipoCambio(v){
   const m=document.getElementById('sel-motivo');
   const av=document.getElementById('av-precio');
   const pg=document.getElementById('plat-nueva-grp');
+  const tipoReal = v==='distinta' ? 'Cambio de plataforma' : 'Cambio de cuenta';
+  const motivosFiltrados = MOTIVOS_CACHE.filter(mo => mo.tipo === tipoReal);
+  if (m) {
+    m.innerHTML = motivosFiltrados.length
+      ? motivosFiltrados.map(mo => `<option value="${mo.motivo}">${mo.motivo}</option>`).join('')
+      : '<option value="">Cargando motivos...</option>';
+  }
   if(v==='distinta'){
-    m.innerHTML='<option>Cuenta cancelada por proveedor de origen</option><option>Plataforma de origen sin disponibilidad</option><option>Migración por acuerdo con el cliente</option><option>Cortesía por inconveniente en el servicio</option>';
     if(av)av.style.display='flex';if(pg)pg.style.display='block';
   }else{
-    m.innerHTML='<option>Cuenta dañada</option><option>Cuenta eliminada</option><option>Códigos Netflix consumidos</option>';
     if(av)av.style.display='none';if(pg)pg.style.display='none';
   }
 }
@@ -8571,12 +8577,12 @@ function editarMotivo(id, desc, tipo, estado) {
   openModal('m-motivo-form');
 }
 
+let MOTIVOS_CACHE = [];
 async function cargarMotivosCambio() {
-  const sel = document.getElementById('sel-motivo');
-  if (!sel) return;
   const {data} = await supa.from('motivos_cambio').select('*').eq('estado','Activo').order('tipo').order('motivo');
-  if (!data || !data.length) return;
-  sel.innerHTML = data.map(m => `<option value="${m.motivo}">${m.motivo}</option>`).join('');
+  MOTIVOS_CACHE = data || [];
+  const sel = document.getElementById('sel-motivo');
+  if (sel && MOTIVOS_CACHE.length) sel.innerHTML = MOTIVOS_CACHE.map(m => `<option value="${m.motivo}">${m.motivo}</option>`).join('');
 }
 
 // ── EDITAR SUSCRIPCIÓN ──────────────────────────────────────────────────
@@ -9355,7 +9361,8 @@ async function cargarPines() {
 function renderPines() {
   const plat = document.getElementById('pines-filtro-plat')?.value || '';
   const est  = document.getElementById('pines-filtro-est')?.value  || '';
-  const lista = PINES.filter(p => (!plat || p.plataforma === plat) && (!est || p.estado === est));
+  const cod  = document.getElementById('pines-filtro-cod')?.value?.trim().toLowerCase() || '';
+  const lista = PINES.filter(p => (!plat || p.plataforma === plat) && (!est || p.estado === est) && (!cod || p.codigo?.toLowerCase().includes(cod)));
   const disp  = PINES.filter(p => p.estado === 'disponible').length;
   const usado = PINES.filter(p => p.estado === 'usado').length;
   const cont  = document.getElementById('pines-contadores');
@@ -10076,6 +10083,7 @@ async function iniciarApp() {
     await dbCargarPerfilesDisp();
     await cargarUsuariosSistema();
     await cargarProveedoresAbbr();
+    await cargarMotivosCambio();
     await cargarPlantillasWA();
     renderDashboard();
     if (typeof activarBotonesReutilizar === 'function') activarBotonesReutilizar();
