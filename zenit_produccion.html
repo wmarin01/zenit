@@ -7232,14 +7232,9 @@ function toggleSubPago(idx) {
 
 function calcTotalPago(rows) {
   let total = 0;
-  const combosSumados = new Set();
   rows.forEach((r, i) => {
     const chk = document.getElementById('chk-sub-'+i);
     if (!chk?.checked) return;
-    if (r.esCombo && r.comboKey) {
-      if (combosSumados.has(r.comboKey)) return;
-      combosSumados.add(r.comboKey);
-    }
     total += r.precio;
   });
   const mt = document.getElementById('pago-monto');
@@ -7254,19 +7249,31 @@ function updResumenPago(rows) {
   const cont = document.getElementById('pago-resumen');
   if (!cont) return;
   let html = '', total = 0;
-  const combosSumados = new Set();
+
+  // Pasada 1: acumular el monto total por comboKey (todas las plataformas marcadas del combo)
+  const comboTotales = {};
+  rows.forEach((r, i) => {
+    if (!r.esCombo || !r.comboKey) return;
+    const chk = document.getElementById('chk-sub-'+i);
+    if (!chk?.checked) return;
+    comboTotales[r.comboKey] = (comboTotales[r.comboKey] || 0) + r.precio;
+  });
+
+  // Pasada 2: una línea por combo (usando el total acumulado) y una por individual
+  const combosRenderizados = new Set();
   rows.forEach((r, i) => {
     const chk = document.getElementById('chk-sub-'+i);
     if (!chk?.checked) return;
     const meses = parseInt(document.getElementById('meses-sub-'+i)?.value) || 1;
     const vctoNuevo = calcNuevoVcto(r.vcto, meses);
     if (r.esCombo && r.comboKey) {
-      if (combosSumados.has(r.comboKey)) return;
-      combosSumados.add(r.comboKey);
+      if (combosRenderizados.has(r.comboKey)) return;
+      combosRenderizados.add(r.comboKey);
       const comboPlats = JSON.parse(r.comboPlats || '[]');
       const lbl = comboPlats.map(p => platNombre(p)).join(' + ') + ' (combo)';
-      total += r.precio;
-      html += `<div class="sr"><span class="sl">${lbl}</span><span>${r.vcto} → ${vctoNuevo} · $${r.precio.toFixed(2)}</span></div>`;
+      const precioCombo = comboTotales[r.comboKey] || 0;
+      total += precioCombo;
+      html += `<div class="sr"><span class="sl">${lbl}</span><span>${r.vcto} → ${vctoNuevo} · $${precioCombo.toFixed(2)}</span></div>`;
     } else {
       total += r.precio;
       const lbl = (platNombre(r.plat)) + ' · ' + r.perfil;
