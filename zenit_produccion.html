@@ -7042,7 +7042,7 @@ let pagoSubsActuales = [];
 
 async function renderSubsPago(clienteId) {
   let subsRaw = SUBS_FULL.filter(s =>
-    s.clienteId === clienteId && ['activo', 'sin_renovar'].includes((s.est || '').toLowerCase())
+    s.clienteId === clienteId && (s.est || '').toLowerCase() === 'activo'
   );
 
   if (subsRaw.length === 0) {
