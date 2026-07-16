@@ -1688,7 +1688,7 @@ function closeSidebarMobile() {
       <span style="font-size:13px;color:var(--text2);white-space:nowrap">días</span>
     </span>
   </div>
-  <div class="card" style="overflow-x:auto;padding:0">
+  <div class="card"><div class="tw">
     <table style="min-width:1400px">
       <thead><tr>
         <th>ID Cliente</th>
@@ -1712,7 +1712,7 @@ function closeSidebarMobile() {
       </tr></thead>
       <tbody id="tb-subs"></tbody>
     </table>
-  </div>
+  </div></div>
 </div>
 
 <!-- ACCESOS / MENSAJES WA -->
@@ -11350,6 +11350,9 @@ async function rptfIngresosGenerar() {
 
 let _chartMargenPerfil = null;
 let _chartMargenCombo = null;
+let _rptfMargenesPlat = [];
+let _rptfMargenesCombo = [];
+let _peGastosFijosActual = 0;
 
 async function rptfRentabilidadGenerar() {
   const resDiv = document.getElementById('rptf-ren-res');
@@ -11361,15 +11364,13 @@ async function rptfRentabilidadGenerar() {
     const costoPerfilPorPlat = {};
     (PLATAFORMAS || []).forEach(p => {
       const cuentas = (INV_CACHE || []).filter(c => c.plataforma === p.codigo && (c.estado||'').toLowerCase() === 'activa');
-      const _diagDetalle = []; // TEMP DIAGNÓSTICO — quitar luego
       const sumCosto = cuentas.reduce((s,c) => {
         const costoReal = parseFloat(c.costo) || 0;
         let costoNormalizado = costoReal;
         const fCompra = c.fecha_compra ? new Date(c.fecha_compra) : null;
         const fVcto   = c.fecha_vcto_prov ? new Date(c.fecha_vcto_prov) : null;
-        let diasCubiertos = null;
         if (fCompra && fVcto && !isNaN(fCompra) && !isNaN(fVcto)) {
-          diasCubiertos = Math.round((fVcto - fCompra) / 86400000);
+          const diasCubiertos = Math.round((fVcto - fCompra) / 86400000);
           if (diasCubiertos > 0) {
             costoNormalizado = costoReal / diasCubiertos * 30;
           } else {
@@ -11378,13 +11379,10 @@ async function rptfRentabilidadGenerar() {
         } else {
           console.warn('[Rentabilidad] fechas faltantes/inválidas para cuenta', c.id, '— usando costo real sin normalizar');
         }
-        _diagDetalle.push({ id: c.id, codigo: c.codigo, costo: costoReal, fecha_compra: c.fecha_compra, fecha_vcto_prov: c.fecha_vcto_prov, diasCubiertos, costoNormalizado });
         return s + costoNormalizado;
       }, 0);
       const sumPerfiles = cuentas.reduce((s,c) => s + (parseInt(c.max_perfiles) || 0), 0);
       costoPerfilPorPlat[p.codigo] = sumPerfiles > 0 ? sumCosto / sumPerfiles : 0;
-      console.log('[DIAG Rentabilidad] plataforma =', p.codigo, '| cuentas activas encontradas =', cuentas.length, '| sumCosto =', sumCosto, '| sumPerfiles =', sumPerfiles, '| costoPerfil =', costoPerfilPorPlat[p.codigo]);
-      console.table(_diagDetalle);
     });
 
     // ── Margen por perfil individual (1 perfil) ──
@@ -11417,7 +11415,7 @@ async function rptfRentabilidadGenerar() {
       const margenD = precioVenta - costoTotal;
       const margenPct = precioVenta > 0 ? (margenD / precioVenta * 100) : null;
       const nombreCombo = c.plats.map(cod => platNombre(cod)).join(' + ');
-      return { id: c.id, nombreCombo, precioVenta, costoTotal, margenD, margenPct };
+      return { id: c.id, nombreCombo, platsKey, precioVenta, costoTotal, margenD, margenPct };
     }).sort((a,b) => b.margenD - a.margenD);
 
     const badgeCombo = (m, idx) => {
@@ -11439,6 +11437,12 @@ async function rptfRentabilidadGenerar() {
         <td>${badgeCombo(m, idx)}</td>
       </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:16px">Sin combos configurados</td></tr>';
 
+    // ── Punto de equilibrio: mes por defecto = último mes calendario completo ──
+    const _peMesExistente = document.getElementById('pe-mes')?.value;
+    const _peHoy = hoyPanamaDate();
+    const _peDefMonth = new Date(_peHoy.getFullYear(), _peHoy.getMonth() - 1, 1);
+    const peMesDefault = _peMesExistente || (_peDefMonth.getFullYear() + '-' + String(_peDefMonth.getMonth() + 1).padStart(2, '0'));
+
     if (resDiv) resDiv.innerHTML = `
       <div class="ct" style="margin-bottom:10px"><i class="ti ti-user" style="color:var(--accent)"></i>Margen por perfil (individual)</div>
       <div class="mg">${cardsPerfilHtml || '<div style="color:var(--text3);font-size:13px">Sin plataformas configuradas</div>'}</div>
@@ -11448,6 +11452,15 @@ async function rptfRentabilidadGenerar() {
       ${margenesCombo.length ? `<div class="ab s"><i class="ti ti-trophy"></i><div><strong>Top 3 combos a impulsar</strong><div style="margin-top:6px">${top3Html}</div></div></div>` : ''}
       <div class="card"><div class="tw"><table><thead><tr><th>Combo</th><th style="text-align:right">Precio venta</th><th style="text-align:right">Costo total</th><th style="text-align:right">Margen $</th><th style="text-align:right">Margen %</th><th>Rentabilidad</th></tr></thead><tbody>${filasComboHtml}</tbody></table></div></div>
       <div class="card" style="padding:14px;margin-top:16px"><canvas id="chart-margen-combo" height="90"></canvas></div>
+
+      <div class="ct" style="margin-bottom:10px;margin-top:24px"><i class="ti ti-scale" style="color:var(--accent)"></i>Punto de equilibrio</div>
+      <div class="card" style="padding:14px;margin-bottom:14px">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <label style="font-size:12px;color:var(--text2)">Mes a analizar</label>
+          <input type="month" id="pe-mes" value="${peMesDefault}" onchange="rptfEquilibrioGenerar()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg2);color:var(--text);font-size:13px">
+        </div>
+      </div>
+      <div id="pe-res"><div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div></div>
     `;
 
     // ── Gráficos ──
@@ -11477,8 +11490,151 @@ async function rptfRentabilidadGenerar() {
         });
       }
     }
+
+    // ── Punto de equilibrio: reutiliza los márgenes ya calculados arriba ──
+    _rptfMargenesPlat = margenesPlat;
+    _rptfMargenesCombo = margenesCombo;
+    await rptfEquilibrioGenerar();
   } catch(e) {
     if (resDiv) resDiv.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>Error: ${e.message}</div>`;
+  }
+}
+
+// ── Punto de equilibrio ──────────────────────────────────────
+async function rptfEquilibrioGenerar() {
+  const mesVal = document.getElementById('pe-mes')?.value;
+  const peRes = document.getElementById('pe-res');
+  if (!mesVal) return;
+  if (peRes) peRes.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
+  try {
+    const [y, m] = mesVal.split('-').map(Number);
+    const ini = fechaAISO(new Date(y, m - 1, 1));
+    const fin = fechaAISO(new Date(y, m, 0));
+    const fmt = n => '$' + n.toFixed(2);
+
+    const CATS_EXCLUIR = ['Cuentas', 'Cuentas-recargas', 'Pin-recargas'];
+    const [rE, rC] = await Promise.all([
+      supa.from('egresos').select('total, categoria').gte('fecha', ini).lte('fecha', fin),
+      supa.from('cobros').select('plataforma, monto').gte('fecha', ini).lte('fecha', fin)
+    ]);
+    if (rE.error) throw rE.error;
+    if (rC.error) throw rC.error;
+
+    const egresosFiltrados = (rE.data || []).filter(e => !CATS_EXCLUIR.includes(e.categoria));
+    const gastosFijos = egresosFiltrados.reduce((s,e) => s + (parseFloat(e.total)||0), 0);
+
+    const cobros = rC.data || [];
+    const grupos = {}; // claveNormalizada -> cantidad de ventas
+    cobros.forEach(c => {
+      const key = normalizarCombo(c.plataforma || '');
+      if (!key) return;
+      grupos[key] = (grupos[key] || 0) + 1;
+    });
+    const totalVentas = Object.values(grupos).reduce((s,n) => s + n, 0);
+
+    const margenPorKey = key => {
+      if (!key.includes('+')) {
+        const mp = _rptfMargenesPlat.find(x => x.codigo === key);
+        return mp ? { nombre: mp.nombre, margen: mp.margenD } : null;
+      }
+      const mc = _rptfMargenesCombo.find(x => x.platsKey === key);
+      return mc ? { nombre: mc.nombreCombo, margen: mc.margenD } : null;
+    };
+
+    const mezclaFilas = Object.entries(grupos).map(([key, cant]) => {
+      const info = margenPorKey(key);
+      if (!info) console.warn('[Equilibrio] sin datos de margen para la clave de venta', key);
+      const pct = totalVentas > 0 ? (cant/totalVentas*100) : 0;
+      return { key, nombre: info?.nombre || key, margen: info ? info.margen : null, cant, pct };
+    }).sort((a,b) => b.cant - a.cant);
+
+    const margenPonderado = mezclaFilas.reduce((s,f) => s + (f.margen!==null ? f.margen * (f.pct/100) : 0), 0);
+    const ventasNecesarias = margenPonderado > 0 ? Math.ceil(gastosFijos / margenPonderado) : null;
+
+    const escenariosHtml = (_rptfMargenesPlat||[]).map(mp => {
+      const unidades = mp.margenD > 0 ? Math.ceil(gastosFijos / mp.margenD) : null;
+      return `<tr>
+        <td><span class="dot" style="background:var(${_RPTF_DOT[mp.codigo]||'--accent'})"></span> ${mp.nombre}</td>
+        <td style="text-align:right;color:${mp.margenD>=0?'var(--green)':'var(--red)'}">${fmt(mp.margenD)}</td>
+        <td style="text-align:right">${unidades!==null ? unidades+' perfiles/mes' : 'N/A (margen ≤ 0)'}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:16px">Sin plataformas configuradas</td></tr>';
+
+    const mezclaHtml = mezclaFilas.map(f => `<tr>
+        <td>${f.nombre}</td>
+        <td style="text-align:right">${f.cant}</td>
+        <td style="text-align:right">${f.pct.toFixed(1)}%</td>
+        <td style="text-align:right">${f.margen!==null ? fmt(f.margen) : '<span style="color:var(--text3)">sin datos</span>'}</td>
+      </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">Sin ventas registradas en este período</td></tr>';
+
+    const simFilas = [
+      ...(_rptfMargenesPlat||[]).map(mp => ({ nombre: mp.nombre, margen: mp.margenD })),
+      ...(_rptfMargenesCombo||[]).map(mc => ({ nombre: mc.nombreCombo, margen: mc.margenD }))
+    ];
+    const simRows = simFilas.map((f,i) => `<tr>
+        <td>${f.nombre}</td>
+        <td style="text-align:right;color:${f.margen>=0?'var(--green)':'var(--red)'}">${fmt(f.margen)}</td>
+        <td style="text-align:right"><input type="number" min="0" value="0" class="pe-sim-input" data-margen="${f.margen}" oninput="rptfEquilibrioRecalcular()" style="width:80px;text-align:right;padding:4px 6px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg2);color:var(--text);font-size:13px"></td>
+        <td style="text-align:right" class="pe-sim-subtotal" data-idx="${i}">$0.00</td>
+      </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">Sin plataformas ni combos configurados</td></tr>';
+
+    if (peRes) peRes.innerHTML = `
+      <div class="mg" style="margin-bottom:16px">
+        <div class="card mc" style="--mc-c:var(--red)"><div class="ml">Gastos fijos del mes</div><div class="mv" style="color:var(--red)">${fmt(gastosFijos)}</div><div class="ms">${egresosFiltrados.length} egresos (excluye costo directo de producto)</div></div>
+        <div class="card mc" style="--mc-c:var(--accent)"><div class="ml">Margen ponderado (mezcla real)</div><div class="mv">${fmt(margenPonderado)}</div><div class="ms">${totalVentas} ventas registradas</div></div>
+        <div class="card mc" style="--mc-c:${ventasNecesarias!==null?'var(--green)':'var(--text3)'}"><div class="ml">Ventas/mes necesarias (mezcla real)</div><div class="mv">${ventasNecesarias!==null ? ventasNecesarias : 'N/A'}</div><div class="ms">para cubrir gastos fijos con tu mezcla actual</div></div>
+      </div>
+
+      <div class="ct" style="font-size:12px;margin-bottom:8px">Punto de equilibrio "solo una plataforma"</div>
+      <div class="card" style="margin-bottom:16px"><div class="tw"><table><thead><tr><th>Plataforma</th><th style="text-align:right">Margen/perfil</th><th style="text-align:right">Perfiles/mes para cubrir gastos fijos</th></tr></thead><tbody>${escenariosHtml}</tbody></table></div></div>
+
+      <div class="ct" style="font-size:12px;margin-bottom:8px">Mezcla real de ventas — ${mesVal}</div>
+      <div class="card" style="margin-bottom:16px"><div class="tw"><table><thead><tr><th>Plataforma/Combo</th><th style="text-align:right">Ventas</th><th style="text-align:right">% del total</th><th style="text-align:right">Margen</th></tr></thead><tbody>${mezclaHtml}</tbody></table></div></div>
+
+      <div class="ct" style="font-size:12px;margin-bottom:8px">Simulador: ¿cuánto planeas vender este mes?</div>
+      <div class="card">
+        <div class="tw"><table><thead><tr><th>Plataforma/Combo</th><th style="text-align:right">Margen/unidad</th><th style="text-align:right">Unidades planeadas</th><th style="text-align:right">Subtotal margen</th></tr></thead><tbody id="pe-sim-tbody">${simRows}</tbody></table></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:14px;border-top:1px solid var(--border);margin-top:4px">
+          <div>
+            <div style="font-size:11px;color:var(--text3)">Margen total generado</div>
+            <div id="pe-sim-total" style="font-size:17px;font-weight:600">$0.00</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3)">Gastos fijos del mes</div>
+            <div style="font-size:15px;color:var(--red)">${fmt(gastosFijos)}</div>
+          </div>
+          <div id="pe-sim-resultado" style="text-align:right"></div>
+        </div>
+      </div>
+    `;
+
+    _peGastosFijosActual = gastosFijos;
+    rptfEquilibrioRecalcular();
+  } catch(e) {
+    if (peRes) peRes.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>Error: ${e.message}</div>`;
+  }
+}
+
+function rptfEquilibrioRecalcular() {
+  const inputs = document.querySelectorAll('#pe-sim-tbody .pe-sim-input');
+  let total = 0;
+  inputs.forEach((inp, i) => {
+    const margen = parseFloat(inp.dataset.margen) || 0;
+    const cant = parseFloat(inp.value) || 0;
+    const subtotal = margen * cant;
+    total += subtotal;
+    const cell = document.querySelector(`#pe-sim-tbody .pe-sim-subtotal[data-idx="${i}"]`);
+    if (cell) cell.textContent = '$' + subtotal.toFixed(2);
+  });
+  const totalEl = document.getElementById('pe-sim-total');
+  if (totalEl) totalEl.textContent = '$' + total.toFixed(2);
+  const diff = total - _peGastosFijosActual;
+  const resEl = document.getElementById('pe-sim-resultado');
+  if (resEl) {
+    const color = diff >= 0 ? 'var(--green)' : 'var(--red)';
+    const label = diff >= 0 ? 'Superávit' : 'Déficit';
+    const badge = diff >= 0 ? '<span class="b bg">Cubre gastos fijos</span>' : '<span class="b br">No cubre gastos fijos</span>';
+    resEl.innerHTML = `<div style="font-size:11px;color:var(--text3)">${label}</div><div style="font-size:15px;font-weight:600;color:${color}">${diff>=0?'+':'-'}$${Math.abs(diff).toFixed(2)}</div>${badge}`;
   }
 }
 
