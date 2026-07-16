@@ -3806,7 +3806,8 @@ async function tabCob(el,id){
       const platDot = (s.plat||'').split('+').map(p=>`<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
       const _cuentaIdCob = (s.perfil && s.perfil !== '—') ? s.perfil.slice(0,-1) : '';
       const _provAbrevCob = PROVEEDORES_ABBR[s.proveedor] || (s.proveedor||'').substring(0,3).toUpperCase();
-      const nombreChromeCob = calcularNombreChrome(s.plat, s.correo, _provAbrevCob, s.proveedor, _cuentaIdCob);
+      const _platRealCob = plataformaDesdePerfil(s.perfil, s.plat);
+      const nombreChromeCob = calcularNombreChrome(_platRealCob, s.correo, _provAbrevCob, s.proveedor, _cuentaIdCob);
       const _pinClienteH = s.pin || '—';
       const _pin1H = pin1MapH[s.correo+'|'+s.plat] || '—';
       return `<tr>
@@ -3825,7 +3826,7 @@ async function tabCob(el,id){
         <td class="tda">
           <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','vencimiento')"><i class="ti ti-brand-whatsapp"></i>WA</button>
           <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
-          <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${s.plat}&nombre=${encodeURIComponent(nombreChromeCob)}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
+          <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${_platRealCob}&nombre=${encodeURIComponent(nombreChromeCob)}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
         </td></tr>`;
     }).join('');
     return;
@@ -3847,7 +3848,8 @@ async function tabCob(el,id){
       const platDot = (s.plat||'').split('+').map(p=>`<span class="pd"><span class="dot" style="background:${PC2[p]||'var(--accent)'}"></span>${p}</span>`).join('');
       const _cuentaIdCob = (s.perfil && s.perfil !== '—') ? s.perfil.slice(0,-1) : '';
       const _provAbrevCob = PROVEEDORES_ABBR[s.proveedor] || (s.proveedor||'').substring(0,3).toUpperCase();
-      const nombreChromeCob = calcularNombreChrome(s.plat, s.correo, _provAbrevCob, s.proveedor, _cuentaIdCob);
+      const _platRealCob = plataformaDesdePerfil(s.perfil, s.plat);
+      const nombreChromeCob = calcularNombreChrome(_platRealCob, s.correo, _provAbrevCob, s.proveedor, _cuentaIdCob);
       const _pinClienteV = s.pin || '—';
       const _pin1V = pin1MapV[s.correo+'|'+s.plat] || '—';
       return `<tr>
@@ -3867,7 +3869,7 @@ async function tabCob(el,id){
         <td class="tda">
           <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','vencimiento')"><i class="ti ti-brand-whatsapp"></i>WA</button>
           <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
-          <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${s.plat}&nombre=${encodeURIComponent(nombreChromeCob)}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
+          <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${_platRealCob}&nombre=${encodeURIComponent(nombreChromeCob)}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
         </td></tr>`;
     }).join('');
     return;
@@ -4134,6 +4136,11 @@ function confirmarBloqueo(nombre){
 
 function esDispositivoMovil() {
   return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+}
+
+function plataformaDesdePerfil(perfil, fallbackPlat) {
+  const m = (perfil || '').match(/^[A-Za-z]+/);
+  return m ? m[0].toUpperCase() : (fallbackPlat || '');
 }
 
 function calcularNombreChrome(plat, correo, proveedorAbrev, proveedorNombre, codigoInventario) {
