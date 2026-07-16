@@ -11361,9 +11361,30 @@ async function rptfRentabilidadGenerar() {
     const costoPerfilPorPlat = {};
     (PLATAFORMAS || []).forEach(p => {
       const cuentas = (INV_CACHE || []).filter(c => c.plataforma === p.codigo && (c.estado||'').toLowerCase() === 'activa');
-      const sumCosto = cuentas.reduce((s,c) => s + (parseFloat(c.costo) || 0), 0);
+      const _diagDetalle = []; // TEMP DIAGNÓSTICO — quitar luego
+      const sumCosto = cuentas.reduce((s,c) => {
+        const costoReal = parseFloat(c.costo) || 0;
+        let costoNormalizado = costoReal;
+        const fCompra = c.fecha_compra ? new Date(c.fecha_compra) : null;
+        const fVcto   = c.fecha_vcto_prov ? new Date(c.fecha_vcto_prov) : null;
+        let diasCubiertos = null;
+        if (fCompra && fVcto && !isNaN(fCompra) && !isNaN(fVcto)) {
+          diasCubiertos = Math.round((fVcto - fCompra) / 86400000);
+          if (diasCubiertos > 0) {
+            costoNormalizado = costoReal / diasCubiertos * 30;
+          } else {
+            console.warn('[Rentabilidad] diasCubiertos <= 0 para cuenta', c.id, '(' + c.fecha_compra + ' → ' + c.fecha_vcto_prov + ') — usando costo real sin normalizar');
+          }
+        } else {
+          console.warn('[Rentabilidad] fechas faltantes/inválidas para cuenta', c.id, '— usando costo real sin normalizar');
+        }
+        _diagDetalle.push({ id: c.id, codigo: c.codigo, costo: costoReal, fecha_compra: c.fecha_compra, fecha_vcto_prov: c.fecha_vcto_prov, diasCubiertos, costoNormalizado });
+        return s + costoNormalizado;
+      }, 0);
       const sumPerfiles = cuentas.reduce((s,c) => s + (parseInt(c.max_perfiles) || 0), 0);
       costoPerfilPorPlat[p.codigo] = sumPerfiles > 0 ? sumCosto / sumPerfiles : 0;
+      console.log('[DIAG Rentabilidad] plataforma =', p.codigo, '| cuentas activas encontradas =', cuentas.length, '| sumCosto =', sumCosto, '| sumPerfiles =', sumPerfiles, '| costoPerfil =', costoPerfilPorPlat[p.codigo]);
+      console.table(_diagDetalle);
     });
 
     // ── Margen por perfil individual (1 perfil) ──
