@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <!-- Supabase SDK -->
@@ -104,7 +104,8 @@ async function dbGuardarSuscripcion(sub) {
     fecha_vcto: toISO(sub.fVcto),
     monto: sub.monto,
     tipo_cliente: sub.tipoCliente,
-    estado: 'activo'
+    estado: 'activo',
+    precio_tras_promo: sub.precioTrasPromo || null
   });
   if (error) { console.error('Error guardando suscripción:', error); return false; }
   if (sub.perfilId) {
@@ -347,7 +348,8 @@ async function dbCargarSuscripciones() {
         plat: s.plataforma,
         combo: s.combo_id && s.combo_id !== 'undefined' ? s.combo_id : '—',
         est: s.estado,
-        cuentaBloqueada: (cuentaId && _estadoMap[cuentaId] === 'Bloqueada' && s.estado === 'activo')
+        cuentaBloqueada: (cuentaId && _estadoMap[cuentaId] === 'Bloqueada' && s.estado === 'activo'),
+        precioTrasPromo: s.precio_tras_promo != null ? parseFloat(s.precio_tras_promo) : null
       });
     });
     // Poblar plats y dias en CLIENTES desde suscripciones activas
@@ -464,7 +466,7 @@ td strong{color:var(--text);font-weight:500}
 .tda{display:flex;gap:4px;justify-content:flex-end}
 .pd{display:inline-flex;align-items:center;gap:4px;margin-right:3px}
 .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
-.nf{background:var(--nf)}.ds{background:var(--ds)}.hb{background:var(--hb)}.pv{background:var(--pv)}
+.nf{background:var(--nf)}.ds{background:var(--ds)}.hb{background:var(--hb)}.pv{background:var(--pv)}.ip{background:var(--teal)}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 .btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--rsm);font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);transition:all .15s;font-family:var(--font)}
@@ -2421,6 +2423,15 @@ function closeSidebarMobile() {
           <div class="hint">Precio que paga el cliente</div>
         </div>
       </div>
+      <div class="fr c2">
+        <div class="fg"><label>Notas</label>
+          <input type="text" id="precio-notas-ind" placeholder="Ej: Precio de lanzamiento">
+        </div>
+        <div class="fg"><label>Precio tras promo</label>
+          <input type="text" id="precio-promo-ind" placeholder="$0.00">
+          <div class="hint">Precio que aplicará tras la primera renovación (opcional)</div>
+        </div>
+      </div>
     </div>
 
     <!-- Combo -->
@@ -2456,6 +2467,10 @@ function closeSidebarMobile() {
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 11px;margin-top:6px;background:var(--bg4);border-radius:var(--rsm)">
         <span style="font-size:13px;font-weight:500;color:var(--text)">Total combo</span>
         <span style="font-size:16px;font-weight:600;color:var(--green)" id="precio-combo-total">$0.00</span>
+      </div>
+      <div class="fg" style="margin-top:10px"><label>Precio tras promo (total combo)</label>
+        <input type="text" id="precio-promo-combo" placeholder="$0.00">
+        <div class="hint">Precio total que aplicará tras la primera renovación (opcional)</div>
       </div>
       <div class="fg" style="margin-top:10px"><label>Cantidad de perfiles por plataforma</label><input type="text" placeholder="Ej: NF 1 perfil + DS 1 perfil"><div class="hint">Descripción del combo para mostrar en tabla</div></div>
     </div>
@@ -4387,7 +4402,7 @@ async function verDatosAccesoVenta(){
   const canal = document.getElementById('v-canal')?.value || 'WhatsApp';
 
   // Guardar todo lo calculado para usarlo en confirmarVentaDesdeModal()
-  window._ventaPendingData = { tipo, plats, entries, usuarios, pins, fIniVal, fVctoVal, fIniStr, vctoStr, montoCobrado, monto, banco, forma, doc, canal };
+  window._ventaPendingData = { tipo, plats, entries, usuarios, pins, fIniVal, fVctoVal, fIniStr, vctoStr, montoCobrado, monto, banco, forma, doc, canal, precioTrasPromo: ventaData.planPrecioTrasPromo || null };
 
   const datosArray = [];
   for (const entry of entries) {
@@ -4411,7 +4426,7 @@ async function verDatosAccesoVenta(){
 async function confirmarVentaDesdeModal(){
   const pd = window._ventaPendingData;
   if (!pd) { toast('No hay datos pendientes de venta', 'error'); return; }
-  const { entries, usuarios, pins, fIniVal, fVctoVal, fIniStr, vctoStr, montoCobrado, monto, banco, forma, doc, canal, tipo, plats } = pd;
+  const { entries, usuarios, pins, fIniVal, fVctoVal, fIniStr, vctoStr, montoCobrado, monto, banco, forma, doc, canal, tipo, plats, precioTrasPromo } = pd;
 
   const comboId  = plats.length > 1 && new Set(plats).size > 1
     ? normalizarCombo(plats.join('+')) : '—';
@@ -4439,7 +4454,9 @@ async function confirmarVentaDesdeModal(){
 
     for (const {p, key, perf, idxEnPlat} of entries) {
       let montoEntry = monto / entries.length;
-      if (desgloseValido) {
+      if (entries.length === 1) {
+        montoEntry = monto;
+      } else if (desgloseValido) {
         if (tipo === 'combo') {
           const found = desgloseVenta.find(d => d.plat === p);
           if (found && typeof found.precio === 'number') montoEntry = found.precio;
@@ -4447,12 +4464,17 @@ async function confirmarVentaDesdeModal(){
           montoEntry = desgloseVenta[idxEnPlat].precio;
         }
       }
+      // Prorratear precio_tras_promo con la misma proporción que montoEntry, para que la
+      // suma de las suscripciones individuales vuelva a dar el precio_tras_promo total del plan
+      const ratioEntry = monto > 0 ? (montoEntry / monto) : (1 / entries.length);
+      const precioTrasPromoEntry = precioTrasPromo != null ? +(precioTrasPromo * ratioEntry).toFixed(2) : null;
       const subParams = {
         clienteId: ventaData.clienteId, plat: p, tipo: tipo==='combo'?'Combo':'Individual',
         combo: comboId, correo: perf?.correo||'—',
         usuario: usuarios[key]||'—', pin: pins[key]||'—',
         perfilId: perf?.codigo||null,
-        fIni: fIniStr, fVcto: vctoStr, monto: montoEntry, tipoCliente: 'Nuevo'
+        fIni: fIniStr, fVcto: vctoStr, monto: montoEntry, tipoCliente: 'Nuevo',
+        precioTrasPromo: precioTrasPromoEntry
       };
       const okSub = await dbGuardarSuscripcion(subParams);
       if (!okSub) throw new Error('No se pudo guardar la suscripción de ' + p);
@@ -4513,7 +4535,8 @@ async function confirmarVentaDesdeModal(){
       const _waPerfilesSel = {};
       entries.forEach(e => { _waPerfilesSel[e.key] = e.perf; });
       const _refCompleto = entries.map(e => e.perf?.codigo).filter(Boolean).join(' + ');
-      abrirWA(_waNombre, platNombre(_exitoEntry.p), '$'+monto.toFixed(2), 'entrega', {
+      const _montoProxPago = precioTrasPromo != null ? precioTrasPromo : monto;
+      abrirWA(_waNombre, platNombre(_exitoEntry.p), '$'+_montoProxPago.toFixed(2), 'entrega', {
         plats: plats,
         perfilesSel: _waPerfilesSel,
         correo: _exitoEntry.perf?.correo, clave: _exitoEntry.perf?.clave,
@@ -4797,7 +4820,8 @@ async function confirmarPago() {
         nuevaFVcto = fechaAISO(base);
       }
 
-      const payload = { fecha_vcto: nuevaFVcto, estado: 'activo', tipo_cliente: 'Renovación' };
+      // La renovación cumple el propósito del precio promocional: de aquí en adelante precio normal
+      const payload = { fecha_vcto: nuevaFVcto, estado: 'activo', tipo_cliente: 'Renovación', precio_tras_promo: null };
       if (tipoUpdate) payload.tipo = tipoUpdate;
       const _idsActualizar = cb.dataset.combosubids ? JSON.parse(cb.dataset.combosubids) : [subId];
       for (const _sid of _idsActualizar) {
@@ -4813,6 +4837,7 @@ async function confirmarPago() {
           SUBS_FULL[memIdx].est = 'activo';
           SUBS_FULL[memIdx].tipoCliente = 'Renovación';
           SUBS_FULL[memIdx].dias = meses * 30;
+          SUBS_FULL[memIdx].precioTrasPromo = null;
           if (tipoUpdate) SUBS_FULL[memIdx].tipo = tipoUpdate;
         }
       }
@@ -6029,7 +6054,7 @@ async function cargarPlanesPrecios() {
       if (!PRECIOS_IND[cod]) PRECIOS_IND[cod] = [];
       // perfiles puede ser "1 perfil", "2 perfiles" o un número
       const numPerfiles = parseInt((p.perfiles || '1')) || 1;
-      PRECIOS_IND[cod].push({ perfiles: numPerfiles, precio: parseFloat(p.precio) || 0 });
+      PRECIOS_IND[cod].push({ perfiles: numPerfiles, precio: parseFloat(p.precio) || 0, notas: p.notas || '', precioTrasPromo: p.precio_tras_promo || null });
     });
     // Ordenar por cantidad de perfiles
     Object.keys(PRECIOS_IND).forEach(k => {
@@ -6051,7 +6076,9 @@ async function cargarPlanesPrecios() {
         plats: plats,
         precio: parseFloat(p.precio) || 0,
         desglose: p.desglose || plats.join(' + '),
-        perfiles: p.perfiles || plats.map(() => '1').join('+')
+        perfiles: p.perfiles || plats.map(() => '1').join('+'),
+        notas: p.notas || '',
+        precioTrasPromo: p.precio_tras_promo || null
       });
     });
 
@@ -6584,6 +6611,7 @@ function updTipoVenta(v) {
   ventaData.planPrecio = 0;
   ventaData.planPerfiles = 1;
   ventaData.plats = [];
+  ventaData.planPrecioTrasPromo = null;
 
   // Poblar el select con los planes del tipo elegido
   poblarPlanesPorTipo(v);
@@ -6612,8 +6640,9 @@ function poblarPlanesPorTipo(tipo) {
         opt.dataset.plat = cod;
         opt.dataset.precio = plan.precio.toFixed(2);
         opt.dataset.perfiles = String(plan.perfiles);
+        if (plan.precioTrasPromo != null) opt.dataset.precioTrasPromo = String(plan.precioTrasPromo);
         const pluralP = plan.perfiles === 1 ? 'perfil' : 'perfiles';
-        opt.textContent = `${plan.perfiles} ${pluralP} — $${plan.precio.toFixed(2)}`;
+        opt.textContent = `${plan.perfiles} ${pluralP} — $${plan.precio.toFixed(2)}` + (plan.notas ? ` (${plan.notas})` : '');
         grp.appendChild(opt);
         hayPlanes = true;
       });
@@ -6638,8 +6667,9 @@ function poblarPlanesPorTipo(tipo) {
         opt.value = 'COMBO|' + i;
         opt.dataset.comboIdx = String(i);
         opt.dataset.precio = c.precio.toFixed(2);
+        if (c.precioTrasPromo != null) opt.dataset.precioTrasPromo = String(c.precioTrasPromo);
         const nombres = c.plats.map(p => platNombre(p)).join(' + ');
-        opt.textContent = `${nombres} — $${c.precio.toFixed(2)} (${c.desglose})`;
+        opt.textContent = `${nombres} — $${c.precio.toFixed(2)} (${c.desglose})` + (c.notas ? ` (${c.notas})` : '');
         selPlan.appendChild(opt);
       });
     }
@@ -6659,6 +6689,7 @@ function updPerfilesVenta() {
     ventaData.planPrecio = 0;
     ventaData.planPerfiles = 1;
     ventaData.plats = [];
+    ventaData.planPrecioTrasPromo = null;
     return;
   }
 
@@ -6668,6 +6699,7 @@ function updPerfilesVenta() {
     const perfiles = parseInt(precioOpt.dataset.perfiles || '1');
     ventaData.planPrecio  = precio;
     ventaData.planPerfiles = perfiles;
+    ventaData.planPrecioTrasPromo = precioOpt.dataset.precioTrasPromo != null ? parseFloat(precioOpt.dataset.precioTrasPromo) : null;
     // Para planes de 2+ perfiles de la misma plataforma, repetir en el array
     ventaData.plats = Array(perfiles).fill(plat);
     if (prev && plat) {
@@ -6684,6 +6716,7 @@ function updPerfilesVenta() {
     ventaData.planPerfiles = combo.plats.length;
     ventaData.plats = combo.plats;
     ventaData.comboId = combo.id;
+    ventaData.planPrecioTrasPromo = combo.precioTrasPromo != null ? parseFloat(combo.precioTrasPromo) : null;
     if (prev) {
       const nombres = combo.plats.map(p => platNombre(p)).join(' + ');
       prev.textContent = `${nombres} — $${combo.precio.toFixed(2)} (${combo.desglose})`;
@@ -7086,6 +7119,7 @@ async function renderSubsPago(clienteId) {
         combo:       s.combo_id && s.combo_id !== 'undefined' ? s.combo_id : '—',
         est:         s.estado,
         tipoCliente: s.tipo_cliente || 'Nuevo',
+        precioTrasPromo: s.precio_tras_promo != null ? parseFloat(s.precio_tras_promo) : null,
       }));
     }
   }
@@ -7137,7 +7171,8 @@ async function renderSubsPago(clienteId) {
         const platReal = (s.perfil && s.perfil.length >= 2) ? s.perfil.substring(0, 2) : plat;
         rows.push({
           subId: s.id, plat: platReal, perfil: s.perfil || s.perfilId || '—',
-          vcto: s.fVcto || '—', precio: s.monto || 0,
+          vcto: s.fVcto || '—', precio: (s.precioTrasPromo != null ? s.precioTrasPromo : s.monto) || 0,
+          precioTrasPromo: s.precioTrasPromo ?? null,
           dias: s.dias || 0, esCombo: true, comboKey: key,
           comboSubIds, comboPlats
         });
@@ -7146,7 +7181,8 @@ async function renderSubsPago(clienteId) {
       const s = g.subs[0];
       rows.push({
         subId: s.id, plat: s.plat, perfil: s.perfil || '—',
-        vcto: s.fVcto || '—', precio: s.monto || 0,
+        vcto: s.fVcto || '—', precio: (s.precioTrasPromo != null ? s.precioTrasPromo : s.monto) || 0,
+        precioTrasPromo: s.precioTrasPromo ?? null,
         dias: s.dias || 0, esCombo: false, comboKey: null,
         comboSubIds: JSON.stringify([s.id]), comboPlats: JSON.stringify([s.plat])
       });
@@ -7169,6 +7205,7 @@ async function renderSubsPago(clienteId) {
       : `${platNom} · ${r.perfil}`;
     const dot = PLATS[r.plat]?.color || '#ccc';
     const vbadge = r.dias <= 0 ? '<span class="b br">Hoy</span>' : r.dias === 1 ? '<span class="b ba">Mañana</span>' : `<span class="b bi">${r.dias} días</span>`;
+    const promoLabel = r.precioTrasPromo != null ? ` <span style="font-size:10px;color:var(--amber)">(fin de promo → $${r.precioTrasPromo.toFixed(2)})</span>` : '';
     console.log('[renderSubsPago] fila', i, '| subId:', r.subId, '| plat:', r.plat, '| comboSubIds:', r.comboSubIds);
     return `<div class="pi" id="psub-${i}" style="padding:10px 12px;margin-bottom:5px" onclick="toggleSubPago(${i})">
       <input type="checkbox" id="chk-sub-${i}"
@@ -7177,7 +7214,7 @@ async function renderSubsPago(clienteId) {
         data-combosubids='${r.comboSubIds}' data-comboplats='${r.comboPlats}'
         checked style="width:auto;margin:0;flex-shrink:0">
       <div style="flex:1;margin-left:8px">
-        <div style="font-size:13px;font-weight:500"><span class="dot" style="background:${dot};width:8px;height:8px;margin-right:5px"></span>${lbl}</div>
+        <div style="font-size:13px;font-weight:500"><span class="dot" style="background:${dot};width:8px;height:8px;margin-right:5px"></span>${lbl}${promoLabel}</div>
         <div id="precio-hint-${i}" style="font-size:11px;color:var(--text3)">Vence ${r.vcto} · $${r.precio.toFixed(2)}</div>
       </div>${vbadge}
     </div>`;
@@ -7574,18 +7611,63 @@ function openModal(id, title) {
     ventaPaso1();
     calcVctoVenta();
   }
-  // Reset formulario precio al abrir
+  // Formulario precio: precarga (edición) o reset (nuevo) — todo aquí para evitar
+  // que un reset posterior a abrirEditarPrecio() borre lo recién precargado
   if (id === 'm-precio') {
-    const pt = document.getElementById('precio-tipo');
-    if (pt) { pt.value = 'individual'; updPrecioTipo('individual'); }
-    const pv = document.getElementById('precio-val-ind');
-    if (pv) pv.value = '';
-    const pd = document.getElementById('precio-desde');
-    if (pd) { const h=new Date(); pd.value=h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0'); }
-    document.querySelectorAll('#precio-combo-rows input[type=checkbox]').forEach(c => c.checked = false);
-    document.querySelectorAll('#precio-combo-rows .combo-precio').forEach(i => i.value = '');
-    const ptotal = document.getElementById('precio-combo-total');
-    if (ptotal) ptotal.textContent = '$0.00';
+    const p = (title === 'Editar precio' && _editPrecioId != null) ? PLANES_PRECIOS.find(x => x.id === _editPrecioId) : null;
+    if (p) {
+      const tipoNorm = (p.tipo||'').toLowerCase();
+      const fechaIso = (p.vigente_desde||'').includes('/') ? p.vigente_desde.split('/').reverse().join('-') : (p.vigente_desde||'');
+      document.getElementById('precio-id').value = p.id;
+      document.getElementById('precio-title').textContent = 'Editar precio';
+      document.getElementById('precio-tipo').value = tipoNorm;
+      document.getElementById('precio-desde').value = fechaIso;
+      updPrecioTipo(tipoNorm);
+      if (tipoNorm === 'individual') {
+        updPrecioPerfiles((p.plataformas||'').trim());
+        document.getElementById('precio-plat').value = (p.plataformas||'').trim();
+        document.getElementById('precio-perfiles').value = p.perfiles || '1';
+        document.getElementById('precio-val-ind').value = parseFloat(p.precio||0).toFixed(2);
+        const notasEl = document.getElementById('precio-notas-ind'); if (notasEl) notasEl.value = p.notas || '';
+        const promoEl = document.getElementById('precio-promo-ind'); if (promoEl) promoEl.value = p.precio_tras_promo != null ? parseFloat(p.precio_tras_promo).toFixed(2) : '';
+      } else {
+        document.querySelectorAll('#precio-combo-rows input[type=checkbox]').forEach(c => c.checked = false);
+        document.querySelectorAll('#precio-combo-rows .combo-precio').forEach(i => i.value = '');
+        if (Array.isArray(p.desglose_json)) {
+          p.desglose_json.forEach(d => {
+            const chk = document.querySelector(`#precio-combo-rows input[type=checkbox][value="${d.plat}"]`);
+            if (chk) { chk.checked = true; chk.closest('.precio-combo-row').querySelector('.combo-precio').value = parseFloat(d.precio||0).toFixed(2); }
+          });
+        } else if (p.desglose && p.desglose !== '—') {
+          p.desglose.split('+').map(s => s.trim()).forEach(part => {
+            const m = part.match(/^([A-Z]{2,})\s*\$?([\d.]+)/);
+            if (m) {
+              const chk = document.querySelector(`#precio-combo-rows input[type=checkbox][value="${m[1]}"]`);
+              if (chk) { chk.checked = true; chk.closest('.precio-combo-row').querySelector('.combo-precio').value = m[2]; }
+            }
+          });
+        }
+        const promoComboEl = document.getElementById('precio-promo-combo'); if (promoComboEl) promoComboEl.value = p.precio_tras_promo != null ? parseFloat(p.precio_tras_promo).toFixed(2) : '';
+        updPrecioCombo();
+      }
+    } else {
+      _editPrecioId = null;
+      document.getElementById('precio-id').value = '';
+      document.getElementById('precio-title').textContent = 'Nuevo precio';
+      const pt = document.getElementById('precio-tipo');
+      if (pt) { pt.value = 'individual'; updPrecioTipo('individual'); }
+      const pv = document.getElementById('precio-val-ind');
+      if (pv) pv.value = '';
+      const pd = document.getElementById('precio-desde');
+      if (pd) { const h=new Date(); pd.value=h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0'); }
+      const notasEl = document.getElementById('precio-notas-ind'); if (notasEl) notasEl.value = '';
+      const promoIndEl = document.getElementById('precio-promo-ind'); if (promoIndEl) promoIndEl.value = '';
+      const promoComboEl = document.getElementById('precio-promo-combo'); if (promoComboEl) promoComboEl.value = '';
+      document.querySelectorAll('#precio-combo-rows input[type=checkbox]').forEach(c => c.checked = false);
+      document.querySelectorAll('#precio-combo-rows .combo-precio').forEach(i => i.value = '');
+      const ptotal = document.getElementById('precio-combo-total');
+      if (ptotal) ptotal.textContent = '$0.00';
+    }
   }
   // Reset cambio de cuenta
   if (id === 'm-cambio') {
@@ -7608,37 +7690,13 @@ function openModal(id, title) {
 
 // ── FUNCIONES PRECIO ────────────────────────────────────────
 let PLANES_PRECIOS = [];
+let _editPrecioId = null;
 
 function abrirEditarPrecio(id) {
   const p = PLANES_PRECIOS.find(x => x.id === id);
   if (!p) { toast('Plan no encontrado', 'warn'); return; }
-  const tipoNorm = (p.tipo||'').toLowerCase();
-  // Convertir DD/MM/YYYY → YYYY-MM-DD para el date input
-  const fechaIso = (p.vigente_desde||'').includes('/') ? p.vigente_desde.split('/').reverse().join('-') : (p.vigente_desde||'');
-  document.getElementById('precio-id').value = id;
-  document.getElementById('precio-title').textContent = 'Editar precio';
-  document.getElementById('precio-tipo').value = tipoNorm;
-  document.getElementById('precio-desde').value = fechaIso;
-  updPrecioTipo(tipoNorm);
-  if (tipoNorm === 'individual') {
-    document.getElementById('precio-plat').value = (p.plataformas||'').trim();
-    document.getElementById('precio-perfiles').value = p.perfiles || '1';
-    document.getElementById('precio-val-ind').value = parseFloat(p.precio||0).toFixed(2);
-  } else {
-    document.querySelectorAll('#precio-combo-rows input[type=checkbox]').forEach(c => c.checked = false);
-    document.querySelectorAll('#precio-combo-rows .combo-precio').forEach(i => i.value = '');
-    if (p.desglose && p.desglose !== '—') {
-      p.desglose.split('+').map(s => s.trim()).forEach(part => {
-        const m = part.match(/^([A-Z]{2,})\s*\$?([\d.]+)/);
-        if (m) {
-          const chk = document.querySelector(`#precio-combo-rows input[type=checkbox][value="${m[1]}"]`);
-          if (chk) { chk.checked = true; chk.closest('.precio-combo-row').querySelector('.combo-precio').value = m[2]; }
-        }
-      });
-    }
-    updPrecioCombo();
-  }
-  openModal('m-precio');
+  _editPrecioId = id;
+  openModal('m-precio', 'Editar precio');
 }
 
 function updPrecioTipo(v) {
@@ -7671,15 +7729,12 @@ function updPrecioCombo() {
   if (el) el.textContent = '$' + total.toFixed(2);
 }
 
-function guardarPrecio() {
+async function guardarPrecio() {
   const tipo = document.getElementById('precio-tipo')?.value;
   const desde = document.getElementById('precio-desde')?.value || '—';
-  const tbody = document.getElementById('tb-planes');
-  if (!tbody) { closeModal('m-precio'); toast('Precio guardado','ok'); return; }
 
-  let platsHtml = '', tipoHtml = '', perfilesStr = '', precioStr = '', desglose = '—';
-  let selected = [], desgParts = [];
-  let platVal = '', perfsVal = '1';
+  let selected = [], desgParts = [], desgloseJson = [];
+  let platVal = '', perfsVal = '1', precioNum = 0, notas = '', precioTrasPromo = null;
 
   if (tipo === 'individual') {
     const platSel = document.getElementById('precio-plat');
@@ -7687,99 +7742,68 @@ function guardarPrecio() {
     perfsVal = document.getElementById('precio-perfiles')?.value || '1';
     const precio = document.getElementById('precio-val-ind')?.value?.trim();
     if (!platVal || !precio) { toast('Completa plataforma y precio','warn'); return; }
-    const platObj = (PLATAFORMAS||[]).find(x => x.codigo === platVal);
-    const dotColor = PC[platVal] || 'var(--accent)';
-    const platNombre = platObj?.nombre || platVal;
-    platsHtml = `<span class="pd"><span class="dot" style="background:${dotColor}"></span>${platNombre}</span>`;
-    tipoHtml = '<span class="b bi">Individual</span>';
-    perfilesStr = perfsVal + (perfsVal==='1'?' perfil':' perfiles');
-    precioStr = precio.startsWith('$') ? precio : '$'+precio;
+    precioNum = parseFloat(precio.replace(/[^0-9.]/g,'')) || 0;
+    notas = document.getElementById('precio-notas-ind')?.value?.trim() || '';
+    const promoVal = document.getElementById('precio-promo-ind')?.value?.trim();
+    precioTrasPromo = promoVal ? (parseFloat(promoVal.replace(/[^0-9.]/g,'')) || 0) : null;
   } else {
     const rows = document.querySelectorAll('#precio-combo-rows .precio-combo-row');
-    const getColor  = cod => `var(--${cod.toLowerCase()})`;
     const getNombre = cod => (PLATAFORMAS||[]).find(x => x.codigo === cod)?.nombre || cod;
-    let total = 0;
     rows.forEach(row => {
       const chk = row.querySelector('input[type=checkbox]');
       const inp = row.querySelector('.combo-precio');
       const plat = chk?.value;
       if (chk?.checked && plat) {
         const p = parseFloat(inp?.value?.replace(/[^0-9.]/g,'')) || 0;
-        total += p;
+        precioNum += p;
         selected.push(plat);
-        platsHtml += `<span class="pd"><span class="dot" style="background:${getColor(plat)}"></span>${getNombre(plat)}</span>`;
         desgParts.push(`${getNombre(plat)} $${p.toFixed(2)}`);
+        desgloseJson.push({ plat, precio: p });
       }
     });
     if (!selected.length) { toast('Selecciona al menos una plataforma','warn'); return; }
-    tipoHtml = '<span class="b bpu">Combo</span>';
-    perfilesStr = selected.map(p=>'1').join('+');
-    precioStr = '$' + total.toFixed(2);
-    desglose = `<span style="font-size:11px;color:var(--text3)">${desgParts.join(' + ')}</span>`;
+    platVal  = selected.join('+');
+    perfsVal = selected.map(() => '1').join('+');
+    const promoVal = document.getElementById('precio-promo-combo')?.value?.trim();
+    precioTrasPromo = promoVal ? (parseFloat(promoVal.replace(/[^0-9.]/g,'')) || 0) : null;
   }
 
   const [yy,mm,dd] = desde.split('-');
   const fechaStr = desde !== '—' ? `${dd}/${mm}/${yy}` : '—';
 
-  const tr = document.createElement('tr');
-  tr.innerHTML = `<td>${platsHtml}</td><td>${tipoHtml}</td><td>${perfilesStr}</td><td style="color:var(--green);font-weight:500">${precioStr}</td><td>${desglose}</td><td>${fechaStr}</td><td><span class="b bg">Vigente</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="openModal('m-precio')"><i class="ti ti-edit"></i></button></td>`;
-  tbody.appendChild(tr);
-  // Agregar combo a lista de ventas
-  if (tipo === 'combo' && selected.length > 0) {
-    const comboId = normalizarCombo(selected.join('+'));
-    const totalCombo = parseFloat(document.getElementById('precio-combo-total')?.textContent?.replace('$','')) || 0;
-    const desgloseCombo = selected.map(p => (platNombre(p))+' incluido').join(' + ');
-    const existeIdx = COMBOS.findIndex(c => c.id === comboId);
-    if (existeIdx >= 0) {
-      COMBOS[existeIdx].precio = totalCombo;
-    } else {
-      COMBOS.push({id:comboId, plats:selected, precio:totalCombo, desglose:desgloseCombo, perfiles:selected.map(()=>'1').join('+')});
-    }
-  }
-  // Para combo, completar platVal y perfsVal que solo se asignan en el bloque individual
-  if (tipo === 'combo') {
-    platVal  = selected.join('+');
-    perfsVal = selected.map(() => '1').join('+');
-  }
-
-  // Persistir en Supabase
-  const precioId = document.getElementById('precio-id')?.value;
-  const precioNum = parseFloat(precioStr.replace('$','')) || 0;
-  if (precioId) {
-    const payload = { vigente_desde: fechaStr, precio: precioNum };
-    if (tipo === 'individual') {
-      payload.plataformas = platVal;
-      payload.perfiles = perfsVal;
-    }
-    if (tipo === 'combo') {
-      payload.desglose = desgParts.join(' + ');
-    }
-    supa.from('planes_precios').update(payload).eq('id', precioId).then(({error}) => {
-      if (error) { toast('Error al guardar en base de datos: ' + error.message, 'err'); return; }
-      const idx = PLANES_PRECIOS.findIndex(x => x.id == precioId);
-      if (idx >= 0) Object.assign(PLANES_PRECIOS[idx], payload);
-    });
+  const payload = {
+    plataformas: platVal, perfiles: perfsVal, precio: precioNum,
+    vigente_desde: fechaStr, precio_tras_promo: precioTrasPromo
+  };
+  if (tipo === 'individual') {
+    payload.notas = notas;
   } else {
-    const tipoNorm = tipo === 'individual' ? 'Individual' : 'Combo';
-    const payload = { plataformas: platVal, tipo: tipoNorm, perfiles: perfsVal, precio: precioNum, vigente_desde: fechaStr, estado: 'Vigente' };
-    if (tipo === 'combo') payload.desglose = desgParts.join(' + ');
-    supa.from('planes_precios').insert(payload).then(({error}) => {
-      if (error) { toast('Error al guardar en base de datos: ' + error.message, 'err'); return; }
-      cargarPlanesPrecios();
-    });
+    payload.desglose = desgParts.join(' + ');
+    payload.desglose_json = desgloseJson;
   }
 
-  // Limpiar formulario para evitar duplicados
-  document.getElementById('precio-id') && (document.getElementById('precio-id').value = '');
-  document.getElementById('precio-title') && (document.getElementById('precio-title').textContent = 'Nuevo precio');
-  document.getElementById('precio-val-ind') && (document.getElementById('precio-val-ind').value = '');
-  document.querySelectorAll('#precio-combo-rows input[type=checkbox]').forEach(c => c.checked = false);
-  document.querySelectorAll('#precio-combo-rows .combo-precio').forEach(i => i.value = '');
-  const ptotal = document.getElementById('precio-combo-total');
-  if (ptotal) ptotal.textContent = '$0.00';
-
-  closeModal('m-precio');
-  toast('Precio guardado correctamente','ok');
+  const precioId = document.getElementById('precio-id')?.value;
+  const btn = document.querySelector('#m-precio .btn-p');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...'; }
+  try {
+    let error;
+    if (precioId) {
+      ({ error } = await supa.from('planes_precios').update(payload).eq('id', precioId));
+    } else {
+      payload.tipo = tipo === 'individual' ? 'Individual' : 'Combo';
+      payload.estado = 'Vigente';
+      ({ error } = await supa.from('planes_precios').insert(payload));
+    }
+    if (error) throw error;
+    closeModal('m-precio');
+    await cargarParametros();
+    await cargarPlanesPrecios();
+    toast('Precio guardado correctamente ✓','ok');
+  } catch(e) {
+    toast('Error al guardar en base de datos: ' + (e.message || e), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Guardar precio'; }
+  }
 }
 
 // ── ACTUALIZACIÓN TABLAS PARÁMETROS ──────────────────────────
@@ -10461,6 +10485,8 @@ function vctGenerar() {
       codPais: sp.code,
       numTel:  sp.num,
       monto:   grupo.reduce((sum, s) => sum + (s.monto || 0), 0),
+      montoTrasPromo: grupo.reduce((sum, s) => sum + (s.precioTrasPromo != null ? s.precioTrasPromo : (s.monto || 0)), 0),
+      tienePromoPendiente: grupo.some(s => s.precioTrasPromo != null),
       fVcto:   first.fVcto || '—',
       dias:    first.dias,
       est:     first.est
@@ -10541,6 +10567,9 @@ function vctCopiarWA(idx) {
     msg = `🚨 Hola ${nombre}, tu ${plat} VENCE HOY ${fecha}.\n⏰ Es tu último día para renovar y mantener tu acceso.\n💳 $${monto} · Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas hoy, tu cuenta será suspendida y perderás el precio promocional.`;
   } else {
     msg = `🚨 Hola ${nombre}, tu ${plat} VENCIÓ el ${fecha} y será SUSPENDIDA.\n⚠️ Renueva ahora para recuperar tu acceso antes de que sea eliminada.\n💳 $${monto} · Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. Sin reembolsos.\n📌 Al reactivar fuera de tiempo se aplicará la tarifa vigente, no el precio anterior.`;
+  }
+  if (r.tienePromoPendiente && Math.abs(r.montoTrasPromo - Number(monto)) > 0.001) {
+    msg += `\n💡 Nota: esta es tu última renovación con precio promocional. Desde la próxima, el precio será $${r.montoTrasPromo.toFixed(2)}.`;
   }
   navigator.clipboard.writeText(msg)
     .then(() => toast('Mensaje copiado ✓', 'ok'))
@@ -12268,7 +12297,7 @@ async function cargarParametros() {
     if (data && data.length) {
       PLANES_PRECIOS = data;
       document.getElementById('tb-planes').innerHTML = data.map(p=>`
-        <tr>
+        <tr data-id="${p.id}">
           <td>${p.plataformas||''}</td>
           <td><span class="b bi">${p.tipo||''}</span></td>
           <td>${p.perfiles||''}</td>
@@ -12542,9 +12571,9 @@ async function abrirChromeInventario(cuentaId, plat, correo, proveedor) {
 }
 
 function renderInventario(lista) {
-  const disp = lista.filter(i=>i.estado==='Activa').length;
-  const ocup = lista.filter(i=>i.estado==='Ocupada').length;
-  const venc = lista.filter(i=>i.estado==='Vencida').length;
+  const disp = lista.filter(i => i.estado === 'Activa' && ((parseInt(i.max_perfiles)||0) - (INV_SUBS_MAP[i.id]||0)) > 0).length;
+  const ocup = lista.filter(i => i.estado === 'Activa' && ((parseInt(i.max_perfiles)||0) - (INV_SUBS_MAP[i.id]||0)) <= 0).length;
+  const venc = lista.filter(i => i.fecha_vcto_prov && new Date(i.fecha_vcto_prov) < new Date(hoyPanamaDate())).length;
   const bloq = lista.filter(i=>i.estado==='Bloqueada').length;
   document.getElementById('inv-cnt-disp').textContent = disp;
   document.getElementById('inv-cnt-ocup').textContent = ocup;
@@ -12682,7 +12711,7 @@ async function guardarRenovarPin() {
   try {
     const { error: e1 } = await supa.from('inventario').update({ fecha_vcto_prov: nuevaFecha }).eq('id', _renovarCuentaId);
     if (e1) throw e1;
-    const { error: e1b } = await supa.from('cuentas_inventario').update({ fecha_vcto_proveedor: nuevaFecha }).eq('codigo', _renovarCuentaId);
+    const { error: e1b } = await supa.from('cuentas_inventario').update({ fecha_vcto_proveedor: nuevaFecha, fecha_compra: hoy }).eq('codigo', _renovarCuentaId);
     if (e1b) console.warn('[renovar] no se pudo sincronizar cuentas_inventario:', e1b.message);
     const { data: pinData, error: e2 } = await supa.from('pines').update({ estado: 'usado', cuenta_id: _renovarCuentaId, fecha_uso: hoy }).eq('id', pinId).select('costo').single();
     if (e2) throw e2;
