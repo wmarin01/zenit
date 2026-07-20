@@ -984,13 +984,13 @@ function closeSidebarMobile() {
       <option value="Binance Pay">Binance Pay</option>
       <option value="Efectivo">Efectivo</option>
     </select>
+    <span id="cobros-periodo-wrap" style="display:flex;gap:8px;align-items:center"></span>
   </div>
   <!-- Métricas rápidas -->
-  <div class="g4" style="margin-bottom:14px">
+  <div class="g3" style="margin-bottom:14px">
     <div class="card mc"><div class="ml"><div class="mt">Total cobrado</div><div class="mv" style="color:var(--green)" id="cobros-total">$0.00</div></div><div class="mi" style="background:var(--green2)"><i class="ti ti-cash"></i></div></div>
     <div class="card mc"><div class="ml"><div class="mt">Ventas nuevas</div><div class="mv" id="cobros-ventas">0</div></div><div class="mi" style="background:var(--accent2)"><i class="ti ti-shopping-cart"></i></div></div>
     <div class="card mc"><div class="ml"><div class="mt">Renovaciones</div><div class="mv" id="cobros-reno">0</div></div><div class="mi" style="background:var(--purple)"><i class="ti ti-refresh"></i></div></div>
-    <div class="card mc"><div class="ml"><div class="mt">Este mes</div><div class="mv" id="cobros-mes">0</div></div><div class="mi" style="background:#7a4f00"><i class="ti ti-calendar"></i></div></div>
   </div>
   <div class="card" style="padding:0;overflow-x:auto">
     <table style="min-width:1350px">
@@ -3674,7 +3674,14 @@ function goTo(v,el){
   if(v==='clientes') renderC(CLIENTES);
   if(v==='cobranza') { const tabActivo = document.querySelector('#cobtabs .tab.on'); if(tabActivo) tabActivo.click(); else { const firstTab=document.querySelector('#cobtabs .tab'); if(firstTab)firstTab.click(); } }
   if(v==='suscripciones') _aplicarFiltrosSubs();
-  if(v==='cobros') updMetricasCobros();
+  if(v==='cobros') {
+    const wrap = document.getElementById('cobros-periodo-wrap');
+    if (wrap && !wrap.dataset.init) {
+      wrap.innerHTML = htmlSelectorPeriodo('cobros', 'mes', 'updMetricasCobros');
+      wrap.dataset.init = '1';
+    }
+    updMetricasCobros();
+  }
   closeSidebarMobile();
 }
 
@@ -9707,19 +9714,18 @@ function filtCobrosForma(v) { _aplicarFiltrosCobros(); }
 // ── MÉTRICAS COBROS ──────────────────────────────────────────
 function updMetricasCobros() {
   _aplicarFiltrosCobros();
-  const total  = COBROS.reduce((s,c) => s + c.monto, 0);
-  const ventas = COBROS.filter(c => c.tipo === 'Venta nueva').length;
-  const reno   = COBROS.filter(c => c.tipo === 'Renovación').length;
-  const mesAct = new Date().getMonth() + 1; // 1-12
-  const esteM  = COBROS.filter(c => {
-    const parts = c.fecha.split('/');
-    return parts.length >= 2 && parseInt(parts[1]) === mesAct;
-  }).length;
+  const { ini, fin } = periodoLeerRango('cobros');
+  const base = (ini && fin) ? COBROS.filter(c => {
+    const f = fechaISO(c.fecha);
+    return f && f >= ini && f <= fin;
+  }) : [];
+  const total  = base.reduce((s,c) => s + c.monto, 0);
+  const ventas = base.filter(c => c.tipo === 'Venta nueva').length;
+  const reno   = base.filter(c => c.tipo === 'Renovación').length;
   const el = id => document.getElementById(id);
   if (el('cobros-total'))  el('cobros-total').textContent  = '$' + total.toFixed(2);
   if (el('cobros-ventas')) el('cobros-ventas').textContent = ventas;
   if (el('cobros-reno'))   el('cobros-reno').textContent   = reno;
-  if (el('cobros-mes'))    el('cobros-mes').textContent    = esteM;
 }
 
 
@@ -10908,6 +10914,35 @@ function rptGetRango(periodo) {
     default:
       return { ini: iso(new Date(y, m, 1)), fin: iso(new Date(y, m + 1, 0)) };
   }
+}
+
+// Selector de período reutilizable: genera el <select> + rango personalizado condicional.
+// idPrefix determina los IDs (${idPrefix}-periodo, -custom, -desde, -hasta).
+function htmlSelectorPeriodo(idPrefix, defaultValue, onChangeFn) {
+  defaultValue = defaultValue || 'mes';
+  const call = onChangeFn ? `${onChangeFn}()` : '';
+  const opciones = [
+    ['hoy', 'Hoy'], ['semana', 'Esta semana'], ['mes', 'Este mes'], ['mesant', 'Mes anterior'],
+    ['bimestre', 'Bimestre actual'], ['trimestre', 'Trimestre actual'], ['cuatrimestre', 'Cuatrimestre actual'],
+    ['semestre', 'Semestre actual'], ['anio', 'Año actual'], ['personalizado', 'Rango personalizado']
+  ].map(([v, l]) => `<option value="${v}"${v === defaultValue ? ' selected' : ''}>${l}</option>`).join('');
+  return `<select id="${idPrefix}-periodo" style="max-width:220px" onchange="document.getElementById('${idPrefix}-custom').style.display = this.value==='personalizado' ? 'flex' : 'none'; ${call}">${opciones}</select>
+    <div id="${idPrefix}-custom" style="display:none;gap:8px;align-items:center">
+      <input type="date" id="${idPrefix}-desde" style="width:150px" onchange="${call}">
+      <span style="color:var(--text3);font-size:12px">hasta</span>
+      <input type="date" id="${idPrefix}-hasta" style="width:150px" onchange="${call}">
+    </div>`;
+}
+
+// Lee el rango vigente de un selector creado con htmlSelectorPeriodo, reutilizando rptGetRango.
+function periodoLeerRango(idPrefix) {
+  const periodo = document.getElementById(`${idPrefix}-periodo`)?.value || 'mes';
+  if (periodo === 'personalizado') {
+    const ini = document.getElementById(`${idPrefix}-desde`)?.value || null;
+    const fin = document.getElementById(`${idPrefix}-hasta`)?.value || null;
+    return { periodo, ini, fin };
+  }
+  return { periodo, ...rptGetRango(periodo) };
 }
 
 async function rptResumenGenerar() {
