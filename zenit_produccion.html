@@ -3274,46 +3274,48 @@ const PC={NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
 const CI={WhatsApp:'<i class="ti ti-brand-whatsapp" style="color:#25D366"></i>',Email:'<i class="ti ti-mail" style="color:var(--accent)"></i>',Instagram:'<i class="ti ti-brand-instagram" style="color:#E1306C"></i>',Telegram:'<i class="ti ti-brand-telegram" style="color:#229ED9"></i>',Facebook:'<i class="ti ti-brand-facebook" style="color:#1877F2"></i>',TikTok:'<i class="ti ti-brand-tiktok"></i>'};
 const UC=['00838','00839','00840','00841'];
 let waCtx={n:'',p:'',m:''};
+// Motor de sustitución compartido por todo el objeto WA — mismo criterio (nombre
+// exacto, case-insensitive) que ya usa vctCopiarWA(), para que Parámetros → Plantillas
+// WA sea la única fuente real de contenido en todos los puntos de envío.
+function buscarPlantillaWA(nombre) {
+  const target = nombre.trim().toLowerCase();
+  return (PLANTILLAS_WA||[]).find(t => t.nombre?.trim().toLowerCase() === target);
+}
+function sustituirWA(plantilla, vars) {
+  return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
+    key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
+  );
+}
+// Inyecta la línea de link después de "👤 Usuario" cuando hay link real y la
+// plantilla no trae {link} — mismo comportamiento que ya existía en reenvio_accesos.
+function inyectarLinkWA(result, contenidoOriginal, link) {
+  if (!link || contenidoOriginal.includes('{link}')) return result;
+  const pos = result.indexOf('\n👤 Usuario:');
+  if (pos === -1) return result;
+  const endOfLine = result.indexOf('\n', pos + 1);
+  const insertAt = endOfLine !== -1 ? endOfLine : result.length;
+  return result.slice(0, insertAt) + `\n🔗 Link: <span class="wav">${link}</span>` + result.slice(insertAt);
+}
 const WA={
   vencimiento:(n,p,m,ctx)=>{
-    const plantilla = (PLANTILLAS_WA||[]).find(t => t.nombre?.toLowerCase().includes('hoy') || t.nombre?.toLowerCase().includes('vence hoy'));
-    if (plantilla) {
-      const vars = { nombre:n, plataforma:p, monto:m };
-      return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
-        key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
-      );
-    }
-    return `Hola <span class="wav">${n}</span> 👋\n\nTu <span class="wav">${p}</span> vence <strong>hoy</strong>.\nMonto: <span class="wav">${m}</span>\n\nDatos de pago:\n<span class="wav">Banco General · Yappy: 6639-2725</span>\n\nEnvíanos tu comprobante 🙏`;
+    const plantilla = buscarPlantillaWA('vence hoy');
+    if (plantilla) return sustituirWA(plantilla, { nombre:n, plataforma:p, monto:m, fecha_vcto: ctx?.fecha_vcto || '—' });
+    return `Hola <span class="wav">${n}</span> 👋\n\nTu <span class="wav">${p}</span> vence <strong>hoy</strong>.\nMonto: <span class="wav">$${m}</span>\n\nDatos de pago:\n<span class="wav">Banco General · Yappy: 6639-2725</span>\n\nEnvíanos tu comprobante 🙏`;
   },
   '3d':(n,p,m,ctx)=>{
-    const plantilla = (PLANTILLAS_WA||[]).find(t => t.nombre?.toLowerCase().includes('3'));
-    if (plantilla) {
-      const vars = { nombre:n, plataforma:p, monto:m };
-      return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
-        key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
-      );
-    }
-    return `Hola <span class="wav">${n}</span> 👋\n\nTu <span class="wav">${p}</span> vence en 3 días.\nMonto: <span class="wav">${m}</span>\n\nDatos: <span class="wav">Banco General · Yappy: 6639-2725</span> 🙏`;
+    const plantilla = buscarPlantillaWA('por vencer');
+    if (plantilla) return sustituirWA(plantilla, { nombre:n, plataforma:p, monto:m, fecha_vcto: ctx?.fecha_vcto || '—' });
+    return `Hola <span class="wav">${n}</span> 👋\n\nTu <span class="wav">${p}</span> vence en 3 días.\nMonto: <span class="wav">$${m}</span>\n\nDatos: <span class="wav">Banco General · Yappy: 6639-2725</span> 🙏`;
   },
   '1d':(n,p,m,ctx)=>{
-    const plantilla = (PLANTILLAS_WA||[]).find(t => t.nombre?.toLowerCase().includes('1'));
-    if (plantilla) {
-      const vars = { nombre:n, plataforma:p, monto:m };
-      return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
-        key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
-      );
-    }
-    return `Hola <span class="wav">${n}</span>, tu <span class="wav">${p}</span> vence <strong>mañana</strong>.\nEnvía tu pago de <span class="wav">${m}</span> para no perder el servicio. 🙏`;
+    const plantilla = buscarPlantillaWA('vence mañana');
+    if (plantilla) return sustituirWA(plantilla, { nombre:n, plataforma:p, monto:m, fecha_vcto: ctx?.fecha_vcto || '—' });
+    return `Hola <span class="wav">${n}</span>, tu <span class="wav">${p}</span> vence <strong>mañana</strong>.\nEnvía tu pago de <span class="wav">$${m}</span> para no perder el servicio. 🙏`;
   },
   pago:(n,p,m,ctx)=>{
-    const plantilla = (PLANTILLAS_WA||[]).find(t => t.tipo === 'Post pago');
-    if (plantilla) {
-      const vars = { nombre:n, plataforma:p, monto:m };
-      return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
-        key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
-      );
-    }
-    return `Hola <span class="wav">${n}</span> ✅\n\nRecibimos tu pago de <span class="wav">${m}</span> por <span class="wav">${p}</span>.\nSuscripción renovada. ¡Gracias! 🎉`;
+    const plantilla = buscarPlantillaWA('confirmación de pago');
+    if (plantilla) return sustituirWA(plantilla, { nombre:n, plataforma:p, monto:m });
+    return `Hola <span class="wav">${n}</span> ✅\n\nRecibimos tu pago de <span class="wav">$${m}</span> por <span class="wav">${p}</span>.\nSuscripción renovada. ¡Gracias! 🎉`;
   },
   entrega:(n,p,m,ctx)=>{
     // ctx = {plats, perfilesSel, pins, vcto} — usa getPerfKey para claves indexadas
@@ -3338,18 +3340,35 @@ const WA={
       const {pl, perf, pin, usr} = entries[0] || {pl:p,perf:{},pin:'—',usr:'—'};
       const link = perf?.link || ctx?.link || getLink(pl);
       if (pl === 'IP') {
-        return `Hola <span class="wav">${n}</span> 📺 Tu IPTV ya está activa.\n\nIngresa estos datos en tu app en el siguiente orden:\n\n1️⃣ Nombre: <span class="wav">${n}</span>\n2️⃣ Usuario: <span class="wav">${usr}</span>\n3️⃣ Clave: <span class="wav">${perf?.clave||'—'}</span>\n4️⃣ Servidor: <span class="wav">${link||perf?.link||perf?.correo||'—'}</span>\n\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span>\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
+        // IPTV: el "Usuario" es el correo de la cuenta (credencial real), no el
+        // nombre en pantalla que tecleó el operador — mismo dato que ya muestra
+        // la tarjeta visual de mostrarExitoVenta().
+        const usuarioIP = perf?.correo || usr || '—';
+        const servidor  = link || perf?.link || perf?.correo || '—';
+        const plantilla = buscarPlantillaWA('entrega de cuenta nueva — iptv');
+        if (plantilla) return sustituirWA(plantilla, { nombre:n, usuario:usuarioIP, clave:perf?.clave||'—', servidor, perfil:ctx?.perfil||'—', fecha_vcto:ctx?.vcto||'—', monto:m });
+        return `Hola <span class="wav">${n}</span> 📺 Tu IPTV ya está activa.\n\nIngresa estos datos en tu app en el siguiente orden:\n\n1️⃣ Nombre: <span class="wav">${n}</span>\n2️⃣ Usuario: <span class="wav">${usuarioIP}</span>\n3️⃣ Clave: <span class="wav">${perf?.clave||'—'}</span>\n4️⃣ Servidor: <span class="wav">${servidor}</span>\n\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">$${m}</span>\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
       }
-      return `Hola <span class="wav">${n}</span> 🎉 Tu <span class="wav">${getPNom(pl)}</span> ya está activa.\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👤 Usuario: <span class="wav">${usr}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n📌 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span>\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
+      const plantilla = buscarPlantillaWA('entrega de cuenta nueva');
+      if (plantilla) {
+        const vars = { nombre:n, plataforma:p, correo:perf.correo||'—', clave:perf.clave||'—', usuario:usr, perfil:ctx?.perfil||'—', pin, fecha_vcto:ctx?.vcto||'—', monto:m, link:link||'—' };
+        return inyectarLinkWA(sustituirWA(plantilla, vars), plantilla.contenido, link);
+      }
+      return `Hola <span class="wav">${n}</span> 🎉 Tu <span class="wav">${getPNom(pl)}</span> ya está activa.\n📧 Correo: <span class="wav">${perf.correo||'—'}</span>\n🔑 Clave: <span class="wav">${perf.clave||'—'}</span>\n👤 Usuario: <span class="wav">${usr}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n📌 PIN: <span class="wav">${pin}</span>\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">$${m}</span>\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
     }
-    // Multi-perfil o combo
+    // Multi-perfil o combo: estructura (saludo + un bloque por plataforma + pie) se
+    // arma en código, no desde PLANTILLAS_WA — un mensaje combinado por plataforma no
+    // tiene forma de expresarse con el motor de sustitución plano actual. Los VALORES
+    // de cada bloque sí son datos reales (perf.correo/clave/link), y el bloque IP usa
+    // el mismo criterio de "usuario = correo" que la rama individual.
     let msg = `Hola <span class="wav">${n}</span>, bienvenido/a 🎉\n\nTu combo ya está activo:\n`;
     entries.forEach(({pl, perf, pin, usr}) => {
       const link = perf?.link || getLink(pl);
       if (pl === 'IP') {
+        const usuarioIP = perf?.correo || usr || '—';
         msg += `\n📺 <span class="wav">IPTV</span>\n`;
         msg += `1️⃣ Nombre: <span class="wav">${n}</span>\n`;
-        msg += `2️⃣ Usuario: <span class="wav">${usr}</span>\n`;
+        msg += `2️⃣ Usuario: <span class="wav">${usuarioIP}</span>\n`;
         msg += `3️⃣ Clave: <span class="wav">${perf?.clave||'—'}</span>\n`;
         msg += `4️⃣ Servidor: <span class="wav">${perf?.link||getLink('IP')||'—'}</span>\n`;
       } else {
@@ -3361,13 +3380,20 @@ const WA={
         if (link) msg += `🔗 Link: <span class="wav">${link}</span>\n`;
       }
     });
-    msg += `\n\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${m}</span> 🎪`;
+    msg += `\n\n📅 Vence: <span class="wav">${ctx?.vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">$${m}</span> 🎪`;
     msg += `\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
     return msg;
   },
   cambio:(n,p,m,ctx)=>{
     const link = ctx?.link || (PLATAFORMAS||[]).find(x => x.codigo === ctx?.platCod)?.link || '';
-    const plantilla = (PLANTILLAS_WA||[]).find(t => t.tipo === 'Cambio');
+    if (ctx?.platCod === 'IP') {
+      const usuarioIP = ctx?.correo || ctx?.usuario || '—';
+      const servidor  = link || ctx?.correo || '—';
+      const plantilla = buscarPlantillaWA('cambio de cuenta / plataforma — iptv');
+      if (plantilla) return sustituirWA(plantilla, { nombre:n, usuario:usuarioIP, clave:ctx?.clave||'—', servidor, perfil:ctx?.perfil||'—' });
+      return `Hola <span class="wav">${n}</span> 📺 Actualizamos tu cuenta de IPTV.\n\nIngresa estos datos en tu app en el siguiente orden:\n\n1️⃣ Nombre: <span class="wav">${n}</span>\n2️⃣ Usuario: <span class="wav">${usuarioIP}</span>\n3️⃣ Clave: <span class="wav">${ctx?.clave||'—'}</span>\n4️⃣ Servidor: <span class="wav">${servidor}</span>\n\nTu vencimiento no cambia. 🙏`;
+    }
+    const plantilla = buscarPlantillaWA('cambio de cuenta / plataforma');
     if (plantilla) {
       const vars = {
         nombre:     n,
@@ -3379,23 +3405,29 @@ const WA={
         pin:        ctx?.pin     || '—',
         link:       link         || '—'
       };
-      return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
-        key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
-      );
+      return inyectarLinkWA(sustituirWA(plantilla, vars), plantilla.contenido, link);
     }
     return `Hola <span class="wav">${n}</span> 🔄\n\nActualizamos tu cuenta de <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.usuario||'—'}</span>\n🔢 PIN: <span class="wav">${ctx?.pin||'—'}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n\nTu vencimiento no cambia. 🙏`;
   },
-  clave:(n,p,m,ctx)=>{const vars={nombre:n,plataforma:p,correo:ctx?.correo||'—',clave:ctx?.clave||'—',clave_nueva:ctx?.clave||'—',perfil:ctx?.perfil||'—',usuario:n||'—',pin:ctx?.pin||'—',vcto:ctx?.vcto||ctx?.fecha_vcto||'—',fecha_vcto:ctx?.vcto||ctx?.fecha_vcto||'—'};const pl=(PLANTILLAS_WA||[]).find(t=>t.tipo==='Seguridad');if(pl)return pl.contenido.replace(/\{(\w+)\}/g,(_,k)=>k==='clave_nueva'?`<span class="wav">${vars.clave}</span>`:k in vars?`<span class="wav">${vars[k]}</span>`:`{${k}}`);return `Hola <span class="wav">${n}</span> 🔐\n\nPor seguridad actualizamos la clave de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${vars.correo}</span>\n🔑 Clave nueva: <span class="wav">${vars.clave}</span>\n👤 Usuario: <span class="wav">${n}</span>\n🔢 PIN: <span class="wav">${vars.pin}</span>\n📅 Vence: <span class="wav">${vars.vcto}</span>\n\nCualquier duda escríbenos. 🙏`;},
+  clave:(n,p,m,ctx)=>{
+    const vars={nombre:n,plataforma:p,correo:ctx?.correo||'—',clave:ctx?.clave||'—',clave_nueva:ctx?.clave||'—',perfil:ctx?.perfil||'—',usuario:n||'—',pin:ctx?.pin||'—',vcto:ctx?.vcto||ctx?.fecha_vcto||'—',fecha_vcto:ctx?.vcto||ctx?.fecha_vcto||'—'};
+    const plantilla = buscarPlantillaWA('cambio de contraseña');
+    if (plantilla) return plantilla.contenido.replace(/\{(\w+)\}/g,(_,k)=>k==='clave_nueva'?`<span class="wav">${vars.clave}</span>`:k in vars?`<span class="wav">${vars[k]}</span>`:`{${k}}`);
+    return `Hola <span class="wav">${n}</span> 🔐\n\nPor seguridad actualizamos la clave de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${vars.correo}</span>\n🔑 Clave nueva: <span class="wav">${vars.clave}</span>\n👤 Usuario: <span class="wav">${n}</span>\n🔢 PIN: <span class="wav">${vars.pin}</span>\n📅 Vence: <span class="wav">${vars.vcto}</span>\n\nCualquier duda escríbenos. 🙏`;
+  },
   reenvio_accesos:(n,p,m,ctx)=>{
     // Combo: ctx tiene plats[] — delegar a WA.entrega que ya maneja multi-perfil
     if (ctx?.plats?.length) return WA.entrega(n, p, m, ctx);
-    // Individual: usar plantilla de tipo 'Venta' de PLANTILLAS_WA
+    // Individual
     const link = ctx?.link || (PLATAFORMAS||[]).find(x => x.codigo === ctx?.platCod)?.link || '';
     if (ctx?.platCod === 'IP' || p === 'IPTV' || p === 'IP') {
-      const linkIP = ctx?.link || (PLATAFORMAS||[]).find(x => x.codigo === 'IP')?.link || ctx?.correo || '—';
-      return `Hola <span class="wav">${n}</span> 📺 Tu IPTV ya está activa.\n\nIngresa estos datos en tu app en el siguiente orden:\n\n1️⃣ Nombre: <span class="wav">${n}</span>\n2️⃣ Usuario: <span class="wav">${ctx?.correo||ctx?.usuario||ctx?.perfil||'—'}</span>\n3️⃣ Clave: <span class="wav">${ctx?.clave||ctx?.pin||'—'}</span>\n4️⃣ Servidor: <span class="wav">${linkIP}</span>\n\n📅 Vence: <span class="wav">${ctx?.fecha_vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">${ctx?.monto||m}</span>\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
+      const linkIP    = ctx?.link || (PLATAFORMAS||[]).find(x => x.codigo === 'IP')?.link || ctx?.correo || '—';
+      const usuarioIP = ctx?.correo || ctx?.usuario || ctx?.perfil || '—';
+      const plantilla = buscarPlantillaWA('entrega de cuenta nueva — iptv');
+      if (plantilla) return sustituirWA(plantilla, { nombre:n, usuario:usuarioIP, clave:ctx?.clave||ctx?.pin||'—', servidor:linkIP, perfil:ctx?.perfil||'—', fecha_vcto:ctx?.fecha_vcto||'—', monto:ctx?.monto||m });
+      return `Hola <span class="wav">${n}</span> 📺 Tu IPTV ya está activa.\n\nIngresa estos datos en tu app en el siguiente orden:\n\n1️⃣ Nombre: <span class="wav">${n}</span>\n2️⃣ Usuario: <span class="wav">${usuarioIP}</span>\n3️⃣ Clave: <span class="wav">${ctx?.clave||ctx?.pin||'—'}</span>\n4️⃣ Servidor: <span class="wav">${linkIP}</span>\n\n📅 Vence: <span class="wav">${ctx?.fecha_vcto||'—'}</span>\n💰 Próx. pago: <span class="wav">$${ctx?.monto||m}</span>\n─────────────\n🔖 Ref: <span class="wav">${ctx?.perfil||'—'}</span>`;
     }
-    const plantilla = (PLANTILLAS_WA||[]).find(t => t.tipo === 'Venta');
+    const plantilla = buscarPlantillaWA('entrega de cuenta nueva');
     if (plantilla) {
       const vars = {
         nombre:     n,
@@ -3403,28 +3435,16 @@ const WA={
         correo:     ctx?.correo     || '—',
         clave:      ctx?.clave      || '—',
         perfil:     ctx?.perfil     || '—',
-        usuario:    ctx?.platCod === 'IP' ? (ctx?.correo || '—') : (ctx?.usuario || ctx?.perfil || '—'),
+        usuario:    ctx?.usuario || ctx?.perfil || '—',
         pin:        ctx?.pin        || '—',
         fecha_vcto: ctx?.fecha_vcto || '—',
         monto:      ctx?.monto      || m,
         link:       link            || '—',
         datos_pago: '—'
       };
-      let result = plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
-        key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
-      );
-      // Inyectar link después de la línea "👤 Usuario" cuando hay link y la plantilla no lo incluye
-      if (link && !plantilla.contenido.includes('{link}')) {
-        const pos = result.indexOf('\n👤 Usuario:');
-        if (pos !== -1) {
-          const endOfLine = result.indexOf('\n', pos + 1);
-          const insertAt = endOfLine !== -1 ? endOfLine : result.length;
-          result = result.slice(0, insertAt) + `\n🔗 Link: <span class="wav">${link}</span>` + result.slice(insertAt);
-        }
-      }
-      return result;
+      return inyectarLinkWA(sustituirWA(plantilla, vars), plantilla.contenido, link);
     }
-    return `Hola <span class="wav">${n}</span> 🎉\n\nTe reenviamos los accesos de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.platCod === 'IP' ? (ctx?.correo||'—') : (ctx?.usuario||ctx?.perfil||'—')}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n📌 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n📅 Vence: <span class="wav">${ctx?.fecha_vcto||'—'}</span>\n💰 Monto: <span class="wav">${m}</span>`;
+    return `Hola <span class="wav">${n}</span> 🎉\n\nTe reenviamos los accesos de tu <span class="wav">${p}</span>:\n📧 Correo: <span class="wav">${ctx?.correo||'—'}</span>\n🔑 Clave: <span class="wav">${ctx?.clave||'—'}</span>\n👤 Usuario: <span class="wav">${ctx?.usuario||ctx?.perfil||'—'}</span>${link ? `\n🔗 Link: <span class="wav">${link}</span>` : ''}\n📌 PIN: <span class="wav">${ctx?.pin||'—'}</span>\n📅 Vence: <span class="wav">${ctx?.fecha_vcto||'—'}</span>\n💰 Monto: <span class="wav">$${m}</span>`;
   },
 };
 // Fecha dinámica en el header
@@ -3665,7 +3685,11 @@ function renderC(data){
     const vb=c.dias===0?`<span class="b br">Hoy</span>`:c.dias===1?`<span class="b ba">Mañana</span>`:c.dias<=3?`<span class="b" style="background:rgba(245,200,35,.15);color:#f5c842">${c.dias} días</span>`:`<span class="b bp">${c.dias} días</span>`;
     const eb=c.est==='activo'?'<span class="b bg">Activo</span>':c.est==='sin_renovar'?'<span class="b ba">Sin renovar</span>':'<span class="b bp">Inactivo</span>';
     const cb=c.cuentaBloqueada?' <span class="b br" title="Esta cuenta se encuentra bloqueada por el proveedor. El cliente continúa con suscripción activa y aún no se le ha realizado el cambio de cuenta correspondiente.">Cuenta bloqueada</span>':'';
-    return `<tr><td style="font-family:var(--mono);font-size:11px">${c.id}</td><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${formatTel(c.tel)}</td><td><div class="chips" style="margin:0">${chips}</div></td><td>${plats}</td><td>${vb}</td><td>${eb}${cb}</td><td class="tda"><button class="btn btn-sm btn-ic" onclick="abrirEditarCliente('${c.id}')"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago');selClientePago('${c.id}','${c.n} ${c.a}','${c.tel}')"><i class="ti ti-cash"></i></button><button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${c.n} ${c.a}','${c.plats.join('+')}','$${c.plats.length*9}.00','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i></button><button class="btn btn-sm btn-ic" onclick="openModal('m-cambio');cargarMotivosCambio();selClienteCambio('${c.id}','${c.n} ${c.a}','${c.tel}')"><i class="ti ti-arrows-exchange"></i></button></td></tr>`;
+    const subsWA = (SUBS_FULL||[]).filter(s => s.clienteId === c.id && s.est === 'activo' && s.dias === c.dias);
+    const montoWA = subsWA.reduce((acc, s) => acc + (Number(s.monto) || 0), 0);
+    const fVctoWA = subsWA[0]?.fVcto || '';
+    const platsNomWA = c.plats.map(p => platNombre(p)).join(' + ');
+    return `<tr><td style="font-family:var(--mono);font-size:11px">${c.id}</td><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${formatTel(c.tel)}</td><td><div class="chips" style="margin:0">${chips}</div></td><td>${plats}</td><td>${vb}</td><td>${eb}${cb}</td><td class="tda"><button class="btn btn-sm btn-ic" onclick="abrirEditarCliente('${c.id}')"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago');selClientePago('${c.id}','${c.n} ${c.a}','${c.tel}')"><i class="ti ti-cash"></i></button><button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${c.n} ${c.a}','${platsNomWA}','${montoWA.toFixed(2)}','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}',{fecha_vcto:'${fVctoWA}'})"><i class="ti ti-brand-whatsapp"></i></button><button class="btn btn-sm btn-ic" onclick="openModal('m-cambio');cargarMotivosCambio();selClienteCambio('${c.id}','${c.n} ${c.a}','${c.tel}')"><i class="ti ti-arrows-exchange"></i></button></td></tr>`;
   }).join('');
 }
 function filtC(q){
@@ -3842,7 +3866,7 @@ async function tabCob(el,id){
         <td style="font-size:11px;white-space:nowrap">${_pin1H} <button class="btn btn-sm btn-ic" title="Copiar PIN perfil 1" onclick="navigator.clipboard.writeText('${_pin1H}').then(()=>toast('PIN copiado ✓','ok'))"><i class="ti ti-copy"></i></button></td>
         <td><div class="rdots"><div class="rd p"></div><span class="rl">3d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd s" style="margin-left:3px"></div><span class="rl">hoy</span></div></td>
         <td class="tda">
-          <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','vencimiento')"><i class="ti ti-brand-whatsapp"></i>WA</button>
+          <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${platNombre(s.plat)}','${(s.monto||0).toFixed(2)}','vencimiento',{fecha_vcto:'${s.fVcto||''}'})"><i class="ti ti-brand-whatsapp"></i>WA</button>
           <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
           <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${_platRealCob}&nombre=${encodeURIComponent(nombreChromeCob)}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
         </td></tr>`;
@@ -3885,7 +3909,7 @@ async function tabCob(el,id){
         <td style="font-size:11px;white-space:nowrap">${_pin1V} <button class="btn btn-sm btn-ic" title="Copiar PIN perfil 1" onclick="navigator.clipboard.writeText('${_pin1V}').then(()=>toast('PIN copiado ✓','ok'))"><i class="ti ti-copy"></i></button></td>
         <td><span class="b br">Hace ${diasText}</span></td>
         <td class="tda">
-          <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','vencimiento')"><i class="ti ti-brand-whatsapp"></i>WA</button>
+          <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${platNombre(s.plat)}','${(s.monto||0).toFixed(2)}','vencimiento',{fecha_vcto:'${s.fVcto||''}'})"><i class="ti ti-brand-whatsapp"></i>WA</button>
           <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
           <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${_platRealCob}&nombre=${encodeURIComponent(nombreChromeCob)}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
         </td></tr>`;
@@ -3903,7 +3927,7 @@ async function tabCob(el,id){
       <td>${s.fVcto}</td>
       <td><div class="rdots"><div class="rd p"></div><span class="rl">3d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd ${s.diasVcto===0?'s':'p'}" style="margin-left:3px"></div><span class="rl">hoy</span></div></td>
       <td class="tda">
-        <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${s.plat}','$${(s.monto||0).toFixed(2)}','${s.diasVcto===0?'vencimiento':s.diasVcto===1?'1d':'3d'}')"><i class="ti ti-brand-whatsapp"></i>WA</button>
+        <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${platNombre(s.plat)}','${(s.monto||0).toFixed(2)}','${s.diasVcto===0?'vencimiento':s.diasVcto===1?'1d':'3d'}',{fecha_vcto:'${s.fVcto||''}'})"><i class="ti ti-brand-whatsapp"></i>WA</button>
         <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
       </td></tr>`;
   }).join('');
@@ -4539,7 +4563,7 @@ async function confirmarVentaDesdeModal(){
       entries.forEach(e => { _waPerfilesSel[e.key] = e.perf; });
       const _refCompleto = entries.map(e => e.perf?.codigo).filter(Boolean).join(' + ');
       const _montoProxPago = precioTrasPromo != null ? precioTrasPromo : monto;
-      abrirWA(_waNombre, platNombre(_exitoEntry.p), '$'+_montoProxPago.toFixed(2), 'entrega', {
+      abrirWA(_waNombre, platNombre(_exitoEntry.p), _montoProxPago.toFixed(2), 'entrega', {
         plats: plats,
         perfilesSel: _waPerfilesSel,
         correo: _exitoEntry.perf?.correo, clave: _exitoEntry.perf?.clave,
@@ -5121,7 +5145,7 @@ async function confirmarCambio(){
     // 5. Abrir WA con datos reales (nombre capturado antes del reset; plataforma real del perfil nuevo)
     const monto = subActual.monto || 0;
     const platNom = platNombre(perfilNuevoPlat);
-    setTimeout(() => abrirWA(clienteNombreWA, platNom, '$'+monto.toFixed(2), 'cambio', {
+    setTimeout(() => abrirWA(clienteNombreWA, platNom, monto.toFixed(2), 'cambio', {
       correo:  correoNuevo,
       clave:   claveNueva,
       link:    perfilNuevoEl.dataset.link || '',
@@ -8841,7 +8865,7 @@ function renderSubs(data) {
       <td class="tda">
         <button class="btn btn-sm btn-ic" onclick="abrirEditarSubById(${s.id})" title="Editar"><i class="ti ti-edit"></i></button>
         <button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${_sNom}','${s.tel}')" title="Registrar pago"><i class="ti ti-cash"></i></button>
-        <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${_sNom}','${_sPlat}','$${s.monto.toFixed(2)}','${s.dias===0?'vencimiento':s.dias<=1?'1d':'3d'}',{correo:'${_sCorreo}',clave:'${_sClave}',perfil:'${_sPerfil}',pin:'${_sPin}',vcto:'${_sVcto}',fecha_vcto:'${_sVcto}',usuario:'${_sUsuario}',link:'${_sLink}',platCod:'${s.plat}'})" title="WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>
+        <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${_sNom}','${_sPlat}','${s.monto.toFixed(2)}','${s.dias===0?'vencimiento':s.dias<=1?'1d':'3d'}',{correo:'${_sCorreo}',clave:'${_sClave}',perfil:'${_sPerfil}',pin:'${_sPin}',vcto:'${_sVcto}',fecha_vcto:'${_sVcto}',usuario:'${_sUsuario}',link:'${_sLink}',platCod:'${s.plat}'})" title="WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>
         <button class="btn btn-sm btn-ic" onclick="reenviarAccesos(${s.id})" title="Reenviar accesos"><i class="ti ti-send"></i></button>
       </td>
     </tr>`;
@@ -8874,14 +8898,14 @@ async function reenviarAccesos(subId) {
     const first       = comboSubs[0] || s;
     const platNomFirst = (PLATAFORMAS||[]).find(p => p.codigo === first.plat)?.nombre || first.plat;
     abrirWA(
-      s.nombre, platNomFirst, '$' + montoTotal.toFixed(2), 'reenvio_accesos',
+      s.nombre, platNomFirst, montoTotal.toFixed(2), 'reenvio_accesos',
       { perfilesSel, plats, pins, usuarios, vcto: s.fVcto },
       meta
     );
   } else {
     // Individual
     const platNom = (PLATAFORMAS||[]).find(p => p.codigo === s.plat)?.nombre || s.plat;
-    const monto   = '$' + Number(s.monto).toFixed(2);
+    const monto   = Number(s.monto).toFixed(2);
     let linkRenv = '';
     if (s.plat === 'IP') {
       const cuentaIdRenv = s.perfil && s.perfil !== '—' ? s.perfil.slice(0, -1) : null;
@@ -10564,15 +10588,27 @@ function vctCopiarWA(idx) {
   const fecha  = r.fVcto;
   const monto  = Number(r.monto).toFixed(2);
   const d      = r.dias;
+  const buscarPlantilla = nombre => (PLANTILLAS_WA||[]).find(t => t.nombre?.trim().toLowerCase() === nombre);
+  const sustituir = (plantilla, vars) => plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
+    key in vars ? vars[key] : `{${key}}`
+  );
   let msg;
   if (d >= 3) {
-    msg = `🍿 Hola ${nombre}, tu ${plat} vence el ${fecha} (en ${d} días).\nRenueva a tiempo para mantener tu precio actual de $${monto}.\n💳 Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Envía comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.`;
+    const plantilla = buscarPlantilla('por vencer');
+    msg = plantilla ? sustituir(plantilla, { nombre, plataforma: plat, fecha_vcto: fecha, monto, dias: d })
+      : `🍿 Hola ${nombre}, tu ${plat} vence el ${fecha} (en ${d} días).\nRenueva a tiempo para mantener tu precio actual de $${monto}.\n💳 Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Envía comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.`;
   } else if (d === 1 || d === 2) {
-    msg = `🔴 Hola ${nombre}, tu ${plat} vence MAÑANA ${fecha}.\n¡Renueva hoy para conservar tu precio de $${monto}!\n💳 Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.`;
+    const plantilla = buscarPlantilla('vence mañana');
+    msg = plantilla ? sustituir(plantilla, { nombre, plataforma: plat, fecha_vcto: fecha, monto })
+      : `🔴 Hola ${nombre}, tu ${plat} vence MAÑANA ${fecha}.\n¡Renueva hoy para conservar tu precio de $${monto}!\n💳 Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.`;
   } else if (d === 0) {
-    msg = `🚨 Hola ${nombre}, tu ${plat} VENCE HOY ${fecha}.\n⏰ Es tu último día para renovar y mantener tu acceso.\n💳 $${monto} · Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas hoy, tu cuenta será suspendida y perderás el precio promocional.`;
+    const plantilla = buscarPlantilla('vence hoy');
+    msg = plantilla ? sustituir(plantilla, { nombre, plataforma: plat, fecha_vcto: fecha, monto })
+      : `🚨 Hola ${nombre}, tu ${plat} VENCE HOY ${fecha}.\n⏰ Es tu último día para renovar y mantener tu acceso.\n💳 $${monto} · Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas hoy, tu cuenta será suspendida y perderás el precio promocional.`;
   } else {
-    msg = `🚨 Hola ${nombre}, tu ${plat} VENCIÓ el ${fecha} y será SUSPENDIDA.\n⚠️ Renueva ahora para recuperar tu acceso antes de que sea eliminada.\n💳 $${monto} · Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. Sin reembolsos.\n📌 Al reactivar fuera de tiempo se aplicará la tarifa vigente, no el precio anterior.`;
+    const plantilla = buscarPlantilla('vencido');
+    msg = plantilla ? sustituir(plantilla, { nombre, plataforma: plat, fecha_vcto: fecha, monto })
+      : `🚨 Hola ${nombre}, tu ${plat} VENCIÓ el ${fecha} y será SUSPENDIDA.\n⚠️ Renueva ahora para recuperar tu acceso antes de que sea eliminada.\n💳 $${monto} · Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. Sin reembolsos.\n📌 Al reactivar fuera de tiempo se aplicará la tarifa vigente, no el precio anterior.`;
   }
   if (r.tienePromoPendiente && Math.abs(r.montoTrasPromo - Number(monto)) > 0.001) {
     msg += `\n💡 Nota: esta es tu última renovación con precio promocional. Desde la próxima, el precio será $${r.montoTrasPromo.toFixed(2)}.`;
@@ -11885,12 +11921,14 @@ async function rptfProyeccionGenerar() {
 // PLANTILLAS WA
 // ═══════════════════════════════════════════════════════════
 let PLANTILLAS_WA = [
-  {nombre:'Entrega de cuenta nueva',   tipo:'Venta',     contenido:'Hola {nombre} 🎉 Tu {plataforma} ya está activa.\n📧 Correo: {correo}\n🔑 Clave: {clave}\n👤 Usuario: {perfil}\n📌 PIN: {pin}\n📅 Vence: {fecha_vcto}\n💰 Próx. pago: {monto}\n─────────────\n🔖 Ref: {perfil}'},
-  {nombre:'Recordatorio 3 días',       tipo:'Cobranza',  contenido:'Hola {nombre} 👋 Tu {plataforma} vence en 3 días. Monto: {monto}. Datos: {datos_pago} 🙏'},
-  {nombre:'Recordatorio 1 día',        tipo:'Cobranza',  contenido:'Hola {nombre}, tu {plataforma} vence mañana. Envía tu pago de {monto} para no perder el servicio. 🙏'},
+  {nombre:'Entrega de cuenta nueva',   tipo:'Venta',     contenido:'Hola {nombre} 🎉 Tu {plataforma} ya está activa.\n📧 Correo: {correo}\n🔑 Clave: {clave}\n👤 Usuario: {usuario}\n📌 PIN: {pin}\n📅 Vence: {fecha_vcto}\n💰 Próx. pago: {monto}\n─────────────\n🔖 Ref: {perfil}'},
   {nombre:'Confirmación de pago',      tipo:'Post pago', contenido:'Hola {nombre} ✅ Recibimos tu pago de {monto} por {plataforma}. Renovado hasta {fecha_vcto}. ¡Gracias! 🎉'},
   {nombre:'Cambio de contraseña',      tipo:'Seguridad', contenido:'Hola {nombre} 🔐\n\nPor seguridad actualizamos la clave de tu {plataforma}:\n📧 Correo: {correo}\n🔑 Clave nueva: {clave}\n👤 Usuario: {nombre}\n🔢 PIN: {pin}\n📅 Vence: {fecha_vcto}\n\nCualquier duda escríbenos. 🙏\n─────────────\n🔖 Ref: {perfil}'},
-  {nombre:'Cambio de cuenta / plataforma', tipo:'Cambio', contenido:'Hola {nombre} 🔄 Actualizamos tu cuenta de {plataforma}.\n📧 Correo: {correo}\n🔑 Clave: {clave}\n👤 Usuario: {usuario}\n📌 PIN: {pin}\nTu vencimiento no cambia. Cualquier duda escríbenos. 🙏\n─────────────\n🔖 Ref: {perfil}'}
+  {nombre:'Cambio de cuenta / plataforma', tipo:'Cambio', contenido:'Hola {nombre} 🔄 Actualizamos tu cuenta de {plataforma}.\n📧 Correo: {correo}\n🔑 Clave: {clave}\n👤 Usuario: {usuario}\n📌 PIN: {pin}\nTu vencimiento no cambia. Cualquier duda escríbenos. 🙏\n─────────────\n🔖 Ref: {perfil}'},
+  {nombre:'Por vencer',                tipo:'Cobranza',  contenido:'🍿 Hola {nombre}, tu {plataforma} vence el {fecha_vcto} (en {dias} días).\nRenueva a tiempo para mantener tu precio actual de ${monto}.\n💳 Yappy: 6639-2725 · Transferencia/depósito\n📲 Envía comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. No se realizan reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.'},
+  {nombre:'Vence mañana',              tipo:'Cobranza',  contenido:'🔴 Hola {nombre}, tu {plataforma} vence MAÑANA {fecha_vcto}.\n¡Renueva hoy para conservar tu precio de ${monto}!\n💳 Yappy: 6639-2725 · Transferencia/depósito\n📲 Comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. No se realizan reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.'},
+  {nombre:'Vence hoy',                 tipo:'Cobranza',  contenido:'🚨 Hola {nombre}, tu {plataforma} VENCE HOY {fecha_vcto}.\n⏰ Es tu último día para renovar y mantener tu acceso.\n💳 ${monto} · Yappy: 6639-2725 · Transferencia/depósito\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. No se realizan reembolsos.\n📌 Si no renuevas hoy, tu cuenta será suspendida y perderás el precio promocional.'},
+  {nombre:'Vencido',                   tipo:'Cobranza',  contenido:'🚨 Hola {nombre}, tu {plataforma} VENCIÓ el {fecha_vcto} y será SUSPENDIDA.\n⚠️ Renueva ahora para recuperar tu acceso antes de que sea eliminada.\n💳 ${monto} · Yappy: 6639-2725 · Transferencia/depósito\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. No se realizan reembolsos.\n📌 Al reactivar fuera de tiempo se aplicará la tarifa vigente, no el precio anterior.'}
 ];
 let _plantillaEditIdx = -1;
 let _plantillaEditIdBorrador = null;
@@ -11901,14 +11939,23 @@ async function cargarPlantillasWA() {
       .select('id, nombre, tipo, contenido, estado, variables_disponibles')
       .eq('estado', 'activa')
       .order('id');
-    if (error) { console.warn('[PLANTILLAS_WA] Error cargando desde Supabase, se mantienen valores por defecto:', error.message); return; }
-    if (!data || !data.length) { console.warn('[PLANTILLAS_WA] Sin plantillas activas en Supabase, se mantienen valores por defecto'); return; }
+    if (error) {
+      console.warn('[PLANTILLAS_WA] Error cargando desde Supabase, se mantienen valores por defecto:', error.message);
+      toast('⚠️ No se pudieron cargar las plantillas WA desde Supabase — usando valores por defecto', 'warn');
+      return;
+    }
+    if (!data || !data.length) {
+      console.warn('[PLANTILLAS_WA] Sin plantillas activas en Supabase, se mantienen valores por defecto');
+      toast('⚠️ No hay plantillas WA activas en Supabase — usando valores por defecto', 'warn');
+      return;
+    }
     PLANTILLAS_WA.length = 0;
     data.forEach(p => PLANTILLAS_WA.push({ id: p.id, nombre: p.nombre, tipo: p.tipo, contenido: p.contenido, variables_disponibles: p.variables_disponibles }));
     console.log('[PLANTILLAS_WA] Cargadas desde Supabase ✓', PLANTILLAS_WA.length, 'plantillas activas');
     if (typeof renderPlantillasWA === 'function') renderPlantillasWA();
   } catch (e) {
     console.warn('[PLANTILLAS_WA] Excepción cargando desde Supabase, se mantienen valores por defecto:', e.message);
+    toast('⚠️ Error cargando plantillas WA — usando valores por defecto', 'warn');
   }
 }
 
@@ -11933,7 +11980,7 @@ async function cargarBorradoresPlantillas() {
           <span style="font-size:12px;font-weight:500">${p.nombre}</span>
           <span class="b ${badge}" style="margin-left:auto">${p.tipo}</span>
           <button class="btn btn-sm btn-ic" onclick="editarBorradorWA(${p.id})" title="Editar"><i class="ti ti-edit"></i></button>
-          <button class="btn btn-sm btn-ic" onclick="activarPlantillaWA(${p.id}, '${p.tipo}')" title="Activar"><i class="ti ti-circle-check" style="color:var(--green)"></i></button>
+          <button class="btn btn-sm btn-ic" onclick="activarPlantillaWA(${p.id}, '${p.tipo}', '${(p.nombre||'').replace(/'/g,"\\'")}')" title="Activar"><i class="ti ti-circle-check" style="color:var(--green)"></i></button>
           <button class="btn btn-sm btn-ic" onclick="descartarBorradorWA(${p.id})" title="Descartar"><i class="ti ti-trash" style="color:var(--red)"></i></button>
         </div>
         <div style="padding:12px 14px;font-size:12px;line-height:1.7;color:var(--text2)">${preview}</div>
@@ -11944,10 +11991,10 @@ async function cargarBorradoresPlantillas() {
   }
 }
 
-async function activarPlantillaWA(id, tipo) {
-  if (!confirm('¿Activar esta plantilla? Reemplazará la plantilla activa actual de tipo "' + tipo + '".')) return;
+async function activarPlantillaWA(id, tipo, nombre) {
+  if (!confirm('¿Activar esta plantilla? Reemplazará la plantilla activa actual con el nombre "' + nombre + '".')) return;
   try {
-    const { error: e1 } = await supa.from('plantillas_wa').update({ estado: 'archivada' }).eq('tipo', tipo).eq('estado', 'activa');
+    const { error: e1 } = await supa.from('plantillas_wa').update({ estado: 'archivada' }).eq('nombre', nombre).eq('estado', 'activa');
     if (e1) throw e1;
     const { error: e2 } = await supa.from('plantillas_wa').update({ estado: 'activa' }).eq('id', id);
     if (e2) throw e2;
@@ -12786,7 +12833,7 @@ function _renderMensajesWA(data) {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin mensajes en las últimas 72 horas</td></tr>';
     return;
   }
-  const TIPO_LABEL = { entrega:'Entrega', cambio:'Cambio', vencimiento:'Vencimiento', '1d':'1 día', '3d':'3 días', pago:'Pago' };
+  const TIPO_LABEL = { entrega:'Entrega', cambio:'Cambio', vencimiento:'Vencimiento', '1d':'1 día', '3d':'3 días', pago:'Pago', codigo:'Código' };
   tbody.innerHTML = data.map(m => {
     const fecha = new Date(m.created_at);
     const fStr  = fecha.toLocaleDateString('es',{day:'2-digit',month:'2-digit'}) + ' ' +
@@ -13170,7 +13217,10 @@ function zcodMostrarWA() {
   if (!waWrap || !_zcod.cli || !_zcod.codigo) return;
   const plat     = (_zcod.sub?.perfil || '').substring(0,2) || _zcod.sub?.plat || '';
   const nombre   = (_zcod.cli.n||'') + ' ' + (_zcod.cli.a||'');
-  const tel      = (_zcod.cli.tel||'').replace(/[^0-9]/g,'');
+  // Código de país real del cliente (mismo criterio que vctCopiarTel/vctGenerar),
+  // en vez del "507" fijo — vctSplitTel ya separa código+número sin duplicar dígitos
+  const sp       = vctSplitTel(_zcod.cli.tel);
+  const tel      = (sp.code + sp.num).replace(/[^\d]/g,'') || (_zcod.cli.tel||'').replace(/[^0-9]/g,'');
   const codigo   = _zcod.codigo;
   const esLink   = codigo.startsWith('http');
   const platNom  = _ZCOD_NOMBRE[plat] || plat;
@@ -13185,12 +13235,13 @@ function zcodMostrarWA() {
     <button class="btn" style="flex:1;justify-content:center;padding:11px;background:var(--bg3);border-color:var(--border);color:var(--text);font-size:13px" onclick="document.getElementById('zcod-wa-wrap')._msgTexto && navigator.clipboard.writeText(document.getElementById('zcod-wa-wrap')._msgTexto).then(()=>toast('Mensaje copiado ✓','ok'))">
       <i class="ti ti-clipboard"></i> Copiar mensaje
     </button>
-    <a href="https://wa.me/507${tel}?text=${msgWA}" target="_blank" rel="noopener"
+    <a href="https://wa.me/${tel}?text=${msgWA}" target="_blank" rel="noopener"
       class="btn" style="flex:1;justify-content:center;padding:11px;background:#25D366;border-color:#25D366;color:#fff;text-decoration:none;font-size:13px">
       <i class="ti ti-brand-whatsapp"></i> Abrir WA
     </a>
   </div>`;
   waWrap.style.display = 'block';
+  guardarMensajeWA(_zcod.cli.id, nombre.trim(), _zcod.cli.tel, 'codigo', msgTexto);
 }
 
 function zcodReset() {
