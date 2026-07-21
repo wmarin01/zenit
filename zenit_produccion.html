@@ -352,7 +352,7 @@ async function dbCargarSuscripciones() {
         plat: s.plataforma,
         combo: s.combo_id && s.combo_id !== 'undefined' ? s.combo_id : '—',
         est: s.estado,
-        cuentaBloqueada: (cuentaId && _estadoMap[cuentaId] === 'Bloqueada' && s.estado === 'activo'),
+        cuentaBloqueada: (cuentaId && esBloqueado(_estadoMap[cuentaId]) && s.estado === 'activo'),
         cuentaEstado: cuentaId ? (_estadoMap[cuentaId] || '') : '',
         cuentaVctoProv: cuentaId ? (_vctoProvMap[cuentaId] || null) : null,
         clave_notificada_en: s.clave_notificada_en || null,
@@ -871,7 +871,7 @@ async function intentarLogin() {
     if (!data || !data.length) throw new Error('no_user');
     const u = data[0];
     // Verificar estado (case-insensitive)
-    if (u.estado && u.estado.toLowerCase() !== 'activo') throw new Error('no_user');
+    if (u.estado && !esActivo(u.estado)) throw new Error('no_user');
     const storedPass = (u.password_hash || u.password || u.clave || '').trim();
     const inputPass  = password.trim();
     if (storedPass !== inputPass) throw new Error('bad_pass');
@@ -3616,7 +3616,7 @@ async function renderDashboard() {
   const invDiv = document.getElementById('dash-inventario');
   if (invDiv) {
     const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)',IP:'var(--teal)'};
-    const plats = (PLATAFORMAS||[]).filter(p => p.estado !== 'inactiva').map(p => ({c: p.codigo, n: p.nombre}));
+    const plats = (PLATAFORMAS||[]).filter(p => !esInactivo(p.estado)).map(p => ({c: p.codigo, n: p.nombre}));
     invDiv.innerHTML = plats.map(p => {
       const cnt = (PERFILES_DISP[p.c]||[]).length;
       const badge = cnt === 0 ? '<span class="b br">Agotado</span>' : cnt <= 3 ? '<span class="b ba">Bajo</span>' : '<span class="b bg">OK</span>';
@@ -4251,7 +4251,7 @@ function updRolPreview(v){
 }
 
 async function confirmarBloqueo(id, nombre, estadoActual){
-  const activo = (estadoActual||'').toLowerCase() === 'activo';
+  const activo = esActivo(estadoActual);
   const nuevoEstado = activo ? 'Inactivo' : 'Activo';
   const msg = activo
     ? '¿Confirmas bloquear al usuario "'+nombre+'"?\nPodrás reactivarlo después.'
@@ -5477,7 +5477,7 @@ async function guardarCuenta(){
       if (!provNom || provNom === '— Seleccionar —' || provNom === '— Cargando... —') { toast('Selecciona un proveedor válido','warn'); return; }
 
       // 🚀 Validar que el correo no esté duplicado
-      const duplicado = INV_CACHE.find(c => c.correo.toLowerCase() === correo.toLowerCase() && c.plataforma === platVal && c.id !== codigo && c.estado !== 'Inactiva');
+      const duplicado = INV_CACHE.find(c => c.correo.toLowerCase() === correo.toLowerCase() && c.plataforma === platVal && c.id !== codigo && !esInactivo(c.estado));
       if (duplicado) { toast('Este correo ya está registrado en la cuenta ' + duplicado.id + ' (' + platVal + ')', 'warn'); return; }
 
       const maxPerf = (PLATAFORMAS||[]).find(x => x.codigo === platVal)?.max_perfiles ?? 5;
@@ -5505,7 +5505,7 @@ async function guardarCuenta(){
         if (e1) throw e1;
 
         // Si la cuenta se bloquea o inactiva, marcar todos sus perfiles como inactivos
-        if (['Bloqueada / Suspendida', 'Inactiva'].includes(estadoCta)) {
+        if (esBloqueado(estadoCta) || esInactivo(estadoCta)) {
           const { error: ep } = await supa.from('perfiles')
             .update({ estado: 'inactivo' })
             .eq('inventario_id', codigo);
@@ -6014,7 +6014,7 @@ async function cargarUsuariosSistema() {
       try { USUARIO_ACTIVO = JSON.parse(stored); } catch(e) {}
     }
     if (!USUARIO_ACTIVO) {
-      const activos = data.filter(u => (u.estado||'').toLowerCase() === 'activo');
+      const activos = data.filter(u => esActivo(u.estado));
       USUARIO_ACTIVO = activos.find(u => u.rol === 'Master') || activos[0] || data[0];
       sessionStorage.setItem('zenit_usuario', JSON.stringify(USUARIO_ACTIVO));
     }
@@ -6037,7 +6037,7 @@ async function cargarUsuariosSistema() {
       tbody.innerHTML = data.map(u => {
         const esMaster = u.rol === 'Master';
         const badge = rolMap[u.rol] || 'bi';
-        const estActivoU = (u.estado||'').toLowerCase() === 'activo';
+        const estActivoU = esActivo(u.estado);
         const estBadgeU = estActivoU ? '<span class="b bg">Activo</span>' : '<span class="b br">Inactivo</span>';
         return `<tr>
           <td><strong>${u.nombre||u.usuario}</strong><div style="font-size:11px;color:var(--text3)">${u.usuario}</div></td>
@@ -6326,7 +6326,7 @@ let NEXT_CLI_ID = 1; // Se actualiza al cargar clientes desde Supabase
 
 // Cargar siguiente código disponible desde Supabase para cada plataforma
 async function dbCargarNextCodigos() {
-  const plats = (PLATAFORMAS||[]).filter(p => p.estado !== 'inactiva').map(p => p.codigo);
+  const plats = (PLATAFORMAS||[]).filter(p => !esInactivo(p.estado)).map(p => p.codigo);
   for (const p of plats) {
     try {
       const { data } = await supa
@@ -6758,7 +6758,7 @@ function poblarPlanesPorTipo(tipo) {
 
   if (tipo === 'individual') {
     // Planes individuales: todos los planes de PRECIOS_IND agrupados por plataforma activa
-    const codsActivos = (PLATAFORMAS||[]).filter(p => p.estado === 'Activa').map(p => p.codigo);
+    const codsActivos = (PLATAFORMAS||[]).filter(p => esActivo(p.estado)).map(p => p.codigo);
     let hayPlanes = false;
     codsActivos.forEach(cod => {
       const planes = PRECIOS_IND[cod] || [];
@@ -8072,7 +8072,7 @@ function filtrarCuentasEgreso(provId) {
   const cont = document.getElementById('egreso-cuentas-chips');
   if (!cont) return;
   const cuentas = INV_CACHE.filter(c => {
-    const activa = (c.estado || '').toLowerCase() === 'activa';
+    const activa = esActivo(c.estado);
     if (!activa) return false;
     if (!provId || provId === 'no_aplica') return true;
     const prov = PROVEEDORES_CACHE.find(p => String(p.id) === String(provId));
@@ -8103,7 +8103,7 @@ function sugerirAbreviaturaProveedor() {
 async function cargarOpcionesProveedorForm() {
   const plCont = document.getElementById('prov-plats-list');
   if (plCont) {
-    plCont.innerHTML = (PLATAFORMAS||[]).filter(p => (p.estado||'').toLowerCase()==='activa').map(p =>
+    plCont.innerHTML = (PLATAFORMAS||[]).filter(p => esActivo(p.estado)).map(p =>
       `<label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:13px"><input type="checkbox" class="prov-plat-chk" value="${p.codigo}" style="width:auto">${p.nombre}</label>`
     ).join('');
   }
@@ -8796,7 +8796,7 @@ async function cargarTablaMotivos() {
   }
   tbody.innerHTML = data.map(m => {
     const badge = m.tipo==='Cambio de cuenta'?'bi':m.tipo==='Cambio de plataforma'?'bpu':'bp';
-    const estBadge = m.estado==='Activo'?'bg':'ba';
+    const estBadge = esActivo(m.estado)?'bg':'ba';
     return `<tr>
       <td><strong>${m.motivo}</strong></td>
       <td><span class="b ${badge}">${m.tipo||'—'}</span></td>
@@ -9491,6 +9491,15 @@ const COMBOS = [
 
 // Precios individuales por cantidad de perfiles
 let PRECIOS_IND = {};
+
+// Comparadores de estado normalizados (mayúscula/minúscula, género) — Etapa A
+// de la estandarización: usar estas funciones en vez de comparar contra literales
+// exactos, para no depender de la capitalización real guardada en cada tabla.
+function esActivo(valor)    { return ['activo','activa'].includes((valor||'').toLowerCase()); }
+function esInactivo(valor)  { return ['inactivo','inactiva'].includes((valor||'').toLowerCase()); }
+function esBloqueado(valor) { return ['bloqueado','bloqueada'].includes((valor||'').toLowerCase()); }
+function esVigente(valor)   { return (valor||'').toLowerCase() === 'vigente'; }
+function esArchivado(valor) { return ['archivado','archivada'].includes((valor||'').toLowerCase()); }
 
 function normalizarCombo(plataformas) {
   if (!plataformas || typeof plataformas !== 'string') return plataformas || '';
@@ -10891,8 +10900,8 @@ function rptsPerfilesFiltrar(filtro, btnEl) {
   }
   let data = RPT_PERFILES_DATA;
   if (filtro === 'ocupados')    data = data.filter(r => r.estSub === 'activo');
-  else if (filtro === 'disponibles') data = data.filter(r => r.estSub !== 'activo' && r.estCuenta === 'Activa');
-  else if (filtro === 'inactivos')   data = data.filter(r => r.perfilEst === 'inactivo' || !['Activa'].includes(r.estCuenta));
+  else if (filtro === 'disponibles') data = data.filter(r => r.estSub !== 'activo' && esActivo(r.estCuenta));
+  else if (filtro === 'inactivos')   data = data.filter(r => r.perfilEst === 'inactivo' || !esActivo(r.estCuenta));
   const platFiltro = document.getElementById('rpts-pf-plat')?.value || '';
   if (platFiltro) data = data.filter(r => r.plat === platFiltro);
   RPT_PERFILES_FILTERED = data;
@@ -10914,7 +10923,7 @@ function rptsPerfilesRender(data) {
     if (est === 'inactivo')    return `<span class="b br" style="font-size:11px">${est}</span>`;
     return `<span style="color:var(--text3);font-size:11px">${est}</span>`;
   };
-  const estCtaBadge = est => est === 'Activa'
+  const estCtaBadge = est => esActivo(est)
     ? `<span class="b bg" style="font-size:11px">${est}</span>`
     : `<span class="b br" style="font-size:11px">${est}</span>`;
   tbody.innerHTML = data.map(r => `<tr>
@@ -11298,7 +11307,7 @@ function rptiRenderPerfiles() {
   if (!cuerpo) return;
 
   const plats = (PLATAFORMAS && PLATAFORMAS.length)
-    ? PLATAFORMAS.filter(p => p.estado !== 'inactiva')
+    ? PLATAFORMAS.filter(p => !esInactivo(p.estado))
     : Object.keys(PERFILES_DISP).map(k => ({ codigo: k, nombre: k }));
 
   if (!plats.length) {
@@ -11596,7 +11605,7 @@ async function rptfRentabilidadGenerar() {
     // ── Costo promedio por perfil, por plataforma (cuentas activas) ──
     const costoPerfilPorPlat = {};
     (PLATAFORMAS || []).forEach(p => {
-      const cuentas = (INV_CACHE || []).filter(c => c.plataforma === p.codigo && (c.estado||'').toLowerCase() === 'activa');
+      const cuentas = (INV_CACHE || []).filter(c => c.plataforma === p.codigo && esActivo(c.estado));
       const sumCosto = cuentas.reduce((s,c) => {
         const costoReal = parseFloat(c.costo) || 0;
         let costoNormalizado = costoReal;
@@ -12322,7 +12331,7 @@ function renderPlataformas() {
       <td>${p.max_perfiles ?? 5}</td>
       <td>${p.digitos_pin ?? 4}</td>
       <td>${p.link ? `<a href="${p.link}" target="_blank" rel="noopener" style="font-size:12px;color:var(--accent)">Abrir</a>` : '—'}</td>
-      <td><span class="b ${p.estado === 'Activa' ? 'bg' : 'ba'}">${p.estado}</span></td>
+      <td><span class="b ${esActivo(p.estado) ? 'bg' : 'ba'}">${p.estado}</span></td>
       <td class="tda">
         <button class="btn btn-sm btn-ic" onclick="editarPlataforma('${p.codigo}')"><i class="ti ti-edit"></i></button>
       </td>
@@ -12330,7 +12339,7 @@ function renderPlataformas() {
 }
 
 function poblarSelectsPlataforma() {
-  const activas = PLATAFORMAS.filter(p => p.estado === 'Activa');
+  const activas = PLATAFORMAS.filter(p => esActivo(p.estado));
   const optsBase  = activas.map(p => `<option value="${p.codigo}">${p.nombre} (${p.codigo})</option>`).join('');
   const optsPlain = activas.map(p => `<option value="${p.codigo}">${p.nombre}</option>`).join('');
 
@@ -12678,7 +12687,7 @@ function poblarSelectorPara() {
   const sel = document.getElementById('chat-para');
   if (!sel) return;
   const miUsuario = USUARIO_ACTIVO?.usuario || USUARIO_ACTIVO?.nombre;
-  const otros = USUARIOS_SISTEMA_DATA.filter(u => (u.usuario || u.nombre) !== miUsuario && u.estado === 'Activo');
+  const otros = USUARIOS_SISTEMA_DATA.filter(u => (u.usuario || u.nombre) !== miUsuario && esActivo(u.estado));
   sel.innerHTML = '<option value="">Todos</option>' +
     otros.map(u => `<option value="${u.usuario||u.nombre}">${u.nombre||u.usuario}</option>`).join('');
 }
@@ -12787,10 +12796,10 @@ async function abrirChromeInventario(cuentaId, plat, correo, proveedor) {
 }
 
 function renderInventario(lista) {
-  const disp = lista.filter(i => i.estado === 'Activa' && ((parseInt(i.max_perfiles)||0) - (INV_SUBS_MAP[i.id]||0)) > 0).length;
-  const ocup = lista.filter(i => i.estado === 'Activa' && ((parseInt(i.max_perfiles)||0) - (INV_SUBS_MAP[i.id]||0)) <= 0).length;
+  const disp = lista.filter(i => esActivo(i.estado) && ((parseInt(i.max_perfiles)||0) - (INV_SUBS_MAP[i.id]||0)) > 0).length;
+  const ocup = lista.filter(i => esActivo(i.estado) && ((parseInt(i.max_perfiles)||0) - (INV_SUBS_MAP[i.id]||0)) <= 0).length;
   const venc = lista.filter(i => i.fecha_vcto_prov && new Date(i.fecha_vcto_prov) <= new Date(hoyPanamaDate())).length;
-  const bloq = lista.filter(i=>i.estado==='Bloqueada').length;
+  const bloq = lista.filter(i=>esBloqueado(i.estado)).length;
   document.getElementById('inv-cnt-disp').textContent = disp;
   document.getElementById('inv-cnt-ocup').textContent = ocup;
   document.getElementById('inv-cnt-venc').textContent = venc;
@@ -12818,7 +12827,7 @@ function renderInventario(lista) {
       cuentas.forEach(inv => {
         const vcto = inv.fecha_vcto_prov ? inv.fecha_vcto_prov.split('-').reverse().join('/') : '—';
         const compra = inv.fecha_compra ? inv.fecha_compra.split('-').reverse().join('/') : '—';
-        const estadoClass = inv.estado==='Activa'?'bg':inv.estado==='Vencida'?'br':inv.estado==='Bloqueada'?'ba':'bi';
+        const estadoClass = esActivo(inv.estado)?'bg':inv.estado==='Vencida'?'br':esBloqueado(inv.estado)?'ba':'bi';
         const maxP = parseInt(inv.max_perfiles) || 0;
         const ocupP = INV_SUBS_MAP[inv.id] || 0;
         const dispP = Math.max(0, maxP - ocupP);
