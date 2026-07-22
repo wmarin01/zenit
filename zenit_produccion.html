@@ -4685,197 +4685,6 @@ async function confirmarVentaDesdeModal(){
   }
 }
 
-async function confirmarVenta(){
-  const tipo     = ventaData.tipo;
-  const comboId  = ventaData.plats.length > 1 && new Set(ventaData.plats).size > 1
-    ? normalizarCombo(ventaData.plats.join('+')) : '—';
-
-  // Construir lista de entradas indexadas
-  const plats = ventaData.plats;
-  const uniquePlats = [...new Set(plats)];
-  const entries = plats.map((p, i) => {
-    const idxEnPlat = plats.slice(0,i).filter(x=>x===p).length;
-    const key  = getPerfKey(plats, p, idxEnPlat);
-    const perf = ventaData.perfilesSel[key] || ventaData.perfilesSel[p] || null;
-    return {p, i, idxEnPlat, key, perf};
-  });
-
-  // Obtener usuarios y pins usando keys indexadas
-  const usuarios = getUsuariosVenta();
-  const pins     = {};
-  entries.forEach(({p, key, perf}) => {
-    if (perf) pins[key] = ventaData.pins?.[key] || ventaData.pins?.[p] || generarPIN(ventaData.clienteId, p, perf.num);
-  });
-
-  // Validaciones
-  const faltaPerfil = entries.find(e => !e.perf);
-  if (faltaPerfil) { toast('Selecciona un perfil para ' + (platNombre(faltaPerfil.p)), 'warn'); return; }
-  const faltaUsuario = entries.find(e => !usuarios[e.key] || usuarios[e.key].length < 1);
-  if (faltaUsuario) { toast('Ingresa el usuario para ' + (platNombre(faltaUsuario.p)), 'warn'); return; }
-
-  // Fechas
-  const fIniEl  = document.getElementById('v-fecha-ini');
-  const fVctoEl = document.getElementById('v-fecha-vcto');
-  if (!fIniEl?.value || !fVctoEl?.value) { toast('Completa las fechas de vigencia', 'warn'); return; }
-  const fIniVal = fIniEl.value;   // YYYY-MM-DD
-  const fVctoVal= fVctoEl.value;  // YYYY-MM-DD
-  const fIniStr = fIniVal.split('-').reverse().join('/');
-  const vctoStr = fVctoVal.split('-').reverse().join('/');
-  const vcto    = fVctoVal; // YYYY-MM-DD para Supabase
-
-  // Pago
-  const montoEl  = document.getElementById('v-monto');
-  const precioEl = document.getElementById('v-precio');
-  const bancoEl = document.getElementById('v-banco');
-  const formaEl = document.getElementById('v-forma');
-  const compEl  = document.getElementById('v-comp');
-  const montoCobrado = parseFloat((montoEl?.value||'').replace(/[$,]/g,'').trim()) || 0;
-  const monto        = parseFloat((precioEl?.value||'').replace('$','').replace(',','.').trim()) || ventaData.planPrecio || 0;
-  const banco   = bancoEl?.value || 'Banco General';
-      const forma   = formaEl?.value || 'Yappy';
-      const doc     = compEl?.value?.trim() || '';
-
-      if (!monto) { toast('Ingresa el monto del pago', 'warn'); return; }
-      if (!doc || doc.length < 4) { toast('El Nro. de comprobante es obligatorio', 'warn'); return; }
-
-  // Canal
-  const canal = document.getElementById('v-canal')?.value || 'WhatsApp';
-
-  // Mostrar loading
-  const btnConf = document.getElementById('btn-confirmar-venta');
-  if (btnConf) { btnConf.disabled = true; btnConf.innerHTML = '<i class="ti ti-loader"></i> Guardando...'; }
-
-  try {
-    // Correo de cada perfil (primer perfil del combo o perfil único)
-    const correos = entries.map(e => e.perf?.correo || '—');
-    const correo2 = [...new Set(correos)].join(' / ');
-    const usuario2= entries.map(e => usuarios[e.key] || '—').join(' / ');
-
-    // 1. Guardar venta
-    const okVenta = await dbGuardarVenta({
-      clienteId: ventaData.clienteId, nombre: ventaData.clienteNombre,
-      plats: normalizarCombo([...new Set(plats)].join('+')),
-      perfiles: entries.map(e=>e.perf?.codigo||'—').join('+'),
-      pins: entries.map(e=>pins[e.key]||'—').join('/'),
-      fechaIni: fIniVal, fechaFin: fVctoVal, monto, canal
-    });
-    if (!okVenta) throw new Error('No se pudo guardar la venta');
-
-    // 2. Guardar suscripción por cada entrada
-    for (const {p, key, perf, idxEnPlat} of entries) {
-      const subParams = {
-        clienteId: ventaData.clienteId, plat: p, tipo: tipo==='combo'?'Combo':'Individual',
-        combo: comboId, correo: perf?.correo||'—',
-        usuario: usuarios[key]||'—', pin: pins[key]||'—',
-        perfilId: perf?.codigo||null,
-        fIni: fIniStr, fVcto: vctoStr, monto, tipoCliente: 'Nuevo'
-      };
-      console.log('[confirmarVenta] dbGuardarSuscripcion params:', JSON.stringify(subParams));
-      const okSub = await dbGuardarSuscripcion(subParams);
-      if (!okSub) throw new Error('No se pudo guardar la suscripción de ' + p);
-    }
-
-    // 3. Guardar cobro
-    const okCobro = await dbGuardarCobro({
-      tipo: 'Venta nueva', clienteId: ventaData.clienteId,
-      nombre: ventaData.clienteNombre, tel: normalizeTel(ventaData.clienteTel),
-      plat: [...new Set(plats)].join('+'), correo: correo2, usuario: usuario2,
-      monto: montoCobrado, banco, forma, doc,
-      fechaIni: fIniVal,
-      operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
-      dupAutorizado: ventaData.dupAutorizado || false
-    });
-    if (!okCobro) throw new Error('No se pudo guardar el cobro');
-
-    // 4. Historial
-    const resumen = entries.map(e=>e.perf?.codigo||'—').join('+');
-    await dbGuardarHistorial('Venta nueva', ventaData.clienteNombre + ' — ' + resumen + ' — $' + monto.toFixed(2), 'var(--green)');
-
-    // 5. Liberar perfiles usados de PERFILES_DISP inmediatamente (evita re-selección)
-    for (const {p, perf} of entries) {
-      if (PERFILES_DISP[p]) PERFILES_DISP[p] = PERFILES_DISP[p].filter(pr => pr.codigo !== (perf?.codigo));
-    }
-    // Recargar datos frescos desde DB en lugar de actualizar optimistamente
-    // (la actualización optimista causa duplicados cuando Realtime ya refrescó el array)
-    await dbCargarVentas();
-    await dbCargarSuscripciones();
-    _aplicarFiltrosSubs();
-
-    closeModal('m-venta');
-    const _exitoEntry = entries[0];
-    const _exitoAcceso = await supa.from('accesos').select('proveedor,clave').eq('correo', _exitoEntry.perf?.correo||'').eq('plataforma', _exitoEntry.p||'').maybeSingle();
-    mostrarExitoVenta({
-      clienteNombre: ventaData.clienteNombre,
-      correo:   _exitoEntry.perf?.correo || '—',
-      clave:    _exitoEntry.perf?.clave || _exitoAcceso?.data?.clave || '—',
-      pin1:     null,
-      usuario:  usuarios[_exitoEntry.p] || '—',
-      pin:      pins[_exitoEntry.p] || '—',
-      plat:     _exitoEntry.p,
-      perf:     _exitoEntry.perf?.codigo || '—',
-      proveedor: _exitoAcceso?.data?.proveedor || '—'
-    });
-    sincronizarPlatsClientes();
-    renderDashboard();
-  cargarSelectoresProveedores();
-    toast('Venta registrada correctamente ✓', 'ok');
-
-    // 6. Abrir WA con datos del primer perfil y luego resetear formulario
-    const firstEntry = entries[0];
-    // Link de cuenta para IP: fallback a INV_CACHE si PERFILES_DISP no tiene link
-    let _waLink = firstEntry.perf?.link || '';
-    if (!_waLink && firstEntry.p === 'IP') {
-      const _cuentaId = firstEntry.perf?.codigo?.slice(0, -1);
-      _waLink = _cuentaId ? (INV_CACHE.find(x => x.id === _cuentaId)?.link || '') : '';
-    }
-    // Ref: códigos de perfil reales; calculado aquí mientras entries está en scope
-    const _waPerfilRef = tipo === 'combo'
-      ? entries.map(e => e.perf?.codigo).filter(Boolean).join(' | ') || '—'
-      : (firstEntry.perf?.codigo || '—');
-    const _waNombre    = ventaData.clienteNombre;
-    const _waClienteId = ventaData.clienteId;
-    const _waTel       = ventaData.clienteTel;
-    const _waPerfiles  = Object.assign({}, ventaData.perfilesSel);
-    const _waPlats     = ventaData.plats.slice();
-    setTimeout(() => {
-      abrirWA(
-        _waNombre,
-        platNombre(firstEntry.p),
-        '$' + monto.toFixed(2),
-        'entrega',
-        {
-          correo:      firstEntry.perf?.correo,
-          clave:       firstEntry.perf?.clave,
-          link:        _waLink,
-          vcto:        vctoStr,
-          perfilesSel: _waPerfiles,
-          plats:       _waPlats,
-          usuarios:    usuarios,
-          pins:        pins,
-          perfil:      _waPerfilRef
-        },
-        { clienteId: _waClienteId, tel: _waTel }
-      );
-      // Reset completo del modal para la siguiente venta
-      const hoy2 = new Date();
-      const pad2 = n => String(n).padStart(2,'0');
-      const fechaHoy2 = hoy2.getFullYear()+'-'+pad2(hoy2.getMonth()+1)+'-'+pad2(hoy2.getDate());
-      ventaData = {clienteId:'', clienteNombre:'', clienteTel:'', tipo:'individual', plats:[], perfilesSel:{}, pins:{}, meses:1, fechaIni:fechaHoy2, dupAutorizado:false};
-      ['v-monto','v-precio','v-comp'].forEach(id => { const el = document.getElementById(id); if (el) { el.value = ''; el.style.borderColor = ''; el.dataset.valid = ''; } });
-      document.querySelectorAll('#m-venta textarea').forEach(t => t.value = '');
-      document.querySelectorAll('#m-venta .hint[id^="hc"]').forEach(h => { h.textContent = 'Validación en tiempo real'; h.className = 'hint'; });
-      dbCargarPerfilesDisp();
-      ventaPaso1();
-    }, 400);
-
-  } catch(e) {
-    console.error('[VENTA] Error:', e);
-    toast('Error al guardar la venta: ' + (e.message || e), 'error');
-  } finally {
-    if (btnConf) { btnConf.disabled = false; btnConf.innerHTML = '<i class="ti ti-check"></i>Confirmar venta'; }
-  }
-}
-
 async function confirmarPago() {
   const clienteId  = pagoData.clienteId;
   const nombre     = pagoData.clienteNombre;
@@ -6263,7 +6072,7 @@ async function dbCargarPerfilesDisp() {
     const {data: cuentas, error: e1} = await supa
       .from('cuentas_inventario')
       .select('codigo, plataforma, correo, clave, estado, link')
-      .eq('estado', 'Activa');
+      .eq('estado', 'activo');
     if (e1) throw e1;
     const cuentaMap = {};
     (cuentas || []).forEach(c => {
@@ -7943,66 +7752,21 @@ async function guardarPrecio() {
 // ── ACTUALIZACIÓN TABLAS PARÁMETROS ──────────────────────────
 // Mapa de tipo de parámetro → tabla destino y función de renderizado
 const PARAM_MAP = {
-  'Nueva plataforma':    { tbody:'tb-plat',      render: renderFilaPlat },
+  'Nueva plataforma':    { tbody:'tb-plat',      render: null },
   'Editar plataforma':   { tbody:'tb-plat',      render: null },
-  'Nuevo banco':         { tbody:'tb-bancos',    render: renderFilaBanco },
+  'Nuevo banco':         { tbody:'tb-bancos',    render: null },
   'Editar banco':        { tbody:'tb-bancos',    render: null },
-  'Nueva forma de pago': { tbody:'tb-formas',    render: renderFilaForma },
+  'Nueva forma de pago': { tbody:'tb-formas',    render: null },
   'Editar forma pago':   { tbody:'tb-formas',    render: null },
-  'Nueva categoría':     { tbody:'tb-cats',      render: renderFilaCat },
+  'Nueva categoría':     { tbody:'tb-cats',      render: null },
   'Editar categoría':    { tbody:'tb-cats',      render: null },
   'Nuevo tipo de contacto':{ tbody:'tb-contactos', render: renderFilaContacto },
   'Editar tipo contacto':  { tbody:'tb-contactos', render: null },
-  'Nuevo motivo de cambio':{ tbody:'tb-motivos', render: renderFilaMotivo },
+  'Nuevo motivo de cambio':{ tbody:'tb-motivos', render: null },
   'Editar motivo':         { tbody:'tb-motivos', render: null },
 };
 
 let _currentParamTitle = '';
-
-function renderFilaPlat(body) {
-  const inputs = body.querySelectorAll('input[type=text],input[type=number]');
-  const selects = body.querySelectorAll('select');
-  const codigo = inputs[0]?.value?.trim().toUpperCase();
-  const nombre = inputs[1]?.value?.trim();
-  const maxPerf = inputs[2]?.value || '5';
-  const pinDig = selects[0]?.value || '4';
-  const estado = selects[1]?.value || 'Activa';
-  if (!codigo || !nombre) return null;
-  return `<td style="font-family:var(--mono)"><strong>${codigo}</strong></td><td>${nombre}</td><td>${maxPerf}</td><td>${pinDig}</td><td><span class="b bg">${estado}</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="openModal('m-param-form','Editar plataforma')"><i class="ti ti-edit"></i></button></td>`;
-}
-
-function renderFilaBanco(body) {
-  const inputs = body.querySelectorAll('input[type=text]');
-  const selects = body.querySelectorAll('select');
-  const nombre = inputs[0]?.value?.trim();
-  const pais = selects[0]?.value || 'Panamá';
-  const estado = selects[1]?.value || 'Activo';
-  if (!nombre) return null;
-  return `<td><strong>${nombre}</strong></td><td>${pais}</td><td><span class="b bg">${estado}</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'banco')"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-ic btn-d" onclick="toast('Estado actualizado','ok')"><i class="ti ti-toggle-right"></i></button></td>`;
-}
-
-function renderFilaForma(body) {
-  const inputs = body.querySelectorAll('input[type=text]');
-  const selects = body.querySelectorAll('select');
-  const nombre = inputs[0]?.value?.trim();
-  const tipo = selects[0]?.value || 'Móvil';
-  const comision = selects[1]?.value?.includes('Sí') ? '<strong style="color:var(--amber)">Sí</strong>' : 'No';
-  const comprobante = inputs[1]?.value?.trim() || '—';
-  const estado = selects[2]?.value || 'Activa';
-  if (!nombre) return null;
-  const tipoBadge = {Móvil:'bi',Bancario:'bp',Crypto:'bt',Físico:'bp'}[tipo]||'bp';
-  return `<td><strong>${nombre}</strong></td><td><span class="b ${tipoBadge}">${tipo}</span></td><td>${comision}</td><td>${comprobante}</td><td><span class="b bg">${estado}</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'forma')"><i class="ti ti-edit"></i></button></td>`;
-}
-
-function renderFilaCat(body) {
-  const inputs = body.querySelectorAll('input[type=text]');
-  const selects = body.querySelectorAll('select');
-  const nombre = inputs[0]?.value?.trim();
-  const desc = inputs[1]?.value?.trim() || '—';
-  const estado = selects[0]?.value || 'Activa';
-  if (!nombre) return null;
-  return `<td><strong>${nombre}</strong></td><td>${desc}</td><td><span class="b bg">${estado}</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'categoria')"><i class="ti ti-edit"></i></button></td>`;
-}
 
 function renderFilaContacto(body) {
   const inputs = body.querySelectorAll('input[type=text]');
@@ -8011,17 +7775,6 @@ function renderFilaContacto(body) {
   const estado = selects[0]?.value || 'Activo';
   if (!nombre) return null;
   return `<td><strong>${nombre}</strong></td><td><i class="ti ti-dots"></i></td><td><span class="b bg">${estado}</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'contacto')"><i class="ti ti-edit"></i></button></td>`;
-}
-
-function renderFilaMotivo(body) {
-  const inputs = body.querySelectorAll('input[type=text]');
-  const selects = body.querySelectorAll('select');
-  const desc = inputs[0]?.value?.trim();
-  const tipo = selects[0]?.value || 'Misma plataforma';
-  const estado = selects[1]?.value || 'Activo';
-  if (!desc) return null;
-  const badge = tipo.includes('Misma') ? 'bi' : 'bpu';
-  return `<td><strong>${desc}</strong></td><td><span class="b ${badge}">${tipo}</span></td><td><span class="b bg">${estado}</span></td><td class="tda"><button class="btn btn-sm btn-ic" onclick="editarFila(this,'motivo')"><i class="ti ti-edit"></i></button></td>`;
 }
 
 
@@ -8245,7 +7998,7 @@ async function dbCargarProveedores() {
   // Cuentas activas por proveedor (mismo patrón de consulta que rptiVencProvGenerar)
   const { data: cuentasRaw } = await supa.from('cuentas_inventario')
     .select('proveedor, fecha_vcto_proveedor')
-    .eq('estado', 'Activa');
+    .eq('estado', 'activo');
   const hoyISO = hoyPanama();
   const cuentasPorProv = {};
   (cuentasRaw || []).forEach(c => {
@@ -8416,18 +8169,6 @@ async function dbCargarEgresos() {
 
 
 // ── SINCRONIZACIÓN CATEGORÍAS Y PLATAFORMAS ──────────────────
-function sincronizarCatEgreso(nombre) {
-  const cont = document.getElementById('egreso-cats');
-  if (!cont) return;
-  const div = document.createElement('div');
-  div.className = 'cat-btn';
-  div.setAttribute('onclick','selCat(this)');
-  div.innerHTML = '<i class="ti ti-tag" style="font-size:18px;display:block;margin-bottom:3px"></i>' + nombre;
-  cont.appendChild(div);
-  // Expandir grid para acomodar más botones
-  cont.style.gridTemplateColumns = 'repeat(auto-fit,minmax(100px,1fr))';
-}
-
 function sincronizarPlataformas(codigo, nombre) {
   // Actualizar todos los selectores de plataforma en el sistema
   const sels = ['precio-plat','cuenta-plat','sel-motivo'];
@@ -9498,8 +9239,6 @@ let PRECIOS_IND = {};
 function esActivo(valor)    { return ['activo','activa'].includes((valor||'').toLowerCase()); }
 function esInactivo(valor)  { return ['inactivo','inactiva'].includes((valor||'').toLowerCase()); }
 function esBloqueado(valor) { return ['bloqueado','bloqueada'].includes((valor||'').toLowerCase()); }
-function esVigente(valor)   { return (valor||'').toLowerCase() === 'vigente'; }
-function esArchivado(valor) { return ['archivado','archivada'].includes((valor||'').toLowerCase()); }
 
 function normalizarCombo(plataformas) {
   if (!plataformas || typeof plataformas !== 'string') return plataformas || '';
@@ -11341,7 +11080,7 @@ async function rptiOcupacionGenerar() {
   try {
     const { data: cuentasRaw, error: e1 } = await supa.from('cuentas_inventario')
       .select('codigo, plataforma, max_perfiles')
-      .eq('estado', 'Activa');
+      .eq('estado', 'activo');
     if (e1) throw e1;
     const cuentas = (cuentasRaw || []).map(c => ({ id: c.codigo, plataforma: c.plataforma, max_perfiles: c.max_perfiles }));
 
@@ -11436,7 +11175,7 @@ async function rptiVencProvGenerar() {
     const iso      = d => fechaAISO(d);
     let query = supa.from('cuentas_inventario')
       .select('codigo, plataforma, correo, proveedor, fecha_vcto_proveedor')
-      .eq('estado', 'Activa');
+      .eq('estado', 'activo');
     query = modoPersonalizado
       ? query.gte('fecha_vcto_proveedor', desde).lte('fecha_vcto_proveedor', hasta)
       : query.eq('fecha_vcto_proveedor', iso(objetivo));
