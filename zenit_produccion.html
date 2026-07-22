@@ -1100,7 +1100,7 @@ function closeSidebarMobile() {
   <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap">
     <div class="sbox" style="flex:1;max-width:280px"><i class="ti ti-search"></i><input type="text" id="inv-busca" placeholder="Buscar cuenta..." oninput="filtrarInventario()"></div>
     <select id="inv-plat" onchange="filtrarInventario()"><option value="">Todas las plataformas</option></select>
-    <select id="inv-estado" onchange="filtrarInventario()"><option value="">Todos los estados</option><option value="Activa">Disponible</option><option value="Ocupada">Ocupado</option><option value="Vencida">Vencido</option><option value="Bloqueada">Bloqueado</option></select>
+    <select id="inv-estado" onchange="filtrarInventario()"><option value="">Todos los estados</option><option value="activo">Disponible</option><option value="Ocupada">Ocupado</option><option value="Vencida">Vencido</option><option value="bloqueado">Bloqueado</option></select>
 
   </div>
   <div class="card"><div class="tw"><table><thead><tr><th>Cuenta</th><th>Plataforma</th><th>Correo</th><th>Clave</th><th>Perfiles</th><th>Disp.</th><th>Ocup.</th><th>F. compra</th><th>Vcto prov.</th><th>Costo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tb-inv"></tbody></table></div></div>
@@ -2311,7 +2311,7 @@ function closeSidebarMobile() {
   <div class="mb">
     <div class="fsec"><div class="fst">Datos del usuario</div>
       <div class="fr c2"><div class="fg"><label>Nombre completo<span class="req">*</span></label><input id="u-nombre" type="text" placeholder="Ej: Juan Pérez"></div><div class="fg"><label>Email<span class="req">*</span></label><input id="u-email" type="email" placeholder="correo@zenit.app"></div></div>
-      <div class="fr c2"><div class="fg"><label>Usuario<span class="req">*</span></label><input id="u-usuario" type="text" placeholder="Ej: jperez"></div><div class="fg"><label>Estado</label><select id="u-estado"><option value="Activo">Activo</option><option value="Inactivo">Inactivo</option></select></div></div>
+      <div class="fr c2"><div class="fg"><label>Usuario<span class="req">*</span></label><input id="u-usuario" type="text" placeholder="Ej: jperez"></div><div class="fg"><label>Estado</label><select id="u-estado"><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select></div></div>
       <div class="fr"><div class="fg"><label>Contraseña<span class="req">*</span></label><input id="u-password" type="password" placeholder="Mínimo 8 caracteres"><div class="hint">Dejar vacío para no cambiar la contraseña al editar</div></div></div>
     </div>
     <div class="fsec"><div class="fst">Rol y permisos</div>
@@ -2362,7 +2362,7 @@ function closeSidebarMobile() {
     <div class="fsec"><div class="fst">Fechas y costo</div>
       <div class="fr c3"><div class="fg"><label>Fecha de compra<span class="req">*</span></label><input type="date" id="cuenta-fecha-compra2"></div><div class="fg"><label>Vencimiento proveedor<span class="req">*</span></label><input type="date" id="cuenta-vcto-prov"></div><div class="fg"><label>Días para alerta</label><input type="number" value="7" min="1" max="30"></div></div>
       <div class="fr c2"><div class="fg"><label>Costo de compra<span class="req">*</span></label><input type="text" id="cuenta-costo" placeholder="$0.00"></div><div class="fg"><label>Notas</label><input type="text" id="cuenta-notas" placeholder="Opcional"></div></div>
-          <div class="fg" id="grp-cuenta-estado" style="display:none;margin-top:11px"><label>Estado de la cuenta</label><select id="cuenta-estado"><option value="Activa">Activa</option><option value="Bloqueada">Bloqueada / Suspendida</option><option value="Inactiva">Inactiva</option></select><div class="hint w">Si la suspendes, dejará de aparecer disponible en ventas.</div></div>
+          <div class="fg" id="grp-cuenta-estado" style="display:none;margin-top:11px"><label>Estado de la cuenta</label><select id="cuenta-estado"><option value="activo">Activa</option><option value="bloqueado">Bloqueada / Suspendida</option><option value="inactivo">Inactiva</option></select><div class="hint w">Si la suspendes, dejará de aparecer disponible en ventas.</div></div>
         </div>
         <div class="ab i"><i class="ti ti-info-circle"></i>Al guardar, el sistema crea automáticamente los perfiles disponibles según el máximo de la plataforma.</div>
   </div>
@@ -2535,8 +2535,8 @@ function closeSidebarMobile() {
     </div>
     <div class="fg"><label>Estado</label>
       <select id="motivo-estado">
-        <option value="Activo">Activo</option>
-        <option value="Inactivo">Inactivo</option>
+        <option value="activo">Activo</option>
+        <option value="inactivo">Inactivo</option>
       </select>
     </div>
   </div>
@@ -4252,7 +4252,7 @@ function updRolPreview(v){
 
 async function confirmarBloqueo(id, nombre, estadoActual){
   const activo = esActivo(estadoActual);
-  const nuevoEstado = activo ? 'Inactivo' : 'Activo';
+  const nuevoEstado = activo ? 'inactivo' : 'activo';
   const msg = activo
     ? '¿Confirmas bloquear al usuario "'+nombre+'"?\nPodrás reactivarlo después.'
     : '¿Confirmas reactivar al usuario "'+nombre+'"?';
@@ -5124,7 +5124,7 @@ async function guardarParam(){
     if (tabla === 'bancos') {
       const nombre = document.getElementById('pf-banco-nombre')?.value?.trim();
       const pais   = document.getElementById('pf-banco-pais')?.value || 'Panamá';
-      const estado = document.getElementById('pf-banco-estado')?.value || 'Activo';
+      const estado = document.getElementById('pf-banco-estado')?.value || 'activo';
       if (!nombre) { toast('El nombre del banco es requerido','warn'); return; }
       payload = { nombre, pais, estado };
       idExistente = document.getElementById('pf-banco-id')?.value || null;
@@ -5133,14 +5133,14 @@ async function guardarParam(){
       const tipo        = document.getElementById('pf-forma-tipo')?.value || 'Móvil';
       const comision    = (document.getElementById('pf-forma-comision')?.value || '').includes('Sí');
       const comprobante = document.getElementById('pf-forma-comprobante')?.value?.trim() || '';
-      const estado      = document.getElementById('pf-forma-estado')?.value || 'Activa';
+      const estado      = document.getElementById('pf-forma-estado')?.value || 'activo';
       if (!nombre) { toast('El nombre de la forma de pago es requerido','warn'); return; }
       payload = { nombre, tipo, genera_comision: comision, comprobante, estado };
       idExistente = document.getElementById('pf-forma-id')?.value || null;
     } else if (tabla === 'categorias_egresos') {
       const nombre = document.getElementById('pf-cat-nombre')?.value?.trim();
       const desc   = document.getElementById('pf-cat-desc')?.value?.trim() || '';
-      const estado = document.getElementById('pf-cat-estado')?.value || 'Activa';
+      const estado = document.getElementById('pf-cat-estado')?.value || 'activo';
       if (!nombre) { toast('El nombre de la categoría es requerido','warn'); return; }
       payload = { nombre, descripcion: desc, estado };
       idExistente = document.getElementById('pf-cat-id')?.value || null;
@@ -5233,7 +5233,7 @@ async function guardarUsuario() {
   const email     = document.getElementById('u-email')?.value?.trim();
   const usuario   = document.getElementById('u-usuario')?.value?.trim();
   const password  = document.getElementById('u-password')?.value?.trim();
-  const estado    = document.getElementById('u-estado')?.value || 'Activo';
+  const estado    = document.getElementById('u-estado')?.value || 'activo';
   const rolVal    = document.getElementById('sel-rol-usuario')?.value || 'operador';
   const inacMin   = parseInt(document.getElementById('u-inactividad')?.value) || 15;
   const sesionSim = document.getElementById('u-sesion-sim')?.value || 'Permitida';
@@ -5278,7 +5278,7 @@ async function guardarCuenta(){
       const provNom  = provSel?.options[provSel?.selectedIndex]?.text?.split(' ·')[0] || '';
 
       const stSel = document.getElementById('cuenta-estado');
-      const estadoCta = (stSel && stSel.offsetParent !== null) ? stSel.value : 'Activa';
+      const estadoCta = (stSel && stSel.offsetParent !== null) ? stSel.value : 'activo';
 
       if (!codigo) { toast('El código de cuenta es requerido','warn'); return; }
       if (!correo) { toast('El correo de acceso es requerido','warn'); return; }
@@ -5481,7 +5481,7 @@ function abrirEditarCuenta(btn) {
   if (grpEst) grpEst.style.display = 'block';
   
   const stSel = document.getElementById('cuenta-estado');
-  const estadoActual = tr.querySelector('td:nth-child(11)')?.textContent?.trim() || 'Activa';
+  const estadoActual = tr.querySelector('td:nth-child(11)')?.textContent?.trim() || 'activo';
   if (stSel) stSel.value = estadoActual;
 
   // Cambiar título
@@ -6068,7 +6068,7 @@ async function dbCargarPerfilesDisp() {
   try {
     const ESTADOS_EXCLUIDOS = ['bloqueada', 'suspendida', 'inactiva'];
 
-    // 1. Traer cuentas con estado='Activa' (excluye bloqueada/suspendida/inactiva)
+    // 1. Traer cuentas con estado='activo' (excluye bloqueado/suspendida/inactivo)
     const {data: cuentas, error: e1} = await supa
       .from('cuentas_inventario')
       .select('codigo, plataforma, correo, clave, estado, link')
@@ -7382,7 +7382,7 @@ const PF_FORMS = {
     <div class="fr c2"><div class="fg"><label>Código<span class="req">*</span></label><input type="text" placeholder="Ej: NF, DS, HB"></div><div class="fg"><label>Nombre<span class="req">*</span></label><input type="text" placeholder="Ej: Netflix"></div></div>
     <div class="fr c2"><div class="fg"><label>Máx. perfiles<span class="req">*</span></label><input type="number" value="5" min="1" max="20"></div><div class="fg"><label>Dígitos PIN</label><input type="number" id="plat-digitos-pin" value="4" min="0" max="10" placeholder="0 = sin PIN"></div></div>
     <div class="fg"><label>Link (opcional)</label><input type="text" id="plat-link" placeholder="https://..."></div>
-    <div class="fg"><label>Estado</label><select><option>Activa</option><option>Inactiva</option></select></div>`},
+    <div class="fg"><label>Estado</label><select><option value="activo">Activa</option><option value="inactivo">Inactiva</option></select></div>`},
   precio: {ico:'<i class="ti ti-tag"></i>', color:'var(--green2)', body:`
     <div class="fr c2"><div class="fg"><label>Plataforma<span class="req">*</span></label><select><option>Netflix (NF)</option><option>Disney+ (DS)</option><option>HBO Max (HB)</option><option>Prime Video (PV)</option></select></div><div class="fg"><label>Tipo<span class="req">*</span></label><select><option>Individual</option><option>Combo</option></select></div></div>
     <div class="fr c2"><div class="fg"><label>Precio<span class="req">*</span></label><input type="text" id="cuenta-costo" placeholder="$0.00"></div><div class="fg"><label>Vigente desde<span class="req">*</span></label><input type="date"></div></div>
@@ -7391,17 +7391,17 @@ const PF_FORMS = {
     <input type="hidden" id="pf-banco-id" value="">
     <div class="fr c2"><div class="fg"><label>Nombre del banco<span class="req">*</span></label><input type="text" id="pf-banco-nombre" placeholder="Ej: Banco Nacional"></div><div class="fg"><label>País<span class="req">*</span></label><select id="pf-banco-pais"><option>Panamá</option><option>Colombia</option><option>Venezuela</option><option>Estados Unidos</option><option>Internacional</option></select></div></div>
     <div class="fg"><label>Notas</label><input type="text" id="cuenta-notas" placeholder="Opcional"></div>
-    <div class="fg"><label>Estado</label><select id="pf-banco-estado"><option>Activo</option><option>Inactivo</option></select></div>`},
+    <div class="fg"><label>Estado</label><select id="pf-banco-estado"><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select></div>`},
   forma_pago: {ico:'<i class="ti ti-credit-card"></i>', color:'#128C7E', body:`
     <input type="hidden" id="pf-forma-id" value="">
     <div class="fr c2"><div class="fg"><label>Nombre<span class="req">*</span></label><input type="text" id="pf-forma-nombre" placeholder="Ej: Nequi"></div><div class="fg"><label>Tipo<span class="req">*</span></label><select id="pf-forma-tipo"><option>Móvil</option><option>Bancario</option><option>Crypto</option><option>Físico</option></select></div></div>
     <div class="fr c2"><div class="fg"><label>¿Genera comisión?</label><select id="pf-forma-comision"><option>No</option><option>Sí — activa campo comisión</option></select></div><div class="fg"><label>Tipo comprobante</label><input type="text" id="pf-forma-comprobante" placeholder="Ej: Nro. operación"></div></div>
-    <div class="fg"><label>Estado</label><select id="pf-forma-estado"><option>Activa</option><option>Inactiva</option></select></div>`},
+    <div class="fg"><label>Estado</label><select id="pf-forma-estado"><option value="activo">Activa</option><option value="inactivo">Inactiva</option></select></div>`},
   categoria: {ico:'<i class="ti ti-tag"></i>', color:'#7a2f2f', body:`
     <input type="hidden" id="pf-cat-id" value="">
     <div class="fg" style="margin-bottom:11px"><label>Nombre de la categoría<span class="req">*</span></label><input type="text" id="pf-cat-nombre" placeholder="Ej: Comisiones bancarias"></div>
     <div class="fg" style="margin-bottom:11px"><label>Descripción</label><input type="text" id="pf-cat-desc" placeholder="Breve descripción del tipo de gasto"></div>
-    <div class="fg"><label>Estado</label><select id="pf-cat-estado"><option>Activa</option><option>Inactiva</option></select></div>`},
+    <div class="fg"><label>Estado</label><select id="pf-cat-estado"><option value="activo">Activa</option><option value="inactivo">Inactiva</option></select></div>`},
   contacto: {ico:'<i class="ti ti-address-book"></i>', color:'var(--purple)', body:`
     <div class="fr c2"><div class="fg"><label>Tipo de contacto<span class="req">*</span></label><input type="text" placeholder="Ej: Telegram, X, Snapchat"></div><div class="fg"><label>Descripción</label><input type="text" placeholder="Breve descripción"></div></div>
     <div class="fg"><label>Estado</label><select><option>Activo</option><option>Inactivo</option></select></div>`},
@@ -7459,7 +7459,7 @@ function openModal(id, title) {
         const uE = document.getElementById('u-email');     if (uE) uE.value = u.email  || '';
         const uU = document.getElementById('u-usuario');   if (uU) uU.value = u.usuario || '';
         const uP = document.getElementById('u-password');  if (uP) uP.value = '';
-        const uSt = document.getElementById('u-estado');   if (uSt) uSt.value = u.estado || 'Activo';
+        const uSt = document.getElementById('u-estado');   if (uSt) uSt.value = u.estado || 'activo';
         const uR  = document.getElementById('sel-rol-usuario'); if (uR) { uR.value = rolRevMap[u.rol] || 'operador'; if (typeof updRolPreview === 'function') updRolPreview(uR.value); }
         const uI  = document.getElementById('u-inactividad');   if (uI) uI.value = u.inactividad_minutos || '15';
         const uSs = document.getElementById('u-sesion-sim');    if (uSs) uSs.value = u.sesion_simultanea || 'Permitida';
@@ -7469,7 +7469,7 @@ function openModal(id, title) {
       _editUsuarioId = null;
       const titEl = document.getElementById('u-title'); if (titEl) titEl.textContent = 'Nuevo usuario';
       ['u-nombre','u-email','u-usuario','u-password'].forEach(id2 => { const el = document.getElementById(id2); if (el) el.value = ''; });
-      const uSt = document.getElementById('u-estado');        if (uSt) uSt.value = 'Activo';
+      const uSt = document.getElementById('u-estado');        if (uSt) uSt.value = 'activo';
       const uR  = document.getElementById('sel-rol-usuario'); if (uR) { uR.value = 'operador'; if (typeof updRolPreview === 'function') updRolPreview('operador'); }
       const uI  = document.getElementById('u-inactividad');   if (uI) uI.value = '15';
       const uSs = document.getElementById('u-sesion-sim');    if (uSs) uSs.value = 'Permitida';
@@ -7734,7 +7734,7 @@ async function guardarPrecio() {
       ({ error } = await supa.from('planes_precios').update(payload).eq('id', precioId));
     } else {
       payload.tipo = tipo === 'individual' ? 'Individual' : 'Combo';
-      payload.estado = 'Vigente';
+      payload.estado = 'vigente';
       ({ error } = await supa.from('planes_precios').insert(payload));
     }
     if (error) throw error;
@@ -8472,7 +8472,7 @@ function abrirModalNuevoMotivo() {
   document.getElementById('motivo-edit-id').value = '';
   document.getElementById('motivo-desc').value = '';
   document.getElementById('motivo-tipo').value = 'Cambio de cuenta';
-  document.getElementById('motivo-estado').value = 'Activo';
+  document.getElementById('motivo-estado').value = 'activo';
   document.getElementById('m-motivo-titulo').textContent = 'Nuevo motivo de cambio';
   openModal('m-motivo-form');
 }
@@ -8564,7 +8564,7 @@ function editarMotivo(id, desc, tipo, estado) {
 
 let MOTIVOS_CACHE = [];
 async function cargarMotivosCambio() {
-  const {data} = await supa.from('motivos_cambio').select('*').eq('estado','Activo').order('tipo').order('motivo');
+  const {data} = await supa.from('motivos_cambio').select('*').eq('estado','activo').order('tipo').order('motivo');
   MOTIVOS_CACHE = data || [];
   const sel = document.getElementById('sel-motivo');
   if (sel && MOTIVOS_CACHE.length) sel.innerHTML = MOTIVOS_CACHE.map(m => `<option value="${m.motivo}">${m.motivo}</option>`).join('');
@@ -12133,7 +12133,7 @@ function editarPlataforma(codigo) {
     const linkEl = body.querySelector('#plat-link');
     if (pinEl)      pinEl.value      = p.digitos_pin ?? 4;
     if (linkEl)     linkEl.value     = p.link || '';
-    if (selects[0]) selects[0].value = p.estado || 'Activa';
+    if (selects[0]) selects[0].value = p.estado || 'activo';
   }, 50);
 }
 
@@ -12147,7 +12147,7 @@ async function guardarPlataforma() {
   const maxPerfiles = parseInt(inputs[2]?.value) || 5;
   const digitosPIN  = parseInt(body.querySelector('#plat-digitos-pin')?.value ?? 4);
   const link        = (body.querySelector('#plat-link')?.value || '').trim();
-  const estado      = selects[0]?.value || 'Activa';
+  const estado      = selects[0]?.value || 'activo';
 
   if (!codigo || !nombre) { toast('Código y nombre son requeridos', 'warn'); return; }
 
@@ -12242,7 +12242,7 @@ async function cargarParametros() {
 
   // Motivos cambio
   try {
-    const {data} = await supa.from('motivos_cambio').select('*').eq('estado','Activo').order('motivo');
+    const {data} = await supa.from('motivos_cambio').select('*').eq('estado','activo').order('motivo');
     if (data && data.length) {
       document.getElementById('tb-motivos').innerHTML = data.map(m=>`
         <tr>
