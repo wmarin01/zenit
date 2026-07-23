@@ -3167,116 +3167,6 @@ function closeSidebarMobile() {
   </div>
 </div></div>
 
-<!-- Modal Incidencia Proveedor -->
-<div class="ov" id="m-incidencia"><div class="modal" style="max-width:580px">
-  <div class="mh">
-    <div class="mico" style="background:#7a2f2f"><i class="ti ti-alert-triangle"></i></div>
-    <div><div class="mtit">Incidencia de proveedor</div><div class="msub" id="inc-sub">Cuenta con problema</div></div>
-    <button class="mcl" onclick="closeModal('m-incidencia')"><i class="ti ti-x"></i></button>
-  </div>
-  <div class="mb">
-    <!-- Info cuenta afectada -->
-    <div class="ab w" style="margin-bottom:12px">
-      <i class="ti ti-alert-triangle"></i>
-      <div>
-        <div style="font-size:13px;font-weight:500" id="inc-cuenta-info">—</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px" id="inc-proveedor-info">—</div>
-      </div>
-    </div>
-
-    <!-- Tipo de incidencia -->
-    <div class="fsec"><div class="fst">Tipo de incidencia</div>
-      <div style="display:flex;gap:10px;margin-bottom:14px">
-        <div id="inc-tipo-a" onclick="selTipoIncidencia('A')"
-          style="flex:1;padding:12px;border:2px solid var(--border);border-radius:var(--rsm);cursor:pointer;text-align:center;transition:all .15s">
-          <i class="ti ti-refresh" style="font-size:20px;color:var(--accent);display:block;margin-bottom:5px"></i>
-          <div style="font-size:13px;font-weight:500">Reposición de cuenta</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:3px">El proveedor envía una cuenta nueva en reemplazo</div>
-        </div>
-        <div id="inc-tipo-b" onclick="selTipoIncidencia('B')"
-          style="flex:1;padding:12px;border:2px solid var(--border);border-radius:var(--rsm);cursor:pointer;text-align:center;transition:all .15s">
-          <i class="ti ti-cash-banknote" style="font-size:20px;color:var(--green);display:block;margin-bottom:5px"></i>
-          <div style="font-size:13px;font-weight:500">Devolución de dinero</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:3px">El proveedor reembolsa el monto pagado</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Caso A: Reposición -->
-    <div id="inc-sec-a" style="display:none">
-      <div class="fsec"><div class="fst">Datos de la cuenta nueva</div>
-        <div class="fr c2">
-          <div class="fg"><label>Correo de acceso<span class="req">*</span></label>
-            <input type="text" id="inc-correo" placeholder="nueva@cuenta.com">
-          </div>
-          <div class="fg"><label>Clave de acceso<span class="req">*</span></label>
-            <div style="display:flex;gap:6px">
-              <input type="password" id="inc-clave" placeholder="Nueva contraseña" style="flex:1">
-              <button class="btn btn-sm btn-ic" onclick="togglePassInput('inc-clave',this)"><i class="ti ti-eye"></i></button>
-            </div>
-          </div>
-        </div>
-        <div class="fr c2">
-          <div class="fg"><label>Nuevo vencimiento proveedor<span class="req">*</span></label>
-            <input type="date" id="inc-vcto-prov">
-            <div class="hint">Puede diferir por los días de retraso en la reposición</div>
-          </div>
-          <div class="fg"><label>Mismo código de cuenta</label>
-            <input type="text" id="inc-codigo-disp" readonly style="background:var(--bg4);color:var(--text3)">
-            <div class="hint">Se mantiene el código original</div>
-          </div>
-        </div>
-        <div class="fg"><label>Notas internas</label>
-          <textarea id="inc-notas-a" rows="2" placeholder="Ej: Proveedor repuso el 30/05 por cuenta caída..."></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- Caso B: Devolución -->
-    <div id="inc-sec-b" style="display:none">
-      <div class="fsec"><div class="fst">Datos del reembolso</div>
-        <div class="fr c2">
-          <div class="fg"><label>Monto reembolsado<span class="req">*</span></label>
-            <input type="text" id="inc-monto-dev" placeholder="$0.00">
-            <div class="hint ok" id="inc-monto-hint">Igual al costo original por defecto</div>
-          </div>
-          <div class="fg"><label>Forma de pago recibida<span class="req">*</span></label>
-            <select id="inc-forma-dev">
-              <option value="Yappy">Yappy</option>
-              <option value="ACH">Transferencia / ACH</option>
-              <option value="Binance Pay">Binance Pay</option>
-              <option value="Efectivo">Efectivo</option>
-            </select>
-          </div>
-        </div>
-        <div class="fr c2">
-          <div class="fg"><label>Nro. comprobante</label>
-            <input type="text" id="inc-doc-dev" placeholder="Referencia del reembolso">
-          </div>
-          <div class="fg"><label>Banco</label>
-            <select id="inc-banco-dev">
-              <option>Banco General</option>
-              <option>Banistmo</option>
-              <option>BAC</option>
-              <option>Caja de Ahorros</option>
-            </select>
-          </div>
-        </div>
-        <div class="fg"><label>Notas internas</label>
-          <textarea id="inc-notas-b" rows="2" placeholder="Ej: Proveedor devolvió $12.00 vía Yappy el 30/05..."></textarea>
-        </div>
-      </div>
-      <div class="ab i" style="margin-bottom:0">
-        <i class="ti ti-info-circle"></i>
-        Se registrará como egreso negativo (reembolso) reduciendo los egresos del mes.
-      </div>
-    </div>
-  </div>
-  <div class="mf">
-    <button class="btn" onclick="closeModal('m-incidencia')">Cancelar</button>
-    <button class="btn btn-p" id="btn-confirmar-inc" onclick="confirmarIncidencia()"><i class="ti ti-check"></i>Confirmar</button>
-  </div>
-</div></div>
 <!-- WhatsApp -->
 <div class="ov" id="m-wa"><div class="modal" style="max-width:490px">
   <div class="mh"><div class="mico" style="background:#128C7E"><i class="ti ti-brand-whatsapp"></i></div><div><div class="mtit" id="wa-tit">Mensaje WhatsApp</div><div class="msub" id="wa-sub"></div></div><button class="mcl" onclick="closeModal('m-wa')"><i class="ti ti-x"></i></button></div>
@@ -3785,7 +3675,7 @@ async function guardarEditarCliente() {
       CLIENTES[idx].est = estado;
     }
 
-    renderC(CLIENTES);
+    await refrescarVistaActiva({ subs: true });
     closeModal('m-edit-cli');
     toast('Cliente actualizado ✓', 'ok');
     await dbGuardarHistorial('Edición cliente', id + ' · ' + nombre + ' ' + apellido, 'var(--accent)');
@@ -4072,7 +3962,7 @@ async function marcarSinRenovarMasa(modo) {
     await dbCargarPerfilesDisp();
     toast(`${total} suscripci${total === 1 ? 'ón marcada' : 'ones marcadas'} como Sin renovar ✓`, 'ok');
     await dbGuardarHistorial(histTexto, `${total} suscripciones · ${clienteIds.length} clientes`, 'var(--amber)');
-    document.querySelector('#cobtabs .tab.on')?.click();
+    await refrescarVistaActiva({ subs: true });
   } catch(e) {
     console.error(tag, 'Error:', e);
     toast('Error al actualizar: ' + (e.message || e), 'error');
@@ -4810,6 +4700,7 @@ async function confirmarPago() {
     closeModal('m-pago');
     sincronizarPlatsClientes();
     renderDashboard();
+    await refrescarVistaActiva({ subs: true });
     toast('Pago registrado correctamente ✓', 'ok');
 
     // Reset completo del formulario
@@ -5605,166 +5496,6 @@ async function ejecutarImportacionMasiva() {
   toast('Los datos de importación masiva fueron removidos por seguridad. Si necesitas reimportar, contacta al desarrollador.', 'warn');
   if (btn) btn.disabled = false;
   return;
-  let ok = 0, err = 0;
-
-  function logMsg(msg, tipo='ok') {
-    if (!log) return;
-    const d = document.createElement('div');
-    d.style.cssText = `font-size:11px;padding:2px 0;color:${tipo==='ok'?'var(--green)':tipo==='warn'?'var(--amber)':'var(--red)'}`;
-    d.textContent = msg;
-    log.appendChild(d);
-    log.scrollTop = log.scrollHeight;
-  }
-
-  logMsg('Iniciando importación masiva...', 'ok');
-
-  // ── 1. BANCOS ──
-  logMsg('Importando bancos...');
-  for (const b of D.bancos) {
-    try {
-      const { error } = await supa.from('bancos').upsert(
-        { nombre: b.nombre, pais: b.pais, tipo: b.tipo, estado: b.estado },
-        { onConflict: 'nombre' }
-      );
-      if (error) throw error;
-      ok++;
-    } catch(e) { err++; logMsg(`  ✗ Banco ${b.nombre}: ${e.message}`, 'err'); }
-  }
-  logMsg(`  ✓ Bancos: ${D.bancos.length}`);
-
-  // ── 2. FORMAS DE PAGO ──
-  logMsg('Importando formas de pago...');
-  for (const f of D.formas_pago) {
-    try {
-      const { error } = await supa.from('formas_pago').upsert(
-        { nombre: f.nombre, tipo: f.tipo, genera_comision: f.comision==='Sí',
-          comprobante: f.comprobante, estado: f.estado, notas: f.notas },
-        { onConflict: 'nombre' }
-      );
-      if (error) throw error;
-      ok++;
-    } catch(e) { err++; logMsg(`  ✗ Forma pago ${f.nombre}: ${e.message}`, 'err'); }
-  }
-  logMsg(`  ✓ Formas de pago: ${D.formas_pago.length}`);
-
-  // ── 3. CATEGORÍAS EGRESOS ──
-  logMsg('Importando categorías...');
-  for (const c of D.categorias_egresos) {
-    try {
-      const { error } = await supa.from('categorias_egresos').upsert(
-        { nombre: c.nombre, descripcion: c.descripcion, estado: c.estado },
-        { onConflict: 'nombre' }
-      );
-      if (error) throw error;
-      ok++;
-    } catch(e) { err++; logMsg(`  ✗ Cat. ${c.nombre}: ${e.message}`, 'err'); }
-  }
-  logMsg(`  ✓ Categorías: ${D.categorias_egresos.length}`);
-
-  // ── 4. MOTIVOS DE CAMBIO ──
-  logMsg('Importando motivos de cambio...');
-  for (const m of D.motivos_cambio) {
-    try {
-      const { error } = await supa.from('motivos_cambio').upsert(
-        { motivo: m.motivo, tipo: m.tipo, estado: m.estado },
-        { onConflict: 'motivo' }
-      );
-      if (error) throw error;
-      ok++;
-    } catch(e) { err++; logMsg(`  ✗ Motivo: ${e.message}`, 'err'); }
-  }
-  logMsg(`  ✓ Motivos: ${D.motivos_cambio.length}`);
-
-  // ── 5. PLANES Y PRECIOS ──
-  logMsg('Importando planes y precios...');
-  for (const p of D.planes_precios) {
-    try {
-      const { error } = await supa.from('planes_precios').upsert(
-        { plataformas: p.plataformas, tipo: p.tipo, perfiles: p.perfiles,
-          precio: parseFloat(p.precio)||0, desglose: p.desglose,
-          vigente_desde: p.vigente_desde, estado: p.estado, notas: p.notas },
-        { onConflict: 'plataformas,tipo,perfiles' }
-      );
-      if (error) throw error;
-      ok++;
-    } catch(e) { err++; logMsg(`  ✗ Plan ${p.plataformas} ${p.tipo}: ${e.message}`, 'err'); }
-  }
-  logMsg(`  ✓ Planes: ${D.planes_precios.length}`);
-
-  // ── 6. INVENTARIO (tabla real: inventario) ──
-  logMsg('Importando inventario de cuentas...');
-  let invOk = 0;
-  for (const c of D.cuentas_inventario) {
-    try {
-      const { error } = await supa.from('inventario').upsert(
-        { id: c.codigo, plataforma: c.plataforma, correo: c.correo,
-          clave: c.clave, max_perfiles: parseInt(c.max_perfiles)||5,
-          fecha_compra: fechaISO(c.fecha_compra),
-          fecha_vcto_prov: fechaISO(c.fecha_vcto_proveedor),
-          costo: parseFloat(c.costo_proveedor)||null,
-          proveedor: c.proveedor, estado: c.estado||'activa', notas: c.notas },
-        { onConflict: 'id' }
-      );
-      if (error) throw error;
-      invOk++; ok++;
-    } catch(e) { err++; logMsg(`  ✗ Cuenta ${c.codigo}: ${e.message}`, 'err'); }
-  }
-  logMsg(`  ✓ Inventario: ${invOk}/${D.cuentas_inventario.length}`);
-
-  // ── 7. CLIENTES ──
-  logMsg('Importando clientes...');
-  const clienteIdMap = {};
-  let cliOk = 0;
-  for (const c of D.clientes) {
-    try {
-      const tel = (c.telefono && c.telefono !== '507' && c.telefono.trim() !== '') ? normalizeTel(c.telefono) : null;
-      // Insertar cliente
-      const { error: insErr } = await supa.from('clientes').upsert(
-        { nombre: c.nombre, apellido: c.apellido, telefono: tel,
-          email: c.correo || null, estado: 'activo' },
-        { onConflict: 'telefono', ignoreDuplicates: false }
-      );
-      if (insErr) throw insErr;
-      // Obtener id del cliente recién insertado
-      const buscar = tel
-        ? supa.from('clientes').select('id').eq('telefono', tel)
-        : supa.from('clientes').select('id').eq('nombre', c.nombre).eq('apellido', c.apellido);
-      const { data: found } = await buscar.limit(1).single();
-      if (found) {
-        const key = tel || `${c.nombre.toUpperCase()}_${c.apellido.toUpperCase()}`;
-        clienteIdMap[key] = found.id;
-      }
-      cliOk++; ok++;
-    } catch(e) { err++; logMsg(`  ✗ Cliente ${c.nombre} ${c.apellido}: ${e.message}`, 'err'); }
-  }
-  logMsg(`  ✓ Clientes: ${cliOk}/${D.clientes.length}`);
-
-  // ── 8. SUSCRIPCIONES ──
-  logMsg('Importando suscripciones...');
-  let subOk = 0;
-  for (const s of D.suscripciones) {
-    const clienteId = clienteIdMap[s.cliente_key];
-    if (!clienteId) { err++; continue; }
-    try {
-      const { error } = await supa.from('suscripciones').upsert(
-        { cliente_id: clienteId, perfil_id: s.perfil_id || s.perfil,
-          plataforma: s.plataformas, fecha_vcto: fechaISO(s.fecha_vcto)||null,
-          monto: parseFloat(s.monto)||null, estado: s.estado },
-        { onConflict: 'cliente_id,perfil_id' }
-      );
-      if (error) throw error;
-      subOk++; ok++;
-    } catch(e) { err++; logMsg(`  ✗ Sub ${s.perfil}: ${e.message}`, 'err'); }
-  }
-  logMsg(`  ✓ Suscripciones: ${subOk}/${D.suscripciones.length}`);
-
-  // ── RESUMEN ──
-  const color = err === 0 ? 'ok' : err < 50 ? 'warn' : 'err';
-  logMsg('───────────────────────────────', color);
-  logMsg(`✅ Importación completada`, color);
-  logMsg(`   Exitosos: ${ok}  |  Errores: ${err}`, color);
-  if (btn) btn.disabled = false;
-  toast(`Importación completada: ${ok} registros, ${err} errores`, err===0?'ok':'warn');
 }
 
 function toast(msg,tipo){
@@ -7383,10 +7114,6 @@ const PF_FORMS = {
     <div class="fr c2"><div class="fg"><label>Máx. perfiles<span class="req">*</span></label><input type="number" value="5" min="1" max="20"></div><div class="fg"><label>Dígitos PIN</label><input type="number" id="plat-digitos-pin" value="4" min="0" max="10" placeholder="0 = sin PIN"></div></div>
     <div class="fg"><label>Link (opcional)</label><input type="text" id="plat-link" placeholder="https://..."></div>
     <div class="fg"><label>Estado</label><select><option value="activo">Activa</option><option value="inactivo">Inactiva</option></select></div>`},
-  precio: {ico:'<i class="ti ti-tag"></i>', color:'var(--green2)', body:`
-    <div class="fr c2"><div class="fg"><label>Plataforma<span class="req">*</span></label><select><option>Netflix (NF)</option><option>Disney+ (DS)</option><option>HBO Max (HB)</option><option>Prime Video (PV)</option></select></div><div class="fg"><label>Tipo<span class="req">*</span></label><select><option>Individual</option><option>Combo</option></select></div></div>
-    <div class="fr c2"><div class="fg"><label>Precio<span class="req">*</span></label><input type="text" id="cuenta-costo" placeholder="$0.00"></div><div class="fg"><label>Vigente desde<span class="req">*</span></label><input type="date"></div></div>
-    <div class="fg"><label>Estado</label><select><option>Vigente</option><option>Cerrado</option></select></div>`},
   banco: {ico:'<i class="ti ti-building-bank"></i>', color:'var(--accent2)', body:`
     <input type="hidden" id="pf-banco-id" value="">
     <div class="fr c2"><div class="fg"><label>Nombre del banco<span class="req">*</span></label><input type="text" id="pf-banco-nombre" placeholder="Ej: Banco Nacional"></div><div class="fg"><label>País<span class="req">*</span></label><select id="pf-banco-pais"><option>Panamá</option><option>Colombia</option><option>Venezuela</option><option>Estados Unidos</option><option>Internacional</option></select></div></div>
@@ -8666,8 +8393,7 @@ async function guardarEdicionSub() {
     }
 
     closeModal('m-edit-sub');
-    _aplicarFiltrosSubs();
-    sincronizarPlatsClientes();
+    await refrescarVistaActiva();
     toast('Suscripción actualizada correctamente', 'ok');
 
   } catch(e) {
@@ -9814,108 +9540,6 @@ function editarFila(btn, tipo) {
   }
 }
 
-
-// ── INCIDENCIAS DE PROVEEDOR ─────────────────────────────────
-let incidenciaData = { tr: null, tipo: null };
-
-function selTipoIncidencia(tipo) {
-  incidenciaData.tipo = tipo;
-  const btnA = document.getElementById('inc-tipo-a');
-  const btnB = document.getElementById('inc-tipo-b');
-  const secA = document.getElementById('inc-sec-a');
-  const secB = document.getElementById('inc-sec-b');
-
-  if (btnA) btnA.style.borderColor = tipo === 'A' ? 'var(--accent)' : 'var(--border)';
-  if (btnA) btnA.style.background  = tipo === 'A' ? 'rgba(108,143,255,.08)' : '';
-  if (btnB) btnB.style.borderColor = tipo === 'B' ? 'var(--green)' : 'var(--border)';
-  if (btnB) btnB.style.background  = tipo === 'B' ? 'rgba(56,193,114,.08)' : '';
-  if (secA) secA.style.display = tipo === 'A' ? 'block' : 'none';
-  if (secB) secB.style.display = tipo === 'B' ? 'block' : 'none';
-}
-
-function confirmarIncidencia() {
-  const tipo = incidenciaData.tipo;
-  if (!tipo) { toast('Selecciona el tipo de incidencia','warn'); return; }
-  const tr = incidenciaData.tr;
-  if (!tr) { closeModal('m-incidencia'); return; }
-
-  const cells  = tr.querySelectorAll('td');
-  const codigo = cells[0]?.textContent?.trim() || '—';
-  const now    = new Date();
-  const pad    = n => String(n).padStart(2,'0');
-  const fecha  = pad(now.getDate())+'/'+pad(now.getMonth()+1)+'/'+now.getFullYear();
-
-  if (tipo === 'A') {
-    // Reposición: actualizar datos de la cuenta en la fila
-    const correoNuevo = document.getElementById('inc-correo')?.value?.trim();
-    const claveNueva  = document.getElementById('inc-clave')?.value?.trim();
-    const vctoNuevo   = document.getElementById('inc-vcto-prov')?.value || '';
-    const notasA      = document.getElementById('inc-notas-a')?.value?.trim() || '';
-
-    if (!correoNuevo) { toast('Ingresa el correo de la cuenta nueva','warn'); return; }
-    if (!claveNueva)  { toast('Ingresa la clave de la cuenta nueva','warn'); return; }
-    if (!vctoNuevo)   { toast('Ingresa el nuevo vencimiento del proveedor','warn'); return; }
-
-    // Actualizar fila en inventario
-    const [yy,mm,dd] = vctoNuevo.split('-');
-    const vctoStr = dd+'/'+mm+'/'+yy;
-    if (cells[2]) cells[2].textContent = correoNuevo;
-    if (cells[8]) cells[8].textContent = vctoStr;
-    tr.dataset.clave = claveNueva;
-
-    // Marcar como repuesta visualmente
-    const estadoCell = cells[10];
-    if (estadoCell) estadoCell.innerHTML = '<span class="b bg">Activa</span>';
-
-    agregarHistorial(
-      '🔄 Reposición de cuenta por proveedor',
-      codigo + ' — Correo actualizado · Vcto prov: ' + vctoStr + (notasA ? ' · ' + notasA : ''),
-      'var(--accent)'
-    );
-    toast('Cuenta ' + codigo + ' actualizada con reposición del proveedor','ok');
-
-  } else {
-    // Devolución: registrar egreso negativo
-    const monto   = document.getElementById('inc-monto-dev')?.value?.replace(/[^0-9.]/g,'') || '0';
-    const forma   = document.getElementById('inc-forma-dev')?.value || 'Yappy';
-    const doc     = document.getElementById('inc-doc-dev')?.value?.trim() || '—';
-    const banco   = document.getElementById('inc-banco-dev')?.value || 'Banco General';
-    const notasB  = document.getElementById('inc-notas-b')?.value?.trim() || '';
-    const montoNum = parseFloat(monto) || 0;
-
-    if (!montoNum) { toast('Ingresa el monto reembolsado','warn'); return; }
-
-    // Agregar egreso negativo en tabla de egresos
-    const tbEgr = document.getElementById('tb-egresos');
-    if (tbEgr) {
-      const trEgr = document.createElement('tr');
-      trEgr.style.background = 'rgba(56,193,114,.05)';
-      trEgr.innerHTML = `
-        <td style="font-size:12px">${fecha}</td>
-        <td><span class="b bg">Reembolso</span></td>
-        <td style="color:var(--green)">Devolución proveedor — ${codigo}</td>
-        <td>—</td>
-        <td><span class="b bp">${forma}</span></td>
-        <td style="color:var(--green);font-weight:500">-$${montoNum.toFixed(2)}</td>
-        <td>—</td>
-        <td style="color:var(--green);font-weight:600">-$${montoNum.toFixed(2)}</td>`;
-      tbEgr.insertBefore(trEgr, tbEgr.firstChild);
-    }
-
-    // Marcar cuenta como inactiva en inventario
-    const estadoCell = cells[10];
-    if (estadoCell) estadoCell.innerHTML = '<span class="b bp">Inactiva</span>';
-
-    agregarHistorial(
-      '💰 Devolución de proveedor',
-      codigo + ' — $' + montoNum.toFixed(2) + ' vía ' + forma + (doc !== '—' ? ' · Doc: ' + doc : '') + (notasB ? ' · ' + notasB : ''),
-      'var(--green)'
-    );
-    toast('Reembolso de $' + montoNum.toFixed(2) + ' registrado como egreso negativo','ok');
-  }
-
-  closeModal('m-incidencia');
-}
 
 // ── ROLES PERSONALIZADOS ─────────────────────────────────────
 const ROLES_CUSTOM = [];
@@ -11334,6 +10958,7 @@ let _chartMargenCombo = null;
 let _rptfMargenesPlat = [];
 let _rptfMargenesCombo = [];
 let _peGastosFijosActual = 0;
+let _peTotalVentasActual = 0;
 
 async function rptfRentabilidadGenerar() {
   const resDiv = document.getElementById('rptf-ren-res');
@@ -11482,55 +11107,135 @@ async function rptfRentabilidadGenerar() {
 }
 
 // ── Punto de equilibrio ──────────────────────────────────────
+// Cálculo puro (sin tocar el DOM) para un mes dado ("YYYY-MM"). Reutilizable
+// para generar el reporte de un solo mes y para comparativos entre meses.
+async function calcularEquilibrioMes(mesVal) {
+  const [y, m] = mesVal.split('-').map(Number);
+  const ini = fechaAISO(new Date(y, m - 1, 1));
+  const fin = fechaAISO(new Date(y, m, 0));
+
+  const CATS_EXCLUIR = ['Cuentas', 'Cuentas-recargas', 'Pin-recargas'];
+  const [rE, rC] = await Promise.all([
+    supa.from('egresos').select('total, categoria').gte('fecha', ini).lte('fecha', fin),
+    supa.from('cobros').select('plataforma, monto').gte('fecha', ini).lte('fecha', fin)
+  ]);
+  if (rE.error) throw rE.error;
+  if (rC.error) throw rC.error;
+
+  const egresosFiltrados = (rE.data || []).filter(e => !CATS_EXCLUIR.includes(e.categoria));
+  const gastosFijos = egresosFiltrados.reduce((s,e) => s + (parseFloat(e.total)||0), 0);
+
+  const cobros = rC.data || [];
+  const grupos = {}; // claveNormalizada -> cantidad de ventas
+  cobros.forEach(c => {
+    const key = normalizarCombo(c.plataforma || '');
+    if (!key) return;
+    grupos[key] = (grupos[key] || 0) + 1;
+  });
+  const totalVentas = Object.values(grupos).reduce((s,n) => s + n, 0);
+
+  const margenPorKey = key => {
+    if (!key.includes('+')) {
+      const mp = _rptfMargenesPlat.find(x => x.codigo === key);
+      return mp ? { nombre: mp.nombre, margen: mp.margenD } : null;
+    }
+    const mc = _rptfMargenesCombo.find(x => x.platsKey === key);
+    return mc ? { nombre: mc.nombreCombo, margen: mc.margenD } : null;
+  };
+
+  const mezclaFilas = Object.entries(grupos).map(([key, cant]) => {
+    const info = margenPorKey(key);
+    if (!info) console.warn('[Equilibrio] sin datos de margen para la clave de venta', key);
+    const pct = totalVentas > 0 ? (cant/totalVentas*100) : 0;
+    return { key, nombre: info?.nombre || key, margen: info ? info.margen : null, cant, pct };
+  }).sort((a,b) => b.cant - a.cant);
+
+  const margenPonderado = mezclaFilas.reduce((s,f) => s + (f.margen!==null ? f.margen * (f.pct/100) : 0), 0);
+  const ventasNecesarias = margenPonderado > 0 ? Math.ceil(gastosFijos / margenPonderado) : null;
+
+  return { mesVal, gastosFijos, egresosCount: egresosFiltrados.length, mezclaFilas, margenPonderado, totalVentas, ventasNecesarias };
+}
+
 async function rptfEquilibrioGenerar() {
   const mesVal = document.getElementById('pe-mes')?.value;
   const peRes = document.getElementById('pe-res');
   if (!mesVal) return;
   if (peRes) peRes.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
   try {
-    const [y, m] = mesVal.split('-').map(Number);
-    const ini = fechaAISO(new Date(y, m - 1, 1));
-    const fin = fechaAISO(new Date(y, m, 0));
     const fmt = n => '$' + n.toFixed(2);
+    const { gastosFijos, egresosCount, mezclaFilas, margenPonderado, totalVentas, ventasNecesarias } = await calcularEquilibrioMes(mesVal);
 
-    const CATS_EXCLUIR = ['Cuentas', 'Cuentas-recargas', 'Pin-recargas'];
-    const [rE, rC] = await Promise.all([
-      supa.from('egresos').select('total, categoria').gte('fecha', ini).lte('fecha', fin),
-      supa.from('cobros').select('plataforma, monto').gte('fecha', ini).lte('fecha', fin)
+    // ── Comparativo mes anterior vs mes actual + proyección ──
+    // Independiente del mes seleccionado arriba: siempre compara "mes anterior completo"
+    // contra "mes actual en curso", con el mismo criterio de calendario que rptGetRango('mesant').
+    const NOMBRES_MES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const hoyComp = hoyPanamaDate();
+    const anioActualComp = hoyComp.getFullYear(), mesActualIdx = hoyComp.getMonth();
+    const mesActualVal = `${anioActualComp}-${String(mesActualIdx+1).padStart(2,'0')}`;
+    const mesAntDate = new Date(anioActualComp, mesActualIdx - 1, 1);
+    const mesAnteriorVal = `${mesAntDate.getFullYear()}-${String(mesAntDate.getMonth()+1).padStart(2,'0')}`;
+    const nombreMesAnterior = `${NOMBRES_MES[mesAntDate.getMonth()]} ${mesAntDate.getFullYear()}`;
+    const nombreMesActual = `${NOMBRES_MES[mesActualIdx]} ${anioActualComp}`;
+
+    const [mesAnteriorCalc, mesActualCalc] = await Promise.all([
+      calcularEquilibrioMes(mesAnteriorVal),
+      calcularEquilibrioMes(mesActualVal)
     ]);
-    if (rE.error) throw rE.error;
-    if (rC.error) throw rC.error;
 
-    const egresosFiltrados = (rE.data || []).filter(e => !CATS_EXCLUIR.includes(e.categoria));
-    const gastosFijos = egresosFiltrados.reduce((s,e) => s + (parseFloat(e.total)||0), 0);
+    const diasTranscurridos = hoyComp.getDate();
+    const diasTotalesMesActual = new Date(anioActualComp, mesActualIdx + 1, 0).getDate();
+    const factorProy = diasTranscurridos > 0 ? diasTotalesMesActual / diasTranscurridos : 1;
 
-    const cobros = rC.data || [];
-    const grupos = {}; // claveNormalizada -> cantidad de ventas
-    cobros.forEach(c => {
-      const key = normalizarCombo(c.plataforma || '');
-      if (!key) return;
-      grupos[key] = (grupos[key] || 0) + 1;
-    });
-    const totalVentas = Object.values(grupos).reduce((s,n) => s + n, 0);
+    const gastosFijosProyectado = mesActualCalc.gastosFijos * factorProy;
+    const totalVentasProyectado = Math.round(mesActualCalc.totalVentas * factorProy);
+    const ventasNecesariasProyectadas = mesActualCalc.margenPonderado > 0
+      ? Math.ceil(gastosFijosProyectado / mesActualCalc.margenPonderado) : null;
 
-    const margenPorKey = key => {
-      if (!key.includes('+')) {
-        const mp = _rptfMargenesPlat.find(x => x.codigo === key);
-        return mp ? { nombre: mp.nombre, margen: mp.margenD } : null;
-      }
-      const mc = _rptfMargenesCombo.find(x => x.platsKey === key);
-      return mc ? { nombre: mc.nombreCombo, margen: mc.margenD } : null;
+    const filaComp = (label, vAnt, vAct, vProy) => `<tr>
+        <td>${label}</td>
+        <td style="text-align:right">${vAnt}</td>
+        <td style="text-align:right">${vAct}</td>
+        <td style="text-align:right;font-weight:600">${vProy}</td>
+      </tr>`;
+
+    const comparativoTablaHtml = [
+      filaComp('Gastos fijos', fmt(mesAnteriorCalc.gastosFijos), fmt(mesActualCalc.gastosFijos), fmt(gastosFijosProyectado)),
+      filaComp('Ventas', mesAnteriorCalc.totalVentas, mesActualCalc.totalVentas, totalVentasProyectado),
+      filaComp('Margen ponderado', fmt(mesAnteriorCalc.margenPonderado), fmt(mesActualCalc.margenPonderado), fmt(mesActualCalc.margenPonderado)),
+      filaComp('Ventas necesarias', mesAnteriorCalc.ventasNecesarias ?? 'N/A', mesActualCalc.ventasNecesarias ?? 'N/A', ventasNecesariasProyectadas ?? 'N/A')
+    ].join('');
+
+    const deltaVentas = totalVentasProyectado - mesAnteriorCalc.totalVentas;
+    const pctVentas = mesAnteriorCalc.totalVentas > 0 ? (deltaVentas / mesAnteriorCalc.totalVentas * 100) : null;
+    const deltaGastos = gastosFijosProyectado - mesAnteriorCalc.gastosFijos;
+    const pctGastos = mesAnteriorCalc.gastosFijos > 0 ? (deltaGastos / mesAnteriorCalc.gastosFijos * 100) : null;
+
+    const fraseDelta = (delta, pct, esMonto) => {
+      if (Math.round(delta * 100) === 0) return 'igual';
+      const signo = delta > 0 ? '+' : '';
+      const valorTxt = esMonto ? fmt(delta) : delta;
+      const pctTxt = pct !== null ? ` (${pct>0?'+':''}${pct.toFixed(0)}%)` : '';
+      return `${signo}${valorTxt}${pctTxt}`;
     };
 
-    const mezclaFilas = Object.entries(grupos).map(([key, cant]) => {
-      const info = margenPorKey(key);
-      if (!info) console.warn('[Equilibrio] sin datos de margen para la clave de venta', key);
-      const pct = totalVentas > 0 ? (cant/totalVentas*100) : 0;
-      return { key, nombre: info?.nombre || key, margen: info ? info.margen : null, cant, pct };
-    }).sort((a,b) => b.cant - a.cant);
+    let veredicto;
+    if (deltaVentas > 0 && deltaGastos <= 0) veredicto = 'Vas mejor que';
+    else if (deltaVentas < 0 && deltaGastos >= 0) veredicto = 'Vas peor que';
+    else if (deltaVentas === 0 && Math.round(deltaGastos * 100) === 0) veredicto = 'Vas igual que';
+    else veredicto = 'Resultado mixto frente a';
 
-    const margenPonderado = mezclaFilas.reduce((s,f) => s + (f.margen!==null ? f.margen * (f.pct/100) : 0), 0);
-    const ventasNecesarias = margenPonderado > 0 ? Math.ceil(gastosFijos / margenPonderado) : null;
+    const comparativoConclusionTexto = `<strong>${veredicto} ${nombreMesAnterior}.</strong> Con el ritmo actual, ${nombreMesActual} cerraría con ~${totalVentasProyectado} ventas (${fraseDelta(deltaVentas, pctVentas, false)} vs. ${nombreMesAnterior}) y ${fmt(gastosFijosProyectado)} en gastos fijos (${fraseDelta(deltaGastos, pctGastos, true)} vs. ${nombreMesAnterior}).`;
+
+    const comparativoHtml = `
+      <div class="ct" style="font-size:12px;margin-bottom:8px">Comparativo ${nombreMesAnterior} vs ${nombreMesActual} + proyección</div>
+      <div class="card" style="margin-bottom:16px"><div class="tw"><table><thead><tr>
+        <th>Métrica</th>
+        <th style="text-align:right">${nombreMesAnterior} (completo)</th>
+        <th style="text-align:right">${nombreMesActual} (real, día ${diasTranscurridos}/${diasTotalesMesActual})</th>
+        <th style="text-align:right">${nombreMesActual} (proyectado)</th>
+      </tr></thead><tbody>${comparativoTablaHtml}</tbody></table></div></div>
+      <div class="card" style="margin-bottom:16px;font-size:13px;line-height:1.6">${comparativoConclusionTexto}</div>
+    `;
 
     const escenariosHtml = (_rptfMargenesPlat||[]).map(mp => {
       const unidades = mp.margenD > 0 ? Math.ceil(gastosFijos / mp.margenD) : null;
@@ -11548,6 +11253,17 @@ async function rptfEquilibrioGenerar() {
         <td style="text-align:right">${f.margen!==null ? fmt(f.margen) : '<span style="color:var(--text3)">sin datos</span>'}</td>
       </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">Sin ventas registradas en este período</td></tr>';
 
+    let conclusionHtml;
+    if (ventasNecesarias === null) {
+      conclusionHtml = `<div class="ab i" style="margin-bottom:16px"><i class="ti ti-info-circle"></i>No se puede calcular la conclusión del mes: el margen ponderado de tu mezcla real es cero o negativo.</div>`;
+    } else if (totalVentas >= ventasNecesarias) {
+      const sobrante = totalVentas - ventasNecesarias;
+      conclusionHtml = `<div class="ab s" style="margin-bottom:16px">✅ Superávit — ya cubres tu punto de equilibrio, con margen de ${sobrante} venta${sobrante!==1?'s':''} de sobra este mes</div>`;
+    } else {
+      const faltante = ventasNecesarias - totalVentas;
+      conclusionHtml = `<div class="ab e" style="margin-bottom:16px">⚠️ Déficit — te faltan ${faltante} venta${faltante!==1?'s':''} para cubrir tus gastos fijos de este mes</div>`;
+    }
+
     const simFilas = [
       ...(_rptfMargenesPlat||[]).map(mp => ({ nombre: mp.nombre, margen: mp.margenD })),
       ...(_rptfMargenesCombo||[]).map(mc => ({ nombre: mc.nombreCombo, margen: mc.margenD }))
@@ -11561,7 +11277,7 @@ async function rptfEquilibrioGenerar() {
 
     if (peRes) peRes.innerHTML = `
       <div class="mg" style="margin-bottom:16px">
-        <div class="card mc" style="--mc-c:var(--red)"><div class="ml">Gastos fijos del mes</div><div class="mv" style="color:var(--red)">${fmt(gastosFijos)}</div><div class="ms">${egresosFiltrados.length} egresos (excluye costo directo de producto)</div></div>
+        <div class="card mc" style="--mc-c:var(--red)"><div class="ml">Gastos fijos del mes</div><div class="mv" style="color:var(--red)">${fmt(gastosFijos)}</div><div class="ms">${egresosCount} egresos (excluye costo directo de producto)</div></div>
         <div class="card mc" style="--mc-c:var(--accent)"><div class="ml">Margen ponderado (mezcla real)</div><div class="mv">${fmt(margenPonderado)}</div><div class="ms">${totalVentas} ventas registradas</div></div>
         <div class="card mc" style="--mc-c:${ventasNecesarias!==null?'var(--green)':'var(--text3)'}"><div class="ml">Ventas/mes necesarias (mezcla real)</div><div class="mv">${ventasNecesarias!==null ? ventasNecesarias : 'N/A'}</div><div class="ms">para cubrir gastos fijos con tu mezcla actual</div></div>
       </div>
@@ -11571,6 +11287,11 @@ async function rptfEquilibrioGenerar() {
 
       <div class="ct" style="font-size:12px;margin-bottom:8px">Mezcla real de ventas — ${mesVal}</div>
       <div class="card" style="margin-bottom:16px"><div class="tw"><table><thead><tr><th>Plataforma/Combo</th><th style="text-align:right">Ventas</th><th style="text-align:right">% del total</th><th style="text-align:right">Margen</th></tr></thead><tbody>${mezclaHtml}</tbody></table></div></div>
+
+      <div class="ct" style="font-size:12px;margin-bottom:8px">Conclusión del mes</div>
+      ${conclusionHtml}
+
+      ${comparativoHtml}
 
       <div class="ct" style="font-size:12px;margin-bottom:8px">Simulador: ¿cuánto planeas vender este mes?</div>
       <div class="card">
@@ -11590,6 +11311,7 @@ async function rptfEquilibrioGenerar() {
     `;
 
     _peGastosFijosActual = gastosFijos;
+    _peTotalVentasActual = totalVentas;
     rptfEquilibrioRecalcular();
   } catch(e) {
     if (peRes) peRes.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>Error: ${e.message}</div>`;
@@ -12673,15 +12395,11 @@ async function guardarRenovarPin() {
   const btn = document.getElementById('btn-guardar-renovar');
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
   try {
-    const { error: e1 } = await supa.from('inventario').update({ fecha_vcto_prov: nuevaFecha }).eq('id', _renovarCuentaId);
-    if (e1) throw e1;
     const { error: e1b } = await supa.from('cuentas_inventario').update({ fecha_vcto_proveedor: nuevaFecha, fecha_compra: hoy }).eq('codigo', _renovarCuentaId);
     if (e1b) console.warn('[renovar] no se pudo sincronizar cuentas_inventario:', e1b.message);
     const { data: pinData, error: e2 } = await supa.from('pines').update({ estado: 'usado', cuenta_id: _renovarCuentaId, fecha_uso: hoy }).eq('id', pinId).select('costo').single();
     if (e2) throw e2;
     if (pinData?.costo != null) {
-      const { error: eCosto1 } = await supa.from('inventario').update({ costo: pinData.costo }).eq('id', _renovarCuentaId);
-      if (eCosto1) console.warn('[renovar] Error actualizando costo en inventario:', eCosto1.message);
       const { error: eCosto2 } = await supa.from('cuentas_inventario').update({ costo_proveedor: pinData.costo }).eq('codigo', _renovarCuentaId);
       if (eCosto2) console.warn('[renovar] Error actualizando costo en cuentas_inventario:', eCosto2.message);
     }
