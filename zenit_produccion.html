@@ -1209,6 +1209,7 @@ function closeSidebarMobile() {
       <div class="tab" onclick="tabRpts(this,'rpts-nuevos')">Clientes nuevos</div>
       <div class="tab" onclick="tabRpts(this,'rpts-perdidos')">Clientes perdidos</div>
       <div class="tab" onclick="tabRpts(this,'rpts-retencion')">Tasa de retención</div>
+      <div class="tab" onclick="tabRpts(this,'rpts-comparativo');rptsComparativoGenerar()">Comparativo</div>
       <div class="tab" onclick="tabRpts(this,'rpts-perfiles');rptsPerfilesGenerar()">Perfiles</div>
     </div>
 
@@ -1262,6 +1263,11 @@ function closeSidebarMobile() {
           <option value="semestre">Semestre actual</option>
           <option value="anio">Año actual</option>
         </select>
+        <select id="rpts-perdidos-estado" onchange="rptsPerdidosGenerar()" style="max-width:180px">
+          <option value="">Todos</option>
+          <option value="sin_renovar">Solo sin renovar</option>
+          <option value="inactivo">Solo inactivos</option>
+        </select>
         <button class="btn" onclick="rptsPerdidosGenerar()"><i class="ti ti-refresh"></i> Generar</button>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
@@ -1295,6 +1301,18 @@ function closeSidebarMobile() {
         <button onclick="rptExportarPanel('rpts-retencion-res','Tasa_retencion','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
       </div>
       <div id="rpts-retencion-res"></div>
+    </div>
+
+    <!-- Sub-tab: Comparativo -->
+    <div class="pp" id="rpts-comparativo" style="display:none">
+      <div id="rptscomp-periodo-wrap" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px"></div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rptscomp-res','Comparativo_suscripciones','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rptscomp-res','Comparativo_suscripciones','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rptscomp-res','Comparativo_suscripciones','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rptscomp-res','Comparativo_suscripciones','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+      </div>
+      <div id="rptscomp-res"></div>
     </div>
 
     <!-- Sub-tab 5: Perfiles -->
@@ -10609,9 +10627,11 @@ function rptsPerdidosGenerar() {
     const p = (s.fVcto||'').split('/');
     return (p.length===3 && p[2]) ? `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}` : '';
   };
+  const estadoFiltro = document.getElementById('rpts-perdidos-estado')?.value || '';
   const perdidos = SUBS_FULL.filter(s => {
     const iso = vctoISO(s);
-    return (s.est==='sin_renovar' || s.est==='inactivo') && iso >= ini && iso <= fin;
+    const estadoOk = estadoFiltro ? s.est === estadoFiltro : (s.est==='sin_renovar' || s.est==='inactivo');
+    return estadoOk && iso >= ini && iso <= fin;
   });
   const cnt = perdidos.length;
   const totalMonto = perdidos.reduce((s,x) => s + (x.monto||0), 0);
@@ -10645,6 +10665,78 @@ function rptsRetencionGenerar() {
     html += `<div class="card" style="margin-top:12px"><div class="ct" style="font-size:12px;margin-bottom:12px"><i class="ti ti-calculator" style="color:var(--accent)"></i>Detalle del cálculo</div><table style="width:100%;font-size:13px"><tbody><tr><td style="padding:5px 0;color:var(--text2)">Activos al inicio del período</td><td style="text-align:right;font-weight:500">${activosIni.length}</td></tr><tr><td style="padding:5px 0;color:var(--text2)">Clientes nuevos en el período</td><td style="text-align:right;font-weight:500">${nuevos.length}</td></tr><tr><td style="padding:5px 0;color:var(--text2)">Activos al final del período</td><td style="text-align:right;font-weight:500">${activosFin.length}</td></tr><tr style="border-top:1px solid var(--border)"><td style="padding:8px 0 5px;font-size:12px;color:var(--text3)" colspan="2">Fórmula: Activos fin ÷ (Inicio + Nuevos) × 100 = ${activosFin.length} ÷ (${activosIni.length} + ${nuevos.length}) × 100 = <strong style="color:${color}">${tasa.toFixed(1)}%</strong></td></tr></tbody></table></div>`;
   }
   if (resDiv) resDiv.innerHTML = html;
+}
+
+function rptsComparativoGenerar() {
+  const wrap = document.getElementById('rptscomp-periodo-wrap');
+  if (wrap && !wrap.dataset.init) {
+    wrap.innerHTML = htmlSelectorPeriodo('rptscomp', 'mes', 'rptsComparativoGenerar');
+    wrap.dataset.init = '1';
+  }
+  const { ini, fin } = periodoLeerRango('rptscomp');
+  const esMaster = USUARIO_ACTIVO?.rol === 'Master';
+  const resDiv = document.getElementById('rptscomp-res');
+  if (!ini || !fin) {
+    if (resDiv) resDiv.innerHTML = '<div class="ab w"><i class="ti ti-alert-triangle"></i>Selecciona un rango de fechas válido.</div>';
+    return;
+  }
+
+  // Ventas nuevas y renovaciones — mismos literales exactos que updMetricasCobros(), para que coincidan
+  const cobrosBase = COBROS.filter(c => { const f = fechaISO(c.fecha); return f && f >= ini && f <= fin; });
+  const ventasNuevas = cobrosBase.filter(c => c.tipo === 'Venta nueva');
+  const renovaciones = cobrosBase.filter(c => c.tipo === 'Renovación');
+  const montoVentas = ventasNuevas.reduce((s,c) => s + c.monto, 0);
+  const montoRenov  = renovaciones.reduce((s,c) => s + c.monto, 0);
+
+  // Sin renovar — mismo criterio de fecha (vctoISO) que rptsPerdidosGenerar()
+  const vctoISO = s => {
+    const p = (s.fVcto||'').split('/');
+    return (p.length===3 && p[2]) ? `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}` : '';
+  };
+  const sinRenovar = SUBS_FULL.filter(s => { const iso = vctoISO(s); return s.est==='sin_renovar' && iso >= ini && iso <= fin; });
+  const montoSinRenovar = sinRenovar.reduce((s,x) => s + (x.monto||0), 0);
+
+  const cV = ventasNuevas.length, cR = renovaciones.length, cS = sinRenovar.length;
+
+  const thMonto = esMaster ? '<th style="text-align:right">Monto</th>' : '';
+  const filaTabla = (label, cnt, monto, color) => `<tr><td>${label}</td><td style="text-align:right;font-weight:600">${cnt}</td>${esMaster ? `<td style="text-align:right;color:${color}">$${monto.toFixed(2)}</td>` : ''}</tr>`;
+  const tablaHtml = `<div class="card"><div class="tw"><table><thead><tr><th>Categoría</th><th style="text-align:right">Cantidad</th>${thMonto}</tr></thead><tbody>
+    ${filaTabla('Ventas nuevas', cV, montoVentas, 'var(--green)')}
+    ${filaTabla('Renovaciones', cR, montoRenov, 'var(--green)')}
+    ${filaTabla('Sin renovar', cS, montoSinRenovar, 'var(--red)')}
+  </tbody></table></div></div>`;
+
+  // Frase cualitativa
+  const positivos = cV + cR;
+  let fraseTexto, fraseColor;
+  if (cS === 0) {
+    fraseTexto = positivos > 0
+      ? `✅ Ningún cliente dejó de renovar en este período — ${positivos} entre ventas nuevas y renovaciones.`
+      : 'Sin movimiento registrado en este período.';
+    fraseColor = positivos > 0 ? 's' : 'i';
+  } else {
+    const ratio = positivos / cS;
+    fraseTexto = `Por cada cliente que no renovó, hay <strong>${ratio.toFixed(1)}</strong> entre ventas nuevas y renovaciones (${positivos} vs ${cS}).`;
+    fraseColor = ratio >= 2 ? 's' : ratio >= 1 ? 'w' : 'e';
+  }
+  const fraseHtml = `<div class="ab ${fraseColor}" style="margin-top:14px"><i class="ti ti-chart-bar"></i>${fraseTexto}</div>`;
+
+  if (resDiv) resDiv.innerHTML = `${tablaHtml}<div class="card" style="padding:14px;margin-top:14px"><canvas id="chart-rptscomp" height="90"></canvas></div>${fraseHtml}`;
+
+  if (typeof Chart !== 'undefined') {
+    const ctx = document.getElementById('chart-rptscomp')?.getContext('2d');
+    if (ctx) {
+      if (_chartRptsComparativo) _chartRptsComparativo.destroy();
+      _chartRptsComparativo = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Ventas nuevas', 'Renovaciones', 'Sin renovar'],
+          datasets: [{ label: 'Cantidad', data: [cV, cR, cS], backgroundColor: ['#3ecf8e', '#6c8fff', '#f04d4d'] }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#9899a8' } }, x: { ticks: { color: '#9899a8' } } } }
+      });
+    }
+  }
 }
 
 // ─── INVENTARIO SUB-MÓDULO ─────────────────────────────────
@@ -10955,6 +11047,7 @@ async function rptfIngresosGenerar() {
 
 let _chartMargenPerfil = null;
 let _chartMargenCombo = null;
+let _chartRptsComparativo = null;
 let _rptfMargenesPlat = [];
 let _rptfMargenesCombo = [];
 let _peGastosFijosActual = 0;
@@ -12395,8 +12488,9 @@ async function guardarRenovarPin() {
   const btn = document.getElementById('btn-guardar-renovar');
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
   try {
-    const { error: e1b } = await supa.from('cuentas_inventario').update({ fecha_vcto_proveedor: nuevaFecha, fecha_compra: hoy }).eq('codigo', _renovarCuentaId);
-    if (e1b) console.warn('[renovar] no se pudo sincronizar cuentas_inventario:', e1b.message);
+    const { data: cuentaData, error: e1b } = await supa.from('cuentas_inventario').update({ fecha_vcto_proveedor: nuevaFecha, fecha_compra: hoy }).eq('codigo', _renovarCuentaId).select().single();
+    if (e1b) throw e1b;
+    if (!cuentaData) throw new Error('No se encontró la cuenta ' + _renovarCuentaId + ' para actualizar el vencimiento');
     const { data: pinData, error: e2 } = await supa.from('pines').update({ estado: 'usado', cuenta_id: _renovarCuentaId, fecha_uso: hoy }).eq('id', pinId).select('costo').single();
     if (e2) throw e2;
     if (pinData?.costo != null) {
@@ -12404,7 +12498,7 @@ async function guardarRenovarPin() {
       if (eCosto2) console.warn('[renovar] Error actualizando costo en cuentas_inventario:', eCosto2.message);
     }
     await cargarPines();
-    await cargarInventario();
+    await refrescarVistaActiva({ subs: true, inventario: true });
     closeModal('m-renovar-pin');
     toast(`Cuenta ${_renovarCuentaId} renovada hasta ${nuevaFecha.split('-').reverse().join('/')} ✓`, 'ok');
     await dbGuardarHistorial('Renovación con pin', `${_renovarCuentaId} · pin ${opt.text.split(' · ')[0]} · vcto ${nuevaFecha}`, 'var(--accent)');
