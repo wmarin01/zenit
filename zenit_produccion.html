@@ -388,9 +388,16 @@ function sincronizarPlatsClientes() {
 // reinventar "qué recargar y qué re-renderizar". Detecta la vista activa vía .view.on
 // (mismo mecanismo que goTo()) y solo re-renderiza lo que dbCargarSuscripciones()/
 // cargarInventario()/sincronizarPlatsClientes() no cubren ya por sí mismos.
-async function refrescarVistaActiva({ subs = false, inventario = false } = {}) {
+// ═══════════════════════════════════════════════════════════
+// PLANILLA — estado global
+// ═══════════════════════════════════════════════════════════
+let COLABORADORES = [];
+let PLANILLA_MOVIMIENTOS_CACHE = [];
+
+async function refrescarVistaActiva({ subs = false, inventario = false, egresos = false } = {}) {
   if (subs) await dbCargarSuscripciones();       // recarga SUBS_FULL + sincroniza CLIENTES + renderC()
   if (inventario) await cargarInventario();      // recarga INV_CACHE + re-renderiza Inventario
+  if (egresos) await dbCargarEgresos();          // recarga tabla de Egresos
 
   // Si no se recargó desde la BD, igual resincronizamos agregados de CLIENTES por si el
   // llamador ya mutó SUBS_FULL en memoria (ej. notificarClaveActualizada).
@@ -932,6 +939,7 @@ function closeSidebarMobile() {
   <div class="sb-sec"><div class="sb-lbl">Administración</div>
     <div class="ni" onclick="goTo('proveedores',this)"><i class="ti ti-building-store"></i>Proveedores</div>
     <div class="ni" onclick="goTo('egresos',this)"><i class="ti ti-trending-down"></i>Egresos</div>
+    <div class="ni" onclick="goTo('planilla',this)"><i class="ti ti-cash-banknote"></i>Planilla</div>
     <div class="ni" onclick="goTo('pines',this)"><i class="ti ti-ticket"></i>Pines</div>
     <div class="ni" onclick="goTo('reportes',this)"><i class="ti ti-chart-bar"></i>Reportes</div>
     <div class="ni" onclick="goTo('tablas',this)"><i class="ti ti-table"></i>Tablas</div>
@@ -1118,6 +1126,66 @@ function closeSidebarMobile() {
     <div class="mc" style="--mc-c:var(--amber)"><div class="ml">Comisiones</div><div class="mv" style="color:var(--amber)">$18.20</div><div class="ms">Binance</div></div>
   </div>
   <div class="card"><div class="tw"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Proveedor</th><th>Método</th><th>Neto</th><th>Comisión</th><th>Total</th></tr></thead><tbody id="tb-egresos"></tbody></table></div></div>
+</div>
+<!-- PLANILLA (solo Master) -->
+<div class="view" id="v-planilla">
+  <div class="tabs" id="planilla-tabs" style="margin-bottom:14px">
+    <div class="tab on" onclick="tabPlanilla(this,'planilla-colaboradores')">Colaboradores</div>
+    <div class="tab" onclick="tabPlanilla(this,'planilla-horas')">Carga de horas</div>
+    <div class="tab" onclick="tabPlanilla(this,'planilla-pago')">Pago por periodo</div>
+    <div class="tab" onclick="tabPlanilla(this,'planilla-saldo')">Saldo acumulado</div>
+  </div>
+
+  <!-- Sub-tab 1: Colaboradores -->
+  <div class="pp on" id="planilla-colaboradores">
+    <div class="card"><div class="tw"><table><thead><tr><th>Nombre</th><th style="text-align:right">Tarifa/hora</th><th style="text-align:right">Jornada base</th><th>Estado</th><th></th></tr></thead><tbody id="tb-colaboradores"><tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr></tbody></table></div></div>
+  </div>
+
+  <!-- Sub-tab 2: Carga de horas por periodo -->
+  <div class="pp" id="planilla-horas" style="display:none">
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div class="fg" style="min-width:220px"><label>Colaborador</label><select id="horas-planilla-colaborador" onchange="onColaboradorHorasChange()"><option value="">— Selecciona —</option></select></div>
+        <div class="fg" style="min-width:150px"><label>Desde</label><input type="date" id="horas-planilla-desde" onchange="cargarHorasPeriodo()"></div>
+        <div class="fg" style="min-width:150px"><label>Hasta</label><input type="date" id="horas-planilla-hasta" onchange="cargarHorasPeriodo()"></div>
+        <button class="btn" onclick="cargarHorasPeriodo()"><i class="ti ti-refresh"></i>Cargar</button>
+      </div>
+      <div class="hint">Periodo máximo: 31 días. El "Desde" se sugiere automáticamente según el último periodo pagado del colaborador.</div>
+    </div>
+    <div id="horas-planilla-grid"><div style="padding:20px;text-align:center;color:var(--text3)">Selecciona un colaborador y un rango de fechas.</div></div>
+  </div>
+
+  <!-- Sub-tab 3: Pago por periodo -->
+  <div class="pp" id="planilla-pago" style="display:none">
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div class="fg" style="min-width:220px"><label>Colaborador</label><select id="pago-planilla-colaborador" onchange="mostrarResumenPagoPeriodo()"><option value="">— Selecciona —</option></select></div>
+        <div class="fg" style="min-width:150px"><label>Desde</label><input type="date" id="pago-planilla-desde" onchange="mostrarResumenPagoPeriodo()"></div>
+        <div class="fg" style="min-width:150px"><label>Hasta</label><input type="date" id="pago-planilla-hasta" onchange="mostrarResumenPagoPeriodo()"></div>
+        <button class="btn" onclick="mostrarResumenPagoPeriodo()"><i class="ti ti-refresh"></i>Calcular</button>
+      </div>
+    </div>
+    <div id="pago-planilla-resumen"></div>
+    <div class="card" id="pago-planilla-form" style="display:none">
+      <div class="fr c2">
+        <div class="fg"><label>Monto a retener este periodo (reserva)</label><input type="number" min="0" step="0.01" id="pago-planilla-retener" placeholder="$0.00"></div>
+        <div class="fg"><label>Monto a retirar del saldo acumulado (opcional)</label><input type="number" min="0" step="0.01" id="pago-planilla-retiro-saldo" placeholder="$0.00"></div>
+      </div>
+      <div class="fr c2">
+        <div class="fg"><label>Banco<span class="req">*</span></label><select id="pago-planilla-banco"><option>Banco General</option><option>Banistmo</option></select></div>
+        <div class="fg"><label>Forma de pago<span class="req">*</span></label><select id="pago-planilla-forma"><option value="">Yappy</option><option value="">Transferencia / ACH</option><option value="bin">Binance Pay</option><option value="">Efectivo</option></select></div>
+      </div>
+      <div class="fg"><label>Notas</label><textarea id="pago-planilla-notas" rows="2" placeholder="Opcional"></textarea></div>
+      <button class="btn btn-p" id="btn-guardar-pago-planilla" onclick="guardarPagoPeriodo()"><i class="ti ti-check"></i>Confirmar pago</button>
+    </div>
+  </div>
+
+  <!-- Sub-tab 4: Saldo acumulado -->
+  <div class="pp" id="planilla-saldo" style="display:none">
+    <div class="card" style="margin-bottom:14px"><div class="tw"><table><thead><tr><th>Colaborador</th><th style="text-align:right">Saldo acumulado</th><th></th></tr></thead><tbody id="tb-planilla-saldos"><tr><td colspan="3" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr></tbody></table></div></div>
+    <div class="ct" style="font-size:12px;margin-bottom:8px">Bitácora de movimientos</div>
+    <div class="card"><div class="tw"><table><thead><tr><th>Fecha</th><th>Colaborador</th><th>Tipo</th><th style="text-align:right">Monto</th><th>Notas</th></tr></thead><tbody id="planilla-bitacora"></tbody></table></div></div>
+  </div>
 </div>
 <!-- REPORTES -->
 <div class="view" id="v-reportes">
@@ -2427,6 +2495,31 @@ function closeSidebarMobile() {
   </div>
   <div class="mf"><button class="btn" onclick="closeModal('m-proveedor')">Cancelar</button><button class="btn btn-p" id="btn-guardar-prov" onclick="guardarProveedor()"><i class="ti ti-check"></i>Guardar proveedor</button></div>
 </div></div>
+<!-- Colaborador (Planilla) -->
+<div class="ov" id="m-colaborador"><div class="modal" style="max-width:480px">
+  <div class="mh"><div class="mico" style="background:#5a3e00"><i class="ti ti-user"></i></div><div><div class="mtit" id="colaborador-titulo">Nuevo colaborador</div><div class="msub">Datos del colaborador</div></div><button class="mcl" onclick="closeModal('m-colaborador')"><i class="ti ti-x"></i></button></div>
+  <div class="mb">
+    <input type="hidden" id="colaborador-edit-id">
+    <div class="fg" style="margin-bottom:11px"><label>Nombre<span class="req">*</span></label><input type="text" id="colaborador-nombre" placeholder="Nombre completo"></div>
+    <div class="fr c2">
+      <div class="fg"><label>Tarifa por hora<span class="req">*</span></label><input type="number" min="0" step="0.01" id="colaborador-tarifa" placeholder="$0.00"></div>
+      <div class="fg"><label>Jornada base (horas, informativa)</label><input type="number" min="0" step="0.5" id="colaborador-jornada" value="8"></div>
+    </div>
+    <div class="fg"><label>Estado</label><select id="colaborador-estado"><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select></div>
+  </div>
+  <div class="mf"><button class="btn" onclick="closeModal('m-colaborador')">Cancelar</button><button class="btn btn-p" onclick="guardarColaborador()"><i class="ti ti-check"></i>Guardar</button></div>
+</div></div>
+<!-- Retiro de saldo (Planilla) -->
+<div class="ov" id="m-planilla-retiro"><div class="modal" style="max-width:420px">
+  <div class="mh"><div class="mico" style="background:#1a9e65"><i class="ti ti-cash-banknote"></i></div><div><div class="mtit">Retirar saldo acumulado</div><div class="msub" id="retiro-saldo-sub">—</div></div><button class="mcl" onclick="closeModal('m-planilla-retiro')"><i class="ti ti-x"></i></button></div>
+  <div class="mb">
+    <input type="hidden" id="retiro-saldo-colaborador-id">
+    <div class="fg" style="margin-bottom:11px"><label>Monto a retirar<span class="req">*</span></label><input type="number" min="0" step="0.01" id="retiro-saldo-monto" placeholder="$0.00"></div>
+    <div class="fg"><label>Notas</label><textarea id="retiro-saldo-notas" rows="2" placeholder="Opcional"></textarea></div>
+    <div class="ab i"><i class="ti ti-info-circle"></i>Este retiro se registra como un egreso aparte (categoría Planilla), fuera del ciclo de pago semanal.</div>
+  </div>
+  <div class="mf"><button class="btn" onclick="closeModal('m-planilla-retiro')">Cancelar</button><button class="btn btn-p" id="btn-guardar-retiro-saldo" onclick="guardarRetiroSaldo()"><i class="ti ti-check"></i>Confirmar retiro</button></div>
+</div></div>
 <!-- Modal precio -->
 <div class="ov" id="m-precio"><div class="modal" style="max-width:560px">
   <div class="mh"><div class="mico" style="background:var(--green2)"><i class="ti ti-tag"></i></div><div><div class="mtit" id="precio-title">Nuevo precio</div><div class="msub">Define el precio para un plan específico</div></div><button class="mcl" onclick="closeModal('m-precio')"><i class="ti ti-x"></i></button></div>
@@ -3394,7 +3487,7 @@ function actualizarFechaHeader() {
 }
 actualizarFechaHeader();
 
-const TITLES={dashboard:'Dashboard',clientes:'Clientes',ventas:'Ventas',cobranza:'Cobranza',inventario:'Inventario',proveedores:'Proveedores',egresos:'Egresos',pines:'Pines',reportes:'Reportes',tablas:'Tablas',parametros:'Parámetros',historial:'Historial',usuarios:'Usuarios y permisos',ayuda:'Ayuda'};
+const TITLES={dashboard:'Dashboard',clientes:'Clientes',ventas:'Ventas',cobranza:'Cobranza',inventario:'Inventario',proveedores:'Proveedores',egresos:'Egresos',planilla:'Planilla',pines:'Pines',reportes:'Reportes',tablas:'Tablas',parametros:'Parámetros',historial:'Historial',usuarios:'Usuarios y permisos',ayuda:'Ayuda'};
 
 // ── DASHBOARD DINÁMICO ──────────────────────────────────────────
 async function renderDashboard() {
@@ -3499,7 +3592,7 @@ async function renderDashboard() {
     const hoyDate = hoyPanamaDate();
     const limiteDate = new Date(hoyDate); limiteDate.setDate(limiteDate.getDate() + 15);
     const proximasVcto = (INV_CACHE || [])
-      .filter(c => (c.estado||'').toLowerCase() === 'activa' && c.fecha_vcto_prov)
+      .filter(c => esActivo(c.estado) && c.fecha_vcto_prov)
       .map(c => ({ ...c, _vctoDate: new Date(c.fecha_vcto_prov + 'T00:00:00') }))
       .filter(c => c._vctoDate >= hoyDate && c._vctoDate <= limiteDate)
       .sort((a,b) => a._vctoDate - b._vctoDate)
@@ -3594,6 +3687,14 @@ function goTo(v,el){
       }
       else if (v==='proveedores')   { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoProveedor()"><i class="ti ti-plus"></i>Nuevo proveedor</button>`; dbCargarProveedores(); }
       else if (v==='egresos')       { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoEgreso()"><i class="ti ti-plus"></i>Nuevo egreso</button>`; dbCargarEgresos(); }
+      else if (v==='planilla')      {
+        if (USUARIO_ACTIVO?.rol !== 'Master') { ha.innerHTML=''; toast('Solo el rol Master puede acceder a Planilla', 'warn'); }
+        else {
+          ha.innerHTML = `<button class="hbtn p" onclick="abrirNuevoColaborador()"><i class="ti ti-plus"></i>Nuevo colaborador</button>`;
+          const tabActivo = document.querySelector('#planilla-tabs .tab.on');
+          if (tabActivo) tabActivo.click(); else dbCargarColaboradores();
+        }
+      }
       else if (v==='reportes')      { ha.innerHTML=''; vctInit(); }
       else if (v==='tablas')        { ha.innerHTML=''; setTimeout(()=>{ cargarTablaMotivos(); cargarMotivosCambio(); },100); }
       else if (v==='pines')         { ha.innerHTML=`<button class="hbtn p" onclick="abrirNuevoLotePines()"><i class="ti ti-plus"></i>Nuevo lote</button>`; cargarPines(); cargarTarifasPin(); }
@@ -7912,6 +8013,419 @@ async function dbCargarEgresos() {
   </tr>`).join('');
 }
 
+// ═══════════════════════════════════════════════════════════
+// PLANILLA (solo Master)
+// ═══════════════════════════════════════════════════════════
+function esDomingo(fechaISO) {
+  if (!fechaISO) return false;
+  return new Date(fechaISO + 'T00:00:00').getDay() === 0;
+}
+
+// Solapamiento de intervalos: existe un pago cuyo [semana_inicio, semana_fin] cruza [desde, hasta].
+async function _planillaExisteSolape(colaboradorId, desde, hasta) {
+  const { data } = await supa.from('planilla_pagos')
+    .select('id')
+    .eq('colaborador_id', colaboradorId)
+    .lte('semana_inicio', hasta)
+    .gte('semana_fin', desde)
+    .limit(1);
+  return !!(data && data.length);
+}
+
+const PLANILLA_MAX_DIAS = 31;
+
+function _planillaNumDias(desde, hasta) {
+  return Math.round((new Date(hasta + 'T00:00:00') - new Date(desde + 'T00:00:00')) / 86400000) + 1;
+}
+
+// Valida un rango desde/hasta. Devuelve un mensaje de error, o null si es válido.
+function _planillaValidarRango(desde, hasta) {
+  if (!desde || !hasta) return 'Selecciona un rango de fechas.';
+  if (hasta < desde) return 'La fecha "Hasta" no puede ser anterior a "Desde".';
+  if (_planillaNumDias(desde, hasta) > PLANILLA_MAX_DIAS) return `El periodo no puede superar ${PLANILLA_MAX_DIAS} días.`;
+  return null;
+}
+
+async function dbCargarColaboradores() {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede acceder a Planilla', 'warn'); return; }
+  const tbody = document.getElementById('tb-colaboradores');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader"></i> Cargando...</td></tr>';
+  const { data, error } = await supa.from('colaboradores').select('*').order('nombre');
+  if (error) { if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--red);padding:16px">Error: ${error.message}</td></tr>`; return; }
+  COLABORADORES = data || [];
+  if (tbody) tbody.innerHTML = COLABORADORES.map(c => `<tr>
+    <td>${c.nombre}</td>
+    <td style="text-align:right">${(parseFloat(c.tarifa_hora)||0).toFixed(2)}</td>
+    <td style="text-align:right">${parseFloat(c.jornada_base_horas)||0} h</td>
+    <td><span class="b ${esActivo(c.estado)?'bg':'bp'}">${esActivo(c.estado)?'Activo':'Inactivo'}</span></td>
+    <td class="tda"><button class="btn btn-sm btn-ic" onclick="editarColaborador(${c.id})"><i class="ti ti-edit"></i></button></td>
+  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:16px">Sin colaboradores registrados</td></tr>';
+}
+
+function abrirNuevoColaborador() {
+  document.getElementById('colaborador-edit-id').value = '';
+  document.getElementById('colaborador-nombre').value = '';
+  document.getElementById('colaborador-tarifa').value = '';
+  document.getElementById('colaborador-jornada').value = '8';
+  document.getElementById('colaborador-estado').value = 'activo';
+  document.getElementById('colaborador-titulo').textContent = 'Nuevo colaborador';
+  openModal('m-colaborador');
+}
+
+function editarColaborador(id) {
+  const c = COLABORADORES.find(x => x.id === id);
+  if (!c) { toast('Colaborador no encontrado', 'error'); return; }
+  document.getElementById('colaborador-edit-id').value = c.id;
+  document.getElementById('colaborador-nombre').value = c.nombre || '';
+  document.getElementById('colaborador-tarifa').value = c.tarifa_hora || '';
+  document.getElementById('colaborador-jornada').value = c.jornada_base_horas || '8';
+  document.getElementById('colaborador-estado').value = esActivo(c.estado) ? 'activo' : 'inactivo';
+  document.getElementById('colaborador-titulo').textContent = 'Editar colaborador';
+  openModal('m-colaborador');
+}
+
+async function guardarColaborador() {
+  const id = document.getElementById('colaborador-edit-id').value;
+  const nombre = document.getElementById('colaborador-nombre').value.trim();
+  const tarifa = parseFloat(document.getElementById('colaborador-tarifa').value) || 0;
+  const jornada = parseFloat(document.getElementById('colaborador-jornada').value) || 0;
+  const estado = document.getElementById('colaborador-estado').value || 'activo';
+  if (!nombre) { toast('El nombre es requerido', 'warn'); return; }
+  if (!tarifa) { toast('La tarifa por hora es requerida', 'warn'); return; }
+  const btn = document.querySelector('#m-colaborador .btn-p');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...'; }
+  try {
+    const payload = { nombre, tarifa_hora: tarifa, jornada_base_horas: jornada, estado };
+    let error;
+    if (id) { ({ error } = await supa.from('colaboradores').update(payload).eq('id', id)); }
+    else    { ({ error } = await supa.from('colaboradores').insert(payload)); }
+    if (error) throw error;
+    closeModal('m-colaborador');
+    await dbCargarColaboradores();
+    toast('Colaborador guardado ✓', 'ok');
+  } catch(e) {
+    toast('Error al guardar: ' + (e.message||e), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Guardar'; }
+  }
+}
+
+function poblarSelectColaboradoresActivos(selectId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const activos = COLABORADORES.filter(c => !esInactivo(c.estado));
+  sel.innerHTML = '<option value="">— Selecciona —</option>' + activos.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+}
+
+function tabPlanilla(el, id) {
+  document.getElementById('planilla-tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelectorAll('#v-planilla > .pp').forEach(p => { p.classList.remove('on'); p.style.display = 'none'; });
+  const panel = document.getElementById(id);
+  if (panel) { panel.classList.add('on'); panel.style.display = 'block'; }
+  if (id === 'planilla-colaboradores') {
+    dbCargarColaboradores();
+  } else if (id === 'planilla-horas') {
+    poblarSelectColaboradoresActivos('horas-planilla-colaborador');
+  } else if (id === 'planilla-pago') {
+    poblarSelectColaboradoresActivos('pago-planilla-colaborador');
+  } else if (id === 'planilla-saldo') {
+    cargarSaldosColaboradores();
+  }
+}
+
+const NOMBRES_DIA_PLANILLA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+// Al cambiar de colaborador en "Carga de horas": sugiere "Desde" = día siguiente al último
+// periodo pagado de ESE colaborador (si tiene), y recarga la grilla.
+async function onColaboradorHorasChange() {
+  const colaboradorId = parseInt(document.getElementById('horas-planilla-colaborador')?.value);
+  const desdeEl = document.getElementById('horas-planilla-desde');
+  if (colaboradorId && desdeEl && !desdeEl.value) {
+    const { data } = await supa.from('planilla_pagos')
+      .select('semana_fin')
+      .eq('colaborador_id', colaboradorId)
+      .order('semana_fin', { ascending: false })
+      .limit(1);
+    if (data && data.length) {
+      const f = new Date(data[0].semana_fin + 'T00:00:00');
+      f.setDate(f.getDate() + 1);
+      desdeEl.value = fechaAISO(f);
+    }
+  }
+  await cargarHorasPeriodo();
+}
+
+async function cargarHorasPeriodo() {
+  const colaboradorId = parseInt(document.getElementById('horas-planilla-colaborador')?.value);
+  const desde = document.getElementById('horas-planilla-desde')?.value;
+  const hasta = document.getElementById('horas-planilla-hasta')?.value;
+  const cont = document.getElementById('horas-planilla-grid');
+  if (!cont) return;
+  if (!colaboradorId || !desde || !hasta) { cont.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Selecciona un colaborador y un rango de fechas.</div>'; return; }
+  const errorRango = _planillaValidarRango(desde, hasta);
+  if (errorRango) { cont.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>${errorRango}</div>`; return; }
+  if (!COLABORADORES.length) await dbCargarColaboradores();
+  const colaborador = COLABORADORES.find(c => c.id === colaboradorId);
+  const jornadaBase = colaborador ? (parseFloat(colaborador.jornada_base_horas)||0) : 0;
+  const bloqueada = await _planillaExisteSolape(colaboradorId, desde, hasta);
+  const { data: horasData } = await supa.from('planilla_horas').select('*').eq('colaborador_id', colaboradorId).gte('fecha', desde).lte('fecha', hasta);
+  const porFecha = {};
+  (horasData||[]).forEach(h => { porFecha[h.fecha] = h; });
+  const filas = [];
+  const numDias = _planillaNumDias(desde, hasta);
+  const d = new Date(desde + 'T00:00:00');
+  for (let i = 0; i < numDias; i++) {
+    const fechaIso = fechaAISO(d);
+    const esDom = esDomingo(fechaIso);
+    const existente = porFecha[fechaIso];
+    // Precarga: si no hay registro guardado, usa jornada_base_horas (0 en domingo); si ya existe, respeta el valor guardado.
+    const horasDefault = existente ? (existente.horas ?? 0) : (esDom ? 0 : jornadaBase);
+    filas.push(`<tr>
+      <td>${NOMBRES_DIA_PLANILLA[d.getDay()]}${esDom?' <span class="b bi" title="1.5x automático">Domingo</span>':''}</td>
+      <td style="font-size:12px;color:var(--text3)">${fechaIso.split('-').reverse().join('/')}</td>
+      <td><input type="number" min="0" step="0.5" class="planilla-horas-input" data-fecha="${fechaIso}" value="${horasDefault}" ${bloqueada?'disabled':''} style="width:80px;text-align:right;padding:4px 6px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg2);color:var(--text)"></td>
+      <td style="text-align:center">${esDom ? '—' : `<input type="checkbox" class="planilla-feriado-input" data-fecha="${fechaIso}" ${existente?.es_feriado?'checked':''} ${bloqueada?'disabled':''}>`}</td>
+    </tr>`);
+    d.setDate(d.getDate() + 1);
+  }
+  cont.innerHTML = `
+    ${bloqueada ? '<div class="ab w" style="margin-bottom:12px"><i class="ti ti-lock"></i>Este rango se solapa con un periodo ya pagado — no se puede editar.</div>' : ''}
+    <div class="card"><div class="tw"><table><thead><tr><th>Día</th><th>Fecha</th><th style="text-align:right">Horas</th><th style="text-align:center">Feriado</th></tr></thead><tbody>${filas.join('')}</tbody></table></div></div>
+    <button class="btn btn-p" style="margin-top:12px" onclick="guardarHorasPeriodo(${colaboradorId},'${desde}','${hasta}')" ${bloqueada?'disabled':''}><i class="ti ti-check"></i>Guardar horas del periodo</button>
+  `;
+}
+
+async function guardarHorasPeriodo(colaboradorId, desde, hasta) {
+  if (await _planillaExisteSolape(colaboradorId, desde, hasta)) { toast('Este rango se solapa con un periodo ya pagado — no se puede editar', 'warn'); return; }
+  const inputs = document.querySelectorAll('#horas-planilla-grid .planilla-horas-input');
+  const filas = Array.from(inputs).map(inp => {
+    const fecha = inp.dataset.fecha;
+    const horas = parseFloat(inp.value) || 0;
+    const chk = document.querySelector(`.planilla-feriado-input[data-fecha="${fecha}"]`);
+    return { colaborador_id: colaboradorId, fecha, horas, es_feriado: !!(chk && chk.checked) };
+  });
+  try {
+    const { error } = await supa.from('planilla_horas').upsert(filas, { onConflict: 'colaborador_id,fecha' });
+    if (error) throw error;
+    toast('Horas guardadas ✓', 'ok');
+    await cargarHorasPeriodo();
+  } catch(e) {
+    toast('Error al guardar horas: ' + (e.message||e), 'error');
+  }
+}
+
+async function calcularResumenPeriodo(colaboradorId, desde, hasta) {
+  const { data, error } = await supa.from('planilla_horas').select('fecha,horas,es_feriado').eq('colaborador_id', colaboradorId).gte('fecha', desde).lte('fecha', hasta);
+  if (error) throw error;
+  const colaborador = COLABORADORES.find(c => c.id === colaboradorId);
+  const tarifa = colaborador ? parseFloat(colaborador.tarifa_hora)||0 : 0;
+  const porFecha = {};
+  (data||[]).forEach(h => { porFecha[h.fecha] = h; });
+  let horasNormales = 0, horas15x = 0;
+  const dias = [];
+  const numDias = _planillaNumDias(desde, hasta);
+  const d = new Date(desde + 'T00:00:00');
+  for (let i = 0; i < numDias; i++) {
+    const fechaIso = fechaAISO(d);
+    const reg = porFecha[fechaIso];
+    const horas = reg ? (parseFloat(reg.horas)||0) : 0;
+    const esFeriado = !!(reg && reg.es_feriado);
+    const esDom = esDomingo(fechaIso);
+    const factor = (esFeriado || esDom) ? 1.5 : 1;
+    const monto = horas * tarifa * factor;
+    if (esFeriado || esDom) horas15x += horas; else horasNormales += horas;
+    dias.push({ fecha: fechaIso, dia: NOMBRES_DIA_PLANILLA[d.getDay()], horas, esFeriado, esDomingo: esDom, monto });
+    d.setDate(d.getDate() + 1);
+  }
+  const montoCalculado = horasNormales*tarifa + horas15x*tarifa*1.5;
+  const { data: movs } = await supa.from('planilla_saldo_movimientos').select('tipo,monto').eq('colaborador_id', colaboradorId);
+  const saldoActual = (movs||[]).reduce((s,m) => s + (m.tipo==='retencion'? parseFloat(m.monto)||0 : -(parseFloat(m.monto)||0)), 0);
+  const yaPagada = await _planillaExisteSolape(colaboradorId, desde, hasta);
+  return { colaboradorId, desde, hasta, dias, horasNormales, horas15x, tarifa, montoCalculado, saldoActual, yaPagada };
+}
+
+async function mostrarResumenPagoPeriodo() {
+  const colaboradorId = parseInt(document.getElementById('pago-planilla-colaborador')?.value);
+  const desde = document.getElementById('pago-planilla-desde')?.value;
+  const hasta = document.getElementById('pago-planilla-hasta')?.value;
+  const cont = document.getElementById('pago-planilla-resumen');
+  if (!cont) return;
+  if (!colaboradorId || !desde || !hasta) { cont.innerHTML = ''; document.getElementById('pago-planilla-form').style.display='none'; return; }
+  const errorRango = _planillaValidarRango(desde, hasta);
+  if (errorRango) { cont.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>${errorRango}</div>`; document.getElementById('pago-planilla-form').style.display='none'; return; }
+  cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Calculando...</div>';
+  try {
+    const resumen = await calcularResumenPeriodo(colaboradorId, desde, hasta);
+    document.getElementById('pago-planilla-form').style.display = resumen.yaPagada ? 'none' : 'block';
+    const fmt = n => '$'+n.toFixed(2);
+    const diasHtml = resumen.dias.map(d => `<tr>
+      <td>${d.dia}</td>
+      <td style="font-size:12px;color:var(--text3)">${d.fecha.split('-').reverse().join('/')}</td>
+      <td style="text-align:right">${d.horas}</td>
+      <td style="text-align:center">${(d.esDomingo||d.esFeriado) ? `<span class="b bi">1.5x${d.esFeriado&&!d.esDomingo?' feriado':''}</span>` : '—'}</td>
+      <td style="text-align:right;font-weight:500">${fmt(d.monto)}</td>
+    </tr>`).join('');
+    cont.innerHTML = `
+      ${resumen.yaPagada ? '<div class="ab w"><i class="ti ti-lock"></i>Este rango se solapa con un periodo ya pagado para este colaborador.</div>' : ''}
+      <div class="ct" style="font-size:12px;margin-bottom:8px">Desglose diario (${resumen.desde.split('-').reverse().join('/')} — ${resumen.hasta.split('-').reverse().join('/')})</div>
+      <div class="card" style="margin-bottom:12px"><div class="tw"><table><thead><tr><th>Día</th><th>Fecha</th><th style="text-align:right">Horas</th><th style="text-align:center">1.5x</th><th style="text-align:right">Monto</th></tr></thead><tbody>${diasHtml}</tbody></table></div></div>
+      <div class="mg" style="margin-bottom:12px">
+        <div class="mc" style="--mc-c:var(--accent)"><div class="ml">Horas normales</div><div class="mv">${resumen.horasNormales}</div></div>
+        <div class="mc" style="--mc-c:var(--amber)"><div class="ml">Horas 1.5x</div><div class="mv" style="color:var(--amber)">${resumen.horas15x}</div></div>
+        <div class="mc" style="--mc-c:var(--green)"><div class="ml">Monto calculado</div><div class="mv" style="color:var(--green)">${fmt(resumen.montoCalculado)}</div></div>
+        <div class="mc" style="--mc-c:var(--purple)"><div class="ml">Saldo acumulado actual</div><div class="mv" style="color:var(--purple)">${fmt(resumen.saldoActual)}</div></div>
+      </div>
+    `;
+  } catch(e) {
+    cont.innerHTML = `<div class="ab e"><i class="ti ti-alert-triangle"></i>Error: ${e.message}</div>`;
+  }
+}
+
+async function guardarPagoPeriodo() {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede procesar pagos de planilla', 'warn'); return; }
+  const colaboradorId = parseInt(document.getElementById('pago-planilla-colaborador')?.value);
+  if (!colaboradorId) { toast('Selecciona un colaborador', 'warn'); return; }
+  const desde = document.getElementById('pago-planilla-desde')?.value;
+  const hasta = document.getElementById('pago-planilla-hasta')?.value;
+  const errorRango = _planillaValidarRango(desde, hasta);
+  if (errorRango) { toast(errorRango, 'warn'); return; }
+  const retenido = parseFloat(document.getElementById('pago-planilla-retener')?.value) || 0;
+  const retiroSaldo = parseFloat(document.getElementById('pago-planilla-retiro-saldo')?.value) || 0;
+  const banco = document.getElementById('pago-planilla-banco')?.value || 'Banco General';
+  const formaEl = document.getElementById('pago-planilla-forma');
+  const forma = formaEl?.options[formaEl.selectedIndex]?.text || 'Yappy';
+  const notas = document.getElementById('pago-planilla-notas')?.value?.trim() || '';
+  const btn = document.getElementById('btn-guardar-pago-planilla');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Procesando...'; }
+  try {
+    if (await _planillaExisteSolape(colaboradorId, desde, hasta)) throw new Error('Este rango se solapa con un periodo ya pagado para este colaborador');
+    const resumen = await calcularResumenPeriodo(colaboradorId, desde, hasta);
+    if (retenido > resumen.montoCalculado) throw new Error('El monto a retener no puede superar el monto calculado del periodo');
+    if (retiroSaldo > resumen.saldoActual) throw new Error('El monto a retirar del saldo supera el saldo acumulado disponible');
+    const colaborador = COLABORADORES.find(c => c.id === colaboradorId);
+    const montoPagado = resumen.montoCalculado - retenido + retiroSaldo;
+    const saldoAntes = resumen.saldoActual;
+    const saldoDespues = saldoAntes + retenido - retiroSaldo;
+    const egresoId = await dbGuardarEgreso({
+      fecha: hoyPanama(), categoria: 'Planilla',
+      descripcion: `Pago de planilla ${colaborador?.nombre||''} (${desde} a ${hasta})`,
+      proveedor: '—', forma, neto: montoPagado, comision: 0, total: montoPagado, banco,
+      documento: '', notas
+    });
+    if (!egresoId) throw new Error('No se pudo registrar el egreso del pago');
+    const { data: pagoRow, error: ePago } = await supa.from('planilla_pagos').insert({
+      colaborador_id: colaboradorId, semana_inicio: desde, semana_fin: hasta,
+      horas_normales: resumen.horasNormales, horas_15x: resumen.horas15x,
+      monto_calculado: resumen.montoCalculado, monto_retenido: retenido,
+      monto_retirado_saldo: retiroSaldo, monto_pagado: montoPagado,
+      saldo_antes: saldoAntes, saldo_despues: saldoDespues,
+      egreso_id: egresoId, fecha_pago: hoyPanama(), notas
+    }).select('id').single();
+    if (ePago) throw ePago;
+    if (retenido > 0) {
+      const { error: eMov1 } = await supa.from('planilla_saldo_movimientos').insert({
+        colaborador_id: colaboradorId, tipo: 'retencion', monto: retenido, fecha: hoyPanama(), pago_id: pagoRow.id
+      });
+      if (eMov1) console.warn('[planilla] Error registrando retención en bitácora:', eMov1.message);
+    }
+    if (retiroSaldo > 0) {
+      const { error: eMov2 } = await supa.from('planilla_saldo_movimientos').insert({
+        colaborador_id: colaboradorId, tipo: 'retiro', monto: retiroSaldo, fecha: hoyPanama(), pago_id: pagoRow.id
+      });
+      if (eMov2) console.warn('[planilla] Error registrando retiro en bitácora:', eMov2.message);
+    }
+    await refrescarVistaActiva({ egresos: true });
+    toast('Pago registrado ✓', 'ok');
+    await dbGuardarHistorial('Pago de planilla', `${colaborador?.nombre||''} · periodo ${desde} a ${hasta} · ${montoPagado.toFixed(2)}`, 'var(--accent)');
+    document.getElementById('pago-planilla-retener').value = '';
+    document.getElementById('pago-planilla-retiro-saldo').value = '';
+    document.getElementById('pago-planilla-notas').value = '';
+    await mostrarResumenPagoPeriodo();
+  } catch(e) {
+    console.error('[planilla] Error en guardarPagoPeriodo:', e);
+    toast('Error: ' + (e.message || e), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Confirmar pago'; }
+  }
+}
+
+function calcularSaldoColaborador(colaboradorId, movimientos) {
+  return (movimientos||[]).filter(m => m.colaborador_id === colaboradorId)
+    .reduce((s,m) => s + (m.tipo==='retencion' ? (parseFloat(m.monto)||0) : -(parseFloat(m.monto)||0)), 0);
+}
+
+async function cargarSaldosColaboradores() {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede acceder a Planilla', 'warn'); return; }
+  const tbody = document.getElementById('tb-planilla-saldos');
+  const bitacora = document.getElementById('planilla-bitacora');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader"></i> Cargando...</td></tr>';
+  try {
+    if (!COLABORADORES.length) await dbCargarColaboradores();
+    const { data, error } = await supa.from('planilla_saldo_movimientos').select('*').order('fecha', { ascending: false });
+    if (error) throw error;
+    PLANILLA_MOVIMIENTOS_CACHE = data || [];
+    const rows = COLABORADORES.map(c => {
+      const saldo = calcularSaldoColaborador(c.id, PLANILLA_MOVIMIENTOS_CACHE);
+      return `<tr>
+        <td>${c.nombre}${esInactivo(c.estado) ? ' <span class="b bp">Inactivo</span>' : ''}</td>
+        <td style="text-align:right;font-weight:600;color:${saldo>0?'var(--amber)':'var(--text3)'}">${saldo.toFixed(2)}</td>
+        <td class="tda"><button class="btn btn-sm" onclick="abrirRetiroSaldo(${c.id},'${(c.nombre||'').replace(/'/g,"\\'")}')" ${saldo<=0?'disabled':''}><i class="ti ti-cash-banknote"></i>Retirar aparte</button></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:16px">Sin colaboradores registrados</td></tr>';
+    if (tbody) tbody.innerHTML = rows;
+    const movRows = PLANILLA_MOVIMIENTOS_CACHE.map(m => {
+      const col = COLABORADORES.find(c => c.id === m.colaborador_id);
+      const tipoBadge = m.tipo==='retencion' ? '<span class="b ba">Retención</span>' : '<span class="b bg">Retiro</span>';
+      return `<tr><td style="font-size:12px">${(m.fecha||'').split('-').reverse().join('/')}</td><td>${col?.nombre||'—'}</td><td>${tipoBadge}</td><td style="text-align:right">${(parseFloat(m.monto)||0).toFixed(2)}</td><td style="font-size:12px;color:var(--text3)">${m.notas||'—'}</td></tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:16px">Sin movimientos registrados</td></tr>';
+    if (bitacora) bitacora.innerHTML = movRows;
+  } catch(e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--red);padding:16px">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function abrirRetiroSaldo(colaboradorId, nombre) {
+  document.getElementById('retiro-saldo-colaborador-id').value = colaboradorId;
+  document.getElementById('retiro-saldo-sub').textContent = nombre || '';
+  document.getElementById('retiro-saldo-monto').value = '';
+  document.getElementById('retiro-saldo-notas').value = '';
+  openModal('m-planilla-retiro');
+}
+
+async function guardarRetiroSaldo() {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede retirar saldo', 'warn'); return; }
+  const colaboradorId = parseInt(document.getElementById('retiro-saldo-colaborador-id')?.value);
+  const monto = parseFloat(document.getElementById('retiro-saldo-monto')?.value) || 0;
+  const notas = document.getElementById('retiro-saldo-notas')?.value?.trim() || '';
+  if (!colaboradorId || !monto) { toast('Completa un monto válido', 'warn'); return; }
+  const saldoActual = calcularSaldoColaborador(colaboradorId, PLANILLA_MOVIMIENTOS_CACHE);
+  if (monto > saldoActual) { toast('El monto supera el saldo acumulado disponible', 'warn'); return; }
+  const btn = document.getElementById('btn-guardar-retiro-saldo');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...'; }
+  try {
+    const colaborador = COLABORADORES.find(c => c.id === colaboradorId);
+    const egresoId = await dbGuardarEgreso({
+      fecha: hoyPanama(), categoria: 'Planilla',
+      descripcion: `Retiro de saldo acumulado — ${colaborador?.nombre||''}`,
+      proveedor: '—', forma: 'Efectivo', neto: monto, comision: 0, total: monto, banco: '—', documento: '', notas
+    });
+    if (!egresoId) throw new Error('No se pudo registrar el egreso del retiro');
+    const { error } = await supa.from('planilla_saldo_movimientos').insert({
+      colaborador_id: colaboradorId, tipo: 'retiro', monto, fecha: hoyPanama(), egreso_id: egresoId, notas
+    });
+    if (error) throw error;
+    closeModal('m-planilla-retiro');
+    await refrescarVistaActiva({ egresos: true });
+    toast('Retiro registrado ✓', 'ok');
+    await dbGuardarHistorial('Retiro de saldo — Planilla', `${colaborador?.nombre||''} · ${monto.toFixed(2)}`, 'var(--accent)');
+    await cargarSaldosColaboradores();
+  } catch(e) {
+    toast('Error: ' + (e.message||e), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Confirmar retiro'; }
+  }
+}
 
 // ── SINCRONIZACIÓN CATEGORÍAS Y PLATAFORMAS ──────────────────
 function sincronizarPlataformas(codigo, nombre) {
@@ -11995,7 +12509,7 @@ async function cargarParametros() {
     if (data && data.length) {
       // 🚀 Magia: Llenar todos los menús desplegables de bancos en el sistema
           const optsBancos = data.map(b => `<option value="${b.nombre}" ${b.nombre==='Banco General'?'selected':''}>${b.nombre}</option>`).join('');
-          document.querySelectorAll('#pago-banco, #v-banco, select[id*="banco"]').forEach(sel => sel.innerHTML = optsBancos);
+          document.querySelectorAll('#pago-banco, #v-banco, #pago-planilla-banco, select[id*="banco"]').forEach(sel => sel.innerHTML = optsBancos);
 
       document.getElementById('tb-bancos').innerHTML = data.map(b=>`
         <tr data-id="${b.id}">
@@ -12018,7 +12532,7 @@ async function cargarParametros() {
             const val = f.nombre.toLowerCase().includes('binance') ? 'bin' : f.nombre;
             return `<option value="${val}" ${f.nombre==='Yappy'?'selected':''}>${f.nombre}</option>`;
           }).join('');
-          document.querySelectorAll('select[onchange*="chkCrypto"], #pago-forma, #v-forma, #inc-forma-dev, #edit-cobro-forma').forEach(sel => sel.innerHTML = optsFormas);
+          document.querySelectorAll('select[onchange*="chkCrypto"], #pago-forma, #v-forma, #inc-forma-dev, #edit-cobro-forma, #pago-planilla-forma').forEach(sel => sel.innerHTML = optsFormas);
 
       document.getElementById('tb-formas').innerHTML = data.map(f=>`
         <tr data-id="${f.id}">
