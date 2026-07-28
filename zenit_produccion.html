@@ -2742,6 +2742,17 @@ function closeSidebarMobile() {
   </div>
 </div>
 
+<!-- Perfiles activos por correo (se abre desde "Verifica antes de confirmar") -->
+<div class="modal-overlay" id="m-perfiles-correo" style="display:none">
+  <div class="modal" style="max-width:900px;max-height:85vh;overflow-y:auto">
+    <div class="mh"><div class="mico" style="background:var(--accent2)"><i class="ti ti-users"></i></div><div><div class="mtit">Perfiles activos con este correo</div><div class="msub">Otras suscripciones activas que comparten el mismo correo</div></div><button class="mcl" onclick="cerrarModalPerfilesCorreo()"><i class="ti ti-x"></i></button></div>
+    <div class="mb">
+      <div id="perfiles-correo-cont"></div>
+    </div>
+    <div class="mf"><button class="btn" onclick="cerrarModalPerfilesCorreo()"><i class="ti ti-x"></i>Cerrar</button></div>
+  </div>
+</div>
+
 <div class="ov" id="m-venta"><div class="modal" style="max-width:700px">
   <div class="mh"><div class="mico" style="background:var(--accent2)"><i class="ti ti-shopping-cart"></i></div><div><div class="mtit">Nueva venta</div><div class="msub">Complete todos los campos obligatorios</div></div><button class="mcl" onclick="closeModal('m-venta')"><i class="ti ti-x"></i></button></div>
   <div class="mb">
@@ -4368,6 +4379,47 @@ async function obtenerPin1(correo, plataforma) {
   }
 }
 
+// Tabla de solo consulta: perfiles activos (SUBS_FULL) que coinciden con alguno de los pares
+// {correo, plat} dados. Reutilizable desde cualquier modal — devuelve HTML listo para inyectar
+// (string vacío si no hay pares o no hay coincidencias).
+function tablaPerfilesActivosPorCorreo(pares) {
+  const paresValidos = (pares||[]).filter(p => p && p.correo);
+  if (!paresValidos.length) return '';
+  const filas = SUBS_FULL
+    .filter(s => esActivo(s.est) && paresValidos.some(p =>
+      p.correo.toLowerCase() === (s.correo||'').toLowerCase() && p.plat === s.plat
+    ))
+    .sort((a,b) => (a.correo||'').localeCompare(b.correo||'') || (a.plat||'').localeCompare(b.plat||''));
+  if (!filas.length) return '';
+  const rows = filas.map(s => `<tr>
+    <td style="font-family:var(--mono);font-size:12px">${s.correo||'—'}</td>
+    <td>${platNombre(s.plat)}</td>
+    <td style="font-family:var(--mono);font-size:12px">${s.perfil||'—'}</td>
+    <td><span class="b bg">Activo</span></td>
+    <td>${s.nombre||'—'}</td>
+    <td>${s.usuario||'—'}</td>
+    <td style="font-family:var(--mono);font-size:12px">${s.clave||'—'}</td>
+    <td style="font-family:var(--mono)">${s.pin||'—'}</td>
+  </tr>`).join('');
+  return `
+    <div class="card"><div class="tw"><table><thead><tr><th>Correo</th><th>Plataforma</th><th>Perfil</th><th>Status</th><th>Nombre</th><th>Usuario</th><th>Clave</th><th>Pin</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+  `;
+}
+
+// Abre un modal aparte (superpuesto) con la tabla de tablaPerfilesActivosPorCorreo().
+// Reutilizable: cualquier caller pasa su propio array de pares {correo, plat}.
+function abrirModalPerfilesCorreo(pares) {
+  const cont = document.getElementById('perfiles-correo-cont');
+  if (cont) cont.innerHTML = tablaPerfilesActivosPorCorreo(pares);
+  const ov = document.getElementById('m-perfiles-correo');
+  if (ov) ov.style.display = 'flex';
+}
+
+function cerrarModalPerfilesCorreo() {
+  const ov = document.getElementById('m-perfiles-correo');
+  if (ov) ov.style.display = 'none';
+}
+
 async function mostrarExitoVenta(datosArray, esPreview) {
   const lista = Array.isArray(datosArray) ? datosArray : [datosArray];
   const primero = lista[0];
@@ -4441,6 +4493,21 @@ async function mostrarExitoVenta(datosArray, esPreview) {
   }
 
   container.innerHTML = html;
+
+  if (esPreview) {
+    const paresVenta = lista.map(d => ({correo: d.correo, plat: d.plat})).filter(p => p.correo && p.correo !== '—');
+    const tablaHtml = tablaPerfilesActivosPorCorreo(paresVenta);
+    if (tablaHtml) {
+      const nPerfiles = (tablaHtml.match(/Activo<\/span>/g) || []).length;
+      container.innerHTML += `
+        <button class="btn" id="btn-ver-perfiles-correo" type="button" style="width:100%;justify-content:center;margin-top:14px">
+          <i class="ti ti-eye"></i>Ver perfiles activos de la cuenta (${nPerfiles})
+        </button>
+      `;
+      const btnVerPerfiles = document.getElementById('btn-ver-perfiles-correo');
+      if (btnVerPerfiles) btnVerPerfiles.onclick = () => abrirModalPerfilesCorreo(paresVenta);
+    }
+  }
 
   const tituloEl = document.getElementById('exito-titulo');
   const waBtn = document.getElementById('exito-wa-btn');
@@ -4861,7 +4928,8 @@ function mostrarResumenCambio() {
 
   const perfilNuevoCod = perfilNuevoEl.dataset.codigo || '—';
   const correoNuevo = document.getElementById('cambio-correo-nuevo')?.value || perfilNuevoEl.dataset.correo || '—';
-  const pinNuevo = document.getElementById('cambio-pin-nuevo')?.value || document.getElementById('cambio-pin-ant')?.value || '—';
+  const pinClienteAnterior = document.getElementById('cambio-pin-ant')?.value || '—';
+  const pinClienteNuevo = document.getElementById('cambio-pin-nuevo')?.value || document.getElementById('cambio-pin-ant')?.value || '—';
   const motivo = document.getElementById('sel-motivo')?.value || '—';
   const vcto = document.getElementById('cambio-vcto-ant')?.value || '—';
   const nota = document.querySelector('#m-cambio textarea')?.value?.trim() || '';
@@ -4869,9 +4937,6 @@ function mostrarResumenCambio() {
   const rows = [
     { l:'Cliente',         v:`<strong>${cambioData.clienteNombre||'—'}</strong>` },
     { l:'Teléfono',        v: cambioData.clienteTel||'—' },
-    { l:'Perfil anterior', v:`<span style="font-family:var(--mono);color:var(--red)">${perfilAnterior}</span> · ${correoAnterior}` },
-    { l:'Perfil nuevo',    v:`<span style="font-family:var(--mono);color:var(--green)">${perfilNuevoCod}</span> · ${correoNuevo}` },
-    { l:'PIN',             v:`<span style="font-family:var(--mono)">${pinNuevo}</span>` },
     { l:'Vencimiento',     v: vcto },
     { l:'Motivo',          v: motivo },
   ];
@@ -4884,22 +4949,16 @@ function mostrarResumenCambio() {
     </div>`
   ).join('');
 
-  const _colorMap = {NF:'#E50914',DS:'#FFD700',HB:'#720E9E',PV:'#00A8E1'};
   const _platCodR = perfilNuevoCod.substring(0,2);
-  const _colorR = _colorMap[_platCodR] || 'var(--accent)';
   const _correoAntR = correoAnterior !== '—' ? correoAnterior : '';
   const _correoNuevoR = correoNuevo !== '—' ? correoNuevo : '';
   const _cuentaAntCod = perfilAnterior !== '—' ? perfilAnterior.substring(0,6) : '';
   const _cuentaNuevoCod = perfilNuevoCod !== '—' ? perfilNuevoCod.substring(0,6) : '';
   const _fetchProvAnt = _cuentaAntCod ? supa.from('cuentas_inventario').select('proveedor,clave').eq('codigo',_cuentaAntCod).maybeSingle() : Promise.resolve({data:null});
   const _fetchProvNuevo = _cuentaNuevoCod ? supa.from('cuentas_inventario').select('proveedor,clave').eq('codigo',_cuentaNuevoCod).maybeSingle() : Promise.resolve({data:null});
-  const _fetchPinAnt = _cuentaAntCod ? supa.from('suscripciones').select('pin,estado').eq('perfil_id', _cuentaAntCod + '1').maybeSingle() : Promise.resolve({data:null});
-  const _fetchPinNuevo = _cuentaNuevoCod ? supa.from('suscripciones').select('pin,estado').eq('perfil_id', _cuentaNuevoCod + '1').maybeSingle() : Promise.resolve({data:null});
-  Promise.all([_fetchProvAnt, _fetchProvNuevo, _fetchPinAnt, _fetchPinNuevo]).then(([_rAnt, _rNuevo, _rPinAnt, _rPinNuevo]) => {
-    const _pinDig = (PLATAFORMAS||[]).find(x => x.codigo === _platCodR)?.digitos_pin ?? 4;
-    const _pinDefault = String(9530).padStart(_pinDig, '0');
-    const _pin1Ant = (_rPinAnt?.data?.estado === 'activo') ? _rPinAnt.data.pin : _pinDefault;
-    const _pin1Nuevo = (_rPinNuevo?.data?.estado === 'activo') ? _rPinNuevo.data.pin : _pinDefault;
+  const _fetchPin1Ant = obtenerPin1(_correoAntR, _platCodR);
+  const _fetchPin1Nuevo = obtenerPin1(_correoNuevoR, _platCodR);
+  Promise.all([_fetchProvAnt, _fetchProvNuevo, _fetchPin1Ant, _fetchPin1Nuevo]).then(([_rAnt, _rNuevo, _pin1Ant, _pin1Nuevo]) => {
     const _pAnt = PROVEEDORES_ABBR[_rAnt?.data?.proveedor] || (_rAnt?.data?.proveedor||'').substring(0,3).toUpperCase();
     const _pNuevo = PROVEEDORES_ABBR[_rNuevo?.data?.proveedor] || (_rNuevo?.data?.proveedor||'').substring(0,3).toUpperCase();
     const _claveAnt = _rAnt?.data?.clave || '';
@@ -4908,20 +4967,68 @@ function mostrarResumenCambio() {
     const _nombreChromeNuevo = calcularNombreChrome(_platCodR, _correoNuevoR, _pNuevo, _rNuevo?.data?.proveedor, _cuentaNuevoCod);
     const _chromeSec = document.getElementById('cambio-chrome-btns');
     if (_chromeSec) {
+      const _paresPerfilNuevo = [{correo: correoNuevo, plat: _platCodR}];
+      const _tablaPerfilesCambio = tablaPerfilesActivosPorCorreo(_paresPerfilNuevo);
+      const _nPerfilesCambio = _tablaPerfilesCambio ? (_tablaPerfilesCambio.match(/Activo<\/span>/g) || []).length : 0;
       _chromeSec.innerHTML = `
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
           <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:10px">🖥️ Verifica antes de confirmar</div>
-          <div style="display:grid;gap:10px">
-            <div>
-              <div style="font-size:11px;color:var(--text3);margin-bottom:5px">📤 Cuenta anterior — eliminar perfil cliente · 🔢 PIN perfil 1: <strong style="color:var(--text)">${_pin1Ant}</strong></div>
-              ${zenitChromeBtn(_platCodR, _correoAntR, _pAnt, _claveAnt, _nombreChromeAnt, 'Abrir perfil anterior (' + perfilAnterior + ')')}
+
+          <div class="card" style="padding:14px;margin-bottom:12px;border-color:var(--red)">
+            <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--red);margin-bottom:10px">📤 Perfil anterior (se libera)</div>
+            <div style="display:grid;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--text3)">Correo</span>
+                <span style="font-size:13px;font-family:monospace;color:var(--text)">${_correoAntR||'—'}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--text3)">PIN perfil 1</span>
+                <span style="font-size:14px;font-weight:700;letter-spacing:2px;color:var(--amber)">${_pin1Ant}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--text3)">PIN cliente</span>
+                <span style="font-size:14px;font-weight:700;letter-spacing:2px;color:var(--accent)">${pinClienteAnterior}</span>
+              </div>
             </div>
-            <div>
-              <div style="font-size:11px;color:var(--text3);margin-bottom:5px">📥 Cuenta nueva — crear perfil cliente · 🔢 PIN perfil 1: <strong style="color:var(--text)">${_pin1Nuevo}</strong></div>
+            <div style="margin-top:10px">${zenitChromeBtn(_platCodR, _correoAntR, _pAnt, _claveAnt, _nombreChromeAnt, 'Abrir perfil anterior (' + perfilAnterior + ')')}</div>
+          </div>
+
+          <div class="card" style="padding:14px;border-color:var(--green)">
+            <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:10px">📥 Perfil nuevo</div>
+            <div style="display:grid;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--text3)">Correo</span>
+                <span style="font-size:13px;font-family:monospace;color:var(--text)">${_correoNuevoR||'—'}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--text3)">Clave</span>
+                <span style="font-size:13px;font-family:monospace;color:var(--text)">${_claveNuevo||'—'}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--text3)">PIN perfil 1</span>
+                <span style="font-size:14px;font-weight:700;letter-spacing:2px;color:var(--amber)">${_pin1Nuevo}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--text3)">Perfil (cliente)</span>
+                <span style="font-size:13px;color:var(--text)">${perfilNuevoCod}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--text3)">PIN cliente</span>
+                <span style="font-size:14px;font-weight:700;letter-spacing:2px;color:var(--accent)">${pinClienteNuevo}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--text3)">Perfil Chrome (navegador)</span>
+                <span style="font-size:12px;font-family:monospace;color:var(--text2)">${_nombreChromeNuevo}</span>
+              </div>
+            </div>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
               ${zenitChromeBtn(_platCodR, _correoNuevoR, _pNuevo, _claveNuevo, _nombreChromeNuevo, 'Abrir perfil nuevo (' + perfilNuevoCod + ')')}
+              ${_tablaPerfilesCambio ? `<button class="btn" type="button" id="btn-ver-perfiles-correo-cambio" style="width:100%;justify-content:center"><i class="ti ti-eye"></i>Ver perfiles activos de la cuenta (${_nPerfilesCambio})</button>` : ''}
             </div>
           </div>
         </div>`;
+      const btnVerPerfilesCambio = document.getElementById('btn-ver-perfiles-correo-cambio');
+      if (btnVerPerfilesCambio) btnVerPerfilesCambio.onclick = () => abrirModalPerfilesCorreo(_paresPerfilNuevo);
     }
   });
 
@@ -8336,6 +8443,7 @@ async function guardarPagoPeriodo() {
       if (eMov2) console.warn('[planilla] Error registrando retiro en bitácora:', eMov2.message);
     }
     await refrescarVistaActiva({ egresos: true });
+    await cargarSaldosColaboradores();
     toast('Pago registrado ✓', 'ok');
     await dbGuardarHistorial('Pago de planilla', `${colaborador?.nombre||''} · periodo ${desde} a ${hasta} · ${montoPagado.toFixed(2)}`, 'var(--accent)');
     document.getElementById('pago-planilla-retener').value = '';
@@ -9456,8 +9564,8 @@ async function guardarAcceso() {
 
   if (!prov) { toast('Selecciona el proveedor', 'warn'); return; }
   if (!id && correo) {
-    const { data: existente } = await supa.from('accesos').select('id').eq('correo', correo).maybeSingle();
-    if (existente) { toast('Ya existe un acceso registrado con este correo (id ' + existente.id + ')', 'warn'); return; }
+    const { data: existente } = await supa.from('accesos').select('id').eq('correo', correo).eq('plataforma', platVal || null).maybeSingle();
+    if (existente) { toast('Ya existe un acceso registrado con este correo en esta plataforma (id ' + existente.id + ')', 'warn'); return; }
   }
 
   const payload = {
@@ -9478,6 +9586,7 @@ async function guardarAcceso() {
   closeModal('m-acceso');
   toast(id ? 'Acceso actualizado ✓' : 'Acceso guardado ✓', 'ok');
   codLoadAccesos();
+  dbCargarAccesos();
 }
 
 
