@@ -493,6 +493,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .bpu{background:rgba(167,139,250,.15);color:var(--purple)}
 .bt{background:rgba(45,212,191,.15);color:var(--teal)}
 .tw{overflow-x:auto}
+.tw-v{max-height:60vh;overflow-y:auto}
+.tw-v thead th{position:sticky;top:0;background:var(--bg2);z-index:2}
 table{width:100%;border-collapse:collapse}
 th{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:500;text-align:left;padding:8px 11px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1}
 td{padding:10px 11px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);vertical-align:middle}
@@ -1029,7 +1031,7 @@ function closeSidebarMobile() {
     <div class="card mc"><div class="ml"><div class="mt">Ventas nuevas</div><div class="mv" id="cobros-ventas">0</div></div><div class="mi" style="background:var(--accent2)"><i class="ti ti-shopping-cart"></i></div></div>
     <div class="card mc"><div class="ml"><div class="mt">Renovaciones</div><div class="mv" id="cobros-reno">0</div></div><div class="mi" style="background:var(--purple)"><i class="ti ti-refresh"></i></div></div>
   </div>
-  <div class="card" style="padding:0;overflow-x:auto">
+  <div class="card" style="padding:0"><div class="tw tw-v">
     <table style="min-width:1350px">
       <thead><tr>
         <th>Fecha</th>
@@ -1050,14 +1052,14 @@ function closeSidebarMobile() {
       </tr></thead>
       <tbody id="tb-cobros"></tbody>
     </table>
-  </div>
+  </div></div>
 </div>
 <!-- VENTAS -->
 <div class="view" id="v-ventas">
   <div style="display:flex;gap:9px;margin-bottom:14px">
     <div class="sbox" style="flex:1;max-width:360px"><i class="ti ti-search"></i><input type="text" id="v-busq-ventas" placeholder="Buscar venta..." oninput="filtVentas(this.value)"></div>
   </div>
-  <div class="card"><div class="tw"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Plataforma</th><th>Perfil</th><th>PIN</th><th>Vigencia</th><th>Canal</th><th>Monto</th></tr></thead><tbody id="tb-ventas"></tbody></table></div></div>
+  <div class="card"><div class="tw tw-v"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Plataforma</th><th>Perfil</th><th>PIN</th><th>Vigencia</th><th>Canal</th><th>Monto</th></tr></thead><tbody id="tb-ventas"></tbody></table></div></div>
 </div>
 <!-- COBRANZA -->
 <div class="view" id="v-cobranza">
@@ -1111,11 +1113,11 @@ function closeSidebarMobile() {
     <select id="inv-estado" onchange="filtrarInventario()"><option value="">Todos los estados</option><option value="activo">Disponible</option><option value="Ocupada">Ocupado</option><option value="Vencida">Vencido</option><option value="bloqueado">Bloqueado</option></select>
 
   </div>
-  <div class="card"><div class="tw"><table><thead><tr><th>Cuenta</th><th>Plataforma</th><th>Correo</th><th>Clave</th><th>Perfiles</th><th>Disp.</th><th>Ocup.</th><th>F. compra</th><th>Vcto prov.</th><th>Costo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tb-inv"></tbody></table></div></div>
+  <div class="card"><div class="tw tw-v"><table><thead><tr><th>Cuenta</th><th>Plataforma</th><th>Correo</th><th>Clave</th><th>Perfiles</th><th>Disp.</th><th>Ocup.</th><th>F. compra</th><th>Vcto prov.</th><th>Costo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tb-inv"></tbody></table></div></div>
 </div>
 <!-- PROVEEDORES -->
 <div class="view" id="v-proveedores">
-  <div class="card"><div class="tw"><table><thead><tr><th>Abrev.</th><th>Proveedor</th><th>Contacto</th><th>Teléfono</th><th>Plataformas</th><th>Cuentas</th><th>Métodos pago</th><th>Próx. vcto</th><th>Estado</th><th></th></tr></thead><tbody id="tb-proveedores"></tbody></table></div></div>
+  <div class="card"><div class="tw tw-v"><table><thead><tr><th>Abrev.</th><th>Proveedor</th><th>Contacto</th><th>Teléfono</th><th>Plataformas</th><th>Cuentas</th><th>Métodos pago</th><th>Próx. vcto</th><th>Estado</th><th></th></tr></thead><tbody id="tb-proveedores"></tbody></table></div></div>
 </div>
 <!-- EGRESOS -->
 <div class="view" id="v-egresos">
@@ -1125,7 +1127,7 @@ function closeSidebarMobile() {
     <div class="mc" style="--mc-c:var(--teal)"><div class="ml">Ganancia neta</div><div class="mv" style="color:var(--teal)">$590</div><div class="ms">Margen 47%</div></div>
     <div class="mc" style="--mc-c:var(--amber)"><div class="ml">Comisiones</div><div class="mv" style="color:var(--amber)">$18.20</div><div class="ms">Binance</div></div>
   </div>
-  <div class="card"><div class="tw"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Proveedor</th><th>Método</th><th>Neto</th><th>Comisión</th><th>Total</th></tr></thead><tbody id="tb-egresos"></tbody></table></div></div>
+  <div class="card"><div class="tw tw-v"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Proveedor</th><th>Método</th><th>Neto</th><th>Comisión</th><th>Total</th></tr></thead><tbody id="tb-egresos"></tbody></table></div></div>
 </div>
 <!-- PLANILLA (solo Master) -->
 <div class="view" id="v-planilla">
@@ -1204,16 +1206,7 @@ function closeSidebarMobile() {
       <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
         <div class="fg" style="flex:0 0 auto;min-width:180px">
           <label>Período</label>
-          <select id="rpt-periodo" style="width:100%">
-            <option value="hoy">Hoy</option>
-            <option value="semana">Esta semana</option>
-            <option value="mes" selected>Este mes</option>
-            <option value="bimestre">Bimestre</option>
-            <option value="trimestre">Trimestre</option>
-            <option value="cuatrimestre">Cuatrimestre</option>
-            <option value="semestre">Semestre</option>
-            <option value="anio">Año</option>
-          </select>
+          <span id="rpt-periodo-wrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></span>
         </div>
         <button class="btn btn-p" onclick="rptResumenGenerar()" style="flex-shrink:0"><i class="ti ti-refresh"></i>Generar</button>
       </div>
@@ -1255,7 +1248,7 @@ function closeSidebarMobile() {
       </div>
     </div>
     <div class="card">
-      <div class="tw">
+      <div class="tw tw-v">
         <table>
           <thead><tr>
             <th>Perfil</th><th>Plataforma</th><th>Tipo</th><th>Cliente</th>
@@ -1297,16 +1290,7 @@ function closeSidebarMobile() {
     <!-- Sub-tab 2: Clientes nuevos -->
     <div class="pp" id="rpts-nuevos" style="display:none">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-        <select id="rpts-nuevos-periodo" style="flex:1;max-width:220px">
-          <option value="hoy">Hoy</option>
-          <option value="semana">Esta semana</option>
-          <option value="mes" selected>Este mes</option>
-          <option value="bimestre">Bimestre actual</option>
-          <option value="trimestre">Trimestre actual</option>
-          <option value="cuatrimestre">Cuatrimestre actual</option>
-          <option value="semestre">Semestre actual</option>
-          <option value="anio">Año actual</option>
-        </select>
+        <span id="rpts-nuevos-periodo-wrap" style="display:flex;gap:8px;align-items:center;flex:1;max-width:520px"></span>
         <button class="btn" onclick="rptsNuevosGenerar()"><i class="ti ti-refresh"></i> Generar</button>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
@@ -1321,16 +1305,7 @@ function closeSidebarMobile() {
     <!-- Sub-tab 3: Clientes perdidos -->
     <div class="pp" id="rpts-perdidos" style="display:none">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-        <select id="rpts-perdidos-periodo" style="flex:1;max-width:220px">
-          <option value="hoy">Hoy</option>
-          <option value="semana">Esta semana</option>
-          <option value="mes" selected>Este mes</option>
-          <option value="bimestre">Bimestre actual</option>
-          <option value="trimestre">Trimestre actual</option>
-          <option value="cuatrimestre">Cuatrimestre actual</option>
-          <option value="semestre">Semestre actual</option>
-          <option value="anio">Año actual</option>
-        </select>
+        <span id="rpts-perdidos-periodo-wrap" style="display:flex;gap:8px;align-items:center;flex:1;max-width:520px"></span>
         <select id="rpts-perdidos-estado" onchange="rptsPerdidosGenerar()" style="max-width:180px">
           <option value="">Todos</option>
           <option value="sin_renovar">Solo sin renovar</option>
@@ -1350,16 +1325,7 @@ function closeSidebarMobile() {
     <!-- Sub-tab 4: Tasa de retención -->
     <div class="pp" id="rpts-retencion" style="display:none">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-        <select id="rpts-retencion-periodo" style="flex:1;max-width:220px">
-          <option value="hoy">Hoy</option>
-          <option value="semana">Esta semana</option>
-          <option value="mes" selected>Este mes</option>
-          <option value="bimestre">Bimestre actual</option>
-          <option value="trimestre">Trimestre actual</option>
-          <option value="cuatrimestre">Cuatrimestre actual</option>
-          <option value="semestre">Semestre actual</option>
-          <option value="anio">Año actual</option>
-        </select>
+        <span id="rpts-retencion-periodo-wrap" style="display:flex;gap:8px;align-items:center;flex:1;max-width:520px"></span>
         <button class="btn" onclick="rptsRetencionGenerar()"><i class="ti ti-refresh"></i> Generar</button>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
@@ -1402,7 +1368,7 @@ function closeSidebarMobile() {
         <button onclick="rptsPerfilesExportar('word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
       </div>
       <div class="card">
-        <div class="tw">
+        <div class="tw tw-v">
           <table id="tb-rpts-perfiles">
             <thead><tr>
               <th>Perfil</th><th>Plataforma</th><th>Cuenta (correo)</th><th>Proveedor</th>
@@ -1489,23 +1455,7 @@ function closeSidebarMobile() {
     <!-- Sub-tab 1: Ingresos vs Egresos -->
     <div class="pp on" id="rptf-ingresos">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-        <select id="rptf-ie-periodo" style="flex:1;max-width:220px" onchange="document.getElementById('rptf-ie-custom').style.display = this.value==='personalizado' ? 'flex' : 'none'">
-          <option value="hoy">Hoy</option>
-          <option value="semana">Esta semana</option>
-          <option value="mes" selected>Este mes</option>
-          <option value="mesant">Mes anterior</option>
-          <option value="bimestre">Bimestre actual</option>
-          <option value="trimestre">Trimestre actual</option>
-          <option value="cuatrimestre">Cuatrimestre actual</option>
-          <option value="semestre">Semestre actual</option>
-          <option value="anio">Año actual</option>
-          <option value="personalizado">Rango personalizado</option>
-        </select>
-        <div id="rptf-ie-custom" style="display:none;gap:8px;align-items:center">
-          <input type="date" id="rptf-ie-desde" style="width:150px">
-          <span style="color:var(--text3);font-size:12px">hasta</span>
-          <input type="date" id="rptf-ie-hasta" style="width:150px">
-        </div>
+        <span id="rptf-ie-periodo-wrap" style="display:flex;gap:8px;align-items:center;flex:1;max-width:520px"></span>
         <button class="btn" onclick="rptfIngresosGenerar()"><i class="ti ti-refresh"></i> Generar</button>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
@@ -1534,16 +1484,7 @@ function closeSidebarMobile() {
     <!-- Sub-tab 3: Clientes con mayor facturación -->
     <div class="pp" id="rptf-topclientes" style="display:none">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-        <select id="rptf-top-periodo" style="flex:1;max-width:220px">
-          <option value="hoy">Hoy</option>
-          <option value="semana">Esta semana</option>
-          <option value="mes" selected>Este mes</option>
-          <option value="bimestre">Bimestre actual</option>
-          <option value="trimestre">Trimestre actual</option>
-          <option value="cuatrimestre">Cuatrimestre actual</option>
-          <option value="semestre">Semestre actual</option>
-          <option value="anio">Año actual</option>
-        </select>
+        <span id="rptf-top-periodo-wrap" style="display:flex;gap:8px;align-items:center;flex:1;max-width:520px"></span>
         <button class="btn" onclick="rptfTopClientesGenerar()"><i class="ti ti-refresh"></i> Generar</button>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
@@ -1625,7 +1566,7 @@ function closeSidebarMobile() {
     <div style="margin-top:10px;font-size:12px;color:var(--text3)" id="rpt-info">Selecciona una tabla para ver los datos.</div>
   </div>
   <div class="card">
-    <div class="tw" id="rpt-wrap">
+    <div class="tw tw-v" id="rpt-wrap">
       <table id="rpt-table"><thead id="rpt-thead"></thead><tbody id="rpt-tbody"><tr><td style="text-align:center;padding:30px;color:var(--text3)">Selecciona una tabla arriba</td></tr></tbody></table>
     </div>
   </div>
@@ -1639,7 +1580,7 @@ function closeSidebarMobile() {
     <input type="text" id="pines-filtro-cod" placeholder="Buscar código..." oninput="renderPines()">
   </div>
   <div id="pines-contadores" style="display:flex;gap:12px;margin-bottom:14px;font-size:13px"></div>
-  <div class="card"><div class="tw"><table><thead><tr><th>Código</th><th>Plataforma</th><th>Tarifa</th><th>Proveedor</th><th>F. Compra</th><th>Estado</th><th>Cuenta asignada</th><th>Egreso</th><th>F. Uso</th></tr></thead><tbody id="tb-pines"><tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr></tbody></table></div></div>
+  <div class="card"><div class="tw tw-v"><table><thead><tr><th>Código</th><th>Plataforma</th><th>Tarifa</th><th>Proveedor</th><th>F. Compra</th><th>Estado</th><th>Cuenta asignada</th><th>Egreso</th><th>F. Uso</th></tr></thead><tbody id="tb-pines"><tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr></tbody></table></div></div>
 </div>
 
 <!-- PARAMETROS -->
@@ -1654,7 +1595,6 @@ function closeSidebarMobile() {
     <div class="tab" onclick="tabParam(this,'pp-contactos')">Tipos contacto</div>
     <div class="tab" onclick="tabParam(this,'pp-motivos')">Motivos cambio</div>
     <div class="tab" onclick="tabParam(this,'pp-tarifas-pin')">Tarifas Pin</div>
-    <div class="tab" onclick="tabParam(this,'pp-import')" style="color:var(--accent);font-weight:600">⬆ Importar datos</div>
   </div>
   <div class="pp on" id="pp-plat">
     <div style="display:flex;justify-content:flex-end;margin-bottom:11px"><button class="btn btn-p btn-sm" onclick="openModal('m-param-form','Nueva plataforma')"><i class="ti ti-plus"></i>Nueva plataforma</button></div>
@@ -1702,54 +1642,6 @@ function closeSidebarMobile() {
       <thead><tr><th>Plataforma</th><th>País</th><th>Moneda</th><th>Monto nominal</th><th>Días vigencia</th><th>Notas</th><th>Estado</th><th></th></tr></thead>
       <tbody id="tb-tarifas-pin"></tbody>
     </table></div></div>
-  </div>
-
-  <div class="pp" id="pp-import">
-    <div class="card" style="padding:20px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-        <div style="width:40px;height:40px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <i class="ti ti-database-import" style="color:#fff;font-size:20px"></i>
-        </div>
-        <div>
-          <div style="font-weight:600;font-size:15px">Importación masiva de datos</div>
-          <div style="font-size:12px;color:var(--text3)">Carga inicial del sistema — parámetros, inventario, clientes y suscripciones</div>
-        </div>
-      </div>
-      <div class="ab i" style="margin-bottom:16px">
-        <i class="ti ti-info-circle"></i>
-        Esta operación cargará <strong>1,505 registros</strong> en Supabase: 9 bancos, 8 formas de pago, 9 categorías, 21 planes, 161 cuentas, 448 clientes y 830 suscripciones.
-        Los registros existentes se actualizarán, no se duplicarán.
-      </div>
-      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-        <div class="ab s" style="flex:1;min-width:120px;text-align:center">
-          <div style="font-size:22px;font-weight:700;color:var(--green)">161</div>
-          <div style="font-size:11px;color:var(--text3)">Cuentas inventario</div>
-        </div>
-        <div class="ab s" style="flex:1;min-width:120px;text-align:center">
-          <div style="font-size:22px;font-weight:700;color:var(--accent)">448</div>
-          <div style="font-size:11px;color:var(--text3)">Clientes únicos</div>
-        </div>
-        <div class="ab s" style="flex:1;min-width:120px;text-align:center">
-          <div style="font-size:22px;font-weight:700;color:var(--accent2)">830</div>
-          <div style="font-size:11px;color:var(--text3)">Suscripciones</div>
-        </div>
-        <div class="ab s" style="flex:1;min-width:120px;text-align:center">
-          <div style="font-size:22px;font-weight:700;color:var(--amber)">67</div>
-          <div style="font-size:11px;color:var(--text3)">Parámetros</div>
-        </div>
-      </div>
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;height:200px;overflow-y:auto;font-family:var(--mono);margin-bottom:14px" id="import-log">
-        <div style="font-size:11px;color:var(--text3)">Esperando inicio de importación...</div>
-      </div>
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-p" id="btn-importar" onclick="ejecutarImportacionMasiva()" style="flex:1">
-          <i class="ti ti-database-import"></i> Iniciar importación masiva
-        </button>
-        <button class="btn" onclick="document.getElementById('import-log').innerHTML='<div style=\'font-size:11px;color:var(--text3)\'>Log limpiado.</div>'">
-          <i class="ti ti-trash"></i> Limpiar log
-        </button>
-      </div>
-    </div>
   </div>
 
   <div class="pp" id="pp-plantillas">
@@ -1805,7 +1697,7 @@ function closeSidebarMobile() {
       <span style="font-size:13px;color:var(--text2);white-space:nowrap">días</span>
     </span>
   </div>
-  <div class="card"><div class="tw">
+  <div class="card"><div class="tw tw-v">
     <table style="min-width:1400px">
       <thead><tr>
         <th>ID Cliente</th>
@@ -1853,7 +1745,7 @@ function closeSidebarMobile() {
     </select>
     <button class="btn btn-sm btn-ic" onclick="dbCargarAccesos()" title="Actualizar"><i class="ti ti-refresh"></i></button>
   </div>
-  <div class="card" style="padding:0;overflow-x:auto">
+  <div class="card" style="padding:0"><div class="tw tw-v">
     <table style="min-width:860px">
       <thead><tr>
         <th>Proveedor</th>
@@ -1868,7 +1760,7 @@ function closeSidebarMobile() {
       </tr></thead>
       <tbody id="tb-accesos"></tbody>
     </table>
-  </div>
+  </div></div>
 </div>
 
 </div>
@@ -1979,7 +1871,7 @@ function closeSidebarMobile() {
     <div class="sbox" style="flex:1;max-width:360px"><i class="ti ti-search"></i><input type="text" placeholder="Buscar en historial..."></div>
     <select><option>Todas las acciones</option><option>Ventas</option><option>Pagos</option><option>Cambio cuenta</option><option>Cambio plataforma</option><option>Cambio contraseña</option><option>Comp. duplicado</option></select>
   </div>
-  <div class="card"><div class="tw"><table><thead><tr><th>Fecha / Hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody id="tb-historial"><tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">Cargando historial...</td></tr></tbody></table></div></div>
+  <div class="card"><div class="tw tw-v"><table><thead><tr><th>Fecha / Hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody id="tb-historial"><tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">Cargando historial...</td></tr></tbody></table></div></div>
 </div>
 <!-- USUARIOS -->
 <div class="view" id="v-usuarios">
@@ -5438,6 +5330,38 @@ async function guardarCuenta(){
           if (ep) console.warn('[perfiles] Error propagando estado de cuenta:', ep.message);
         }
 
+        // Si la cuenta se reactiva desde bloqueado/inactivo, reactivar SOLO los perfiles
+        // que no tengan una suscripción activa real apuntándoles (mismo criterio que
+        // dbCargarPerfilesDisp() usa para armar PERFILES_DISP — no reinventar el filtro).
+        const estadoAnterior = INV_CACHE.find(c => c.id === codigo)?.estado || '';
+        if (esActivo(estadoCta) && (esBloqueado(estadoAnterior) || esInactivo(estadoAnterior))) {
+          const { data: perfilesCuenta } = await supa.from('perfiles')
+            .select('id, estado')
+            .eq('inventario_id', codigo);
+          const idsInactivos = (perfilesCuenta || []).filter(p => p.estado === 'inactivo').map(p => p.id);
+
+          if (idsInactivos.length) {
+            const { data: subsActivas } = await supa.from('suscripciones')
+              .select('perfil_id')
+              .in('perfil_id', idsInactivos)
+              .eq('estado', 'activo');
+            const ocupados = new Set((subsActivas || []).map(s => (s.perfil_id || '').trim()));
+
+            const idsAReactivar = idsInactivos.filter(id => !ocupados.has(id));
+            if (idsAReactivar.length) {
+              const { error: eReact } = await supa.from('perfiles')
+                .update({ estado: 'disponible' })
+                .in('id', idsAReactivar);
+              if (eReact) console.warn('[perfiles] Error reactivando perfiles:', eReact.message);
+            }
+
+            // Evidencia de desincronización previa (perfil inactivo pero con suscripción activa) —
+            // no se reactiva automáticamente, pero conviene loguearlo/avisarlo para revisión manual.
+            const conflictivos = idsInactivos.filter(id => ocupados.has(id));
+            if (conflictivos.length) console.warn('[CUENTA] Perfiles con suscripción activa pero estado=inactivo — no reactivados:', conflictivos);
+          }
+        }
+
 
     // 3. Generar perfiles automáticamente (SOLO para cuentas nuevas, no al editar)
     if (!_editandoCuentaExistente) {
@@ -5702,9 +5626,6 @@ async function reutilizarCuenta(btn) {
 
 
 
-// ── IMPORTACIÓN MASIVA DE DATOS ──────────────────────────────
-
-
 function fechaISO(f) {
   if (!f || f === 'null' || f === '') return null;
   // Si ya está en formato AAAA-MM-DD, retornar tal cual
@@ -5713,15 +5634,6 @@ function fechaISO(f) {
   const p = f.split('/');
   if (p.length === 3) return p[2] + '-' + p[1].padStart(2,'0') + '-' + p[0].padStart(2,'0');
   return null;
-}
-
-async function ejecutarImportacionMasiva() {
-  const btn = document.getElementById('btn-importar');
-  const log = document.getElementById('import-log');
-  if (btn) btn.disabled = true;
-  toast('Los datos de importación masiva fueron removidos por seguridad. Si necesitas reimportar, contacta al desarrollador.', 'warn');
-  if (btn) btn.disabled = false;
-  return;
 }
 
 function toast(msg,tipo){
@@ -7372,7 +7284,6 @@ function openModal(id, title) {
     _currentParamTitle = title;
     const map = {
       'Nueva plataforma':'plataforma','Editar plataforma':'plataforma',
-      'Nuevo precio':'precio','Editar precio':'precio',
       'Nuevo banco':'banco','Editar banco':'banco',
       'Nueva forma de pago':'forma_pago','Editar forma pago':'forma_pago',
       'Nueva categoría':'categoria','Editar categoría':'categoria',
@@ -10356,6 +10267,19 @@ async function iniciarApp() {
     if (typeof activarBotonesReutilizar === 'function') activarBotonesReutilizar();
     _aplicarFiltrosSubs();
     if (typeof updMetricasCobros === 'function') updMetricasCobros();
+    // Selectores de período de Reportes — poblados una vez al iniciar sesión (mismo idPrefix que los IDs viejos)
+    const _rptWraps = [
+      ['rpt-periodo-wrap', 'rpt'],
+      ['rpts-nuevos-periodo-wrap', 'rpts-nuevos'],
+      ['rpts-perdidos-periodo-wrap', 'rpts-perdidos'],
+      ['rpts-retencion-periodo-wrap', 'rpts-retencion'],
+      ['rptf-top-periodo-wrap', 'rptf-top'],
+      ['rptf-ie-periodo-wrap', 'rptf-ie']
+    ];
+    _rptWraps.forEach(([wrapId, prefix]) => {
+      const w = document.getElementById(wrapId);
+      if (w) w.innerHTML = htmlSelectorPeriodo(prefix, 'mes');
+    });
     iniciarRealtime();
     iniciarTimerInactividad();
     console.log('[APP] Carga completa ✓');
@@ -11086,10 +11010,10 @@ function periodoLeerRango(idPrefix) {
 }
 
 async function rptResumenGenerar() {
-  const periodo  = document.getElementById('rpt-periodo')?.value || 'mes';
-  const { ini, fin } = rptGetRango(periodo);
+  const { ini, fin } = periodoLeerRango('rpt');
   const esMaster = USUARIO_ACTIVO?.rol === 'Master';
   const resDiv   = document.getElementById('rpt-resumen-resultado');
+  if (!ini || !fin) { toast('Selecciona ambas fechas', 'warn'); return; }
   if (resDiv) resDiv.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
 
   try {
@@ -11212,10 +11136,10 @@ function rptsRenderActivas() {
 }
 
 async function rptsNuevosGenerar() {
-  const periodo = document.getElementById('rpts-nuevos-periodo')?.value || 'mes';
-  const { ini, fin } = rptGetRango(periodo);
+  const { ini, fin } = periodoLeerRango('rpts-nuevos');
   const esMaster = USUARIO_ACTIVO?.rol === 'Master';
   const resDiv = document.getElementById('rpts-nuevos-res');
+  if (!ini || !fin) { toast('Selecciona ambas fechas', 'warn'); return; }
   if (resDiv) resDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
   try {
     const { data: ventas, error } = await supa.from('ventas')
@@ -11242,10 +11166,10 @@ async function rptsNuevosGenerar() {
 }
 
 function rptsPerdidosGenerar() {
-  const periodo = document.getElementById('rpts-perdidos-periodo')?.value || 'mes';
-  const { ini, fin } = rptGetRango(periodo);
+  const { ini, fin } = periodoLeerRango('rpts-perdidos');
   const esMaster = USUARIO_ACTIVO?.rol === 'Master';
   const resDiv = document.getElementById('rpts-perdidos-res');
+  if (!ini || !fin) { toast('Selecciona ambas fechas', 'warn'); return; }
   const vctoISO = s => {
     const p = (s.fVcto||'').split('/');
     return (p.length===3 && p[2]) ? `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}` : '';
@@ -11270,10 +11194,10 @@ function rptsPerdidosGenerar() {
 }
 
 function rptsRetencionGenerar() {
-  const periodo = document.getElementById('rpts-retencion-periodo')?.value || 'mes';
-  const { ini, fin } = rptGetRango(periodo);
+  const { periodo, ini, fin } = periodoLeerRango('rpts-retencion');
   const esMaster = USUARIO_ACTIVO?.rol === 'Master';
   const resDiv = document.getElementById('rpts-retencion-res');
+  if (!ini || !fin) { toast('Selecciona ambas fechas', 'warn'); return; }
   const fIniISO = s => { const p=(s.fIni||'').split('/'); return (p.length===3&&p[2])?`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`:''; };
   const fVctoISO = s => { const p=(s.fVcto||'').split('/'); return (p.length===3&&p[2])?`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`:''; };
   const activosIni = SUBS_FULL.filter(s => { const fi=fIniISO(s); return fi && fi<ini; });
@@ -11282,7 +11206,7 @@ function rptsRetencionGenerar() {
   const denom = activosIni.length + nuevos.length;
   const tasa = denom > 0 ? Math.min(100, activosFin.length / denom * 100) : 0;
   const color = tasa>=80?'var(--green)':tasa>=60?'var(--amber)':'var(--red)';
-  const nomP = {hoy:'Hoy',semana:'Esta semana',mes:'Este mes',bimestre:'Bimestre actual',trimestre:'Trimestre actual',cuatrimestre:'Cuatrimestre actual',semestre:'Semestre actual',anio:'Año actual'}[periodo]||periodo;
+  const nomP = {hoy:'Hoy',semana:'Esta semana',mes:'Este mes',mesant:'Mes anterior',bimestre:'Bimestre actual',trimestre:'Trimestre actual',cuatrimestre:'Cuatrimestre actual',semestre:'Semestre actual',anio:'Año actual',personalizado:'Personalizado'}[periodo]||periodo;
   let html = `<div class="card" style="text-align:center;padding:36px"><div style="font-size:52px;font-weight:700;color:${color};line-height:1">${tasa.toFixed(1)}%</div><div style="font-size:13px;color:var(--text3);margin-top:8px">Tasa de retención — ${nomP}</div></div>`;
   if (esMaster) {
     html += `<div class="card" style="margin-top:12px"><div class="ct" style="font-size:12px;margin-bottom:12px"><i class="ti ti-calculator" style="color:var(--accent)"></i>Detalle del cálculo</div><table style="width:100%;font-size:13px"><tbody><tr><td style="padding:5px 0;color:var(--text2)">Activos al inicio del período</td><td style="text-align:right;font-weight:500">${activosIni.length}</td></tr><tr><td style="padding:5px 0;color:var(--text2)">Clientes nuevos en el período</td><td style="text-align:right;font-weight:500">${nuevos.length}</td></tr><tr><td style="padding:5px 0;color:var(--text2)">Activos al final del período</td><td style="text-align:right;font-weight:500">${activosFin.length}</td></tr><tr style="border-top:1px solid var(--border)"><td style="padding:8px 0 5px;font-size:12px;color:var(--text3)" colspan="2">Fórmula: Activos fin ÷ (Inicio + Nuevos) × 100 = ${activosFin.length} ÷ (${activosIni.length} + ${nuevos.length}) × 100 = <strong style="color:${color}">${tasa.toFixed(1)}%</strong></td></tr></tbody></table></div>`;
@@ -11562,15 +11486,8 @@ function tabRptf(el, id) {
 }
 
 async function rptfIngresosGenerar() {
-  const periodo = document.getElementById('rptf-ie-periodo')?.value || 'mes';
-  let ini, fin;
-  if (periodo === 'personalizado') {
-    ini = document.getElementById('rptf-ie-desde')?.value;
-    fin = document.getElementById('rptf-ie-hasta')?.value;
-    if (!ini || !fin) { toast('Selecciona ambas fechas', 'warn'); return; }
-  } else {
-    ({ ini, fin } = rptGetRango(periodo));
-  }
+  const { periodo, ini, fin } = periodoLeerRango('rptf-ie');
+  if (!ini || !fin) { toast('Selecciona ambas fechas', 'warn'); return; }
   const resDiv = document.getElementById('rptf-ie-res');
   if (resDiv) resDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
   try {
@@ -12058,9 +11975,9 @@ function rptfEquilibrioRecalcular() {
 }
 
 async function rptfTopClientesGenerar() {
-  const periodo = document.getElementById('rptf-top-periodo')?.value || 'mes';
-  const { ini, fin } = rptGetRango(periodo);
+  const { ini, fin } = periodoLeerRango('rptf-top');
   const resDiv = document.getElementById('rptf-top-res');
+  if (!ini || !fin) { toast('Selecciona ambas fechas', 'warn'); return; }
   if (resDiv) resDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)"><i class="ti ti-loader"></i> Cargando...</div>';
   try {
     const { data: cobros, error } = await supa.from('cobros')
