@@ -91,7 +91,7 @@ async function dbGuardarVenta(venta) {
 // Guardar suscripción
 async function dbGuardarSuscripcion(sub) {
   const toISO = f => f && f.includes('/') ? f.split('/').reverse().join('-') : f;
-  const { error } = await supa.from('suscripciones').insert({
+  const { error } = await supa.from('suscripciones').upsert({
     cliente_id: sub.clienteId,
     plataforma: sub.plat,
     tipo: sub.tipo,
@@ -105,9 +105,10 @@ async function dbGuardarSuscripcion(sub) {
     monto: sub.monto,
     tipo_cliente: sub.tipoCliente,
     estado: 'activo',
-    precio_tras_promo: sub.precioTrasPromo || null
-  });
-  if (error) { console.error('Error guardando suscripción:', error); return false; }
+    precio_tras_promo: sub.precioTrasPromo || null,
+    created_at: new Date().toISOString()
+  }, { onConflict: 'cliente_id,perfil_id' });
+  if (error) { console.error('Error guardando suscripción:', error); throw error; }
   if (sub.perfilId) {
     const { error: ep } = await supa.from('perfiles')
       .update({ estado: 'ocupado' })
@@ -984,6 +985,7 @@ function closeSidebarMobile() {
     </div>
     <div class="card">
       <div class="ct"><i class="ti ti-alert-triangle" style="color:var(--amber)"></i>Alertas proveedores</div>
+      <div id="dash-alertas-resumen" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
       <div class="tw"><table><thead><tr><th>Cuenta</th><th>Proveedor</th><th>Clientes</th><th>Vence</th></tr></thead><tbody id="dash-alertas-prov"><tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">Cargando...</td></tr></tbody></table></div>
       <div style="margin-top:12px">
         <div class="ct" style="margin-bottom:8px"><i class="ti ti-device-tv" style="color:var(--accent)"></i>Inventario por plataforma</div>
@@ -2330,7 +2332,7 @@ function closeSidebarMobile() {
 </div></div>
 <!-- Nueva cuenta inventario -->
 <div class="ov" id="m-cuenta"><div class="modal" style="max-width:580px">
-  <div class="mh"><div class="mico" style="background:var(--green2)"><i class="ti ti-server"></i></div><div><div class="mtit">Nueva cuenta de plataforma</div><div class="msub">Registro de cuenta comprada a proveedor</div></div><button class="mcl" onclick="closeModal('m-cuenta')"><i class="ti ti-x"></i></button></div>
+  <div class="mh"><div class="mico" style="background:var(--green2)"><i class="ti ti-server"></i></div><div><div class="mtit">Nueva cuenta de plataforma</div><div class="msub">Registro de cuenta comprada a proveedor</div></div><button class="mcl" onclick="cancelarModalCuenta()"><i class="ti ti-x"></i></button></div>
   <div class="mb">
     <div class="fsec"><div class="fst">Datos de la cuenta</div>
       <div class="fr c3"><div class="fg"><label>Plataforma<span class="req">*</span></label><select id="cuenta-plat" onchange="updCuentaCodigo()"></select></div><div class="fg"><label>Proveedor<span class="req">*</span></label><select id="cuenta-prov"><option value="">— Cargando... —</option></select></div><div class="fg"><label>Código<span class="req">*</span></label><input type="text" id="cuenta-codigo" placeholder="NF0001" oninput="validarCodigoCuenta(this)" style="text-transform:uppercase"><div class="hint ok" id="cuenta-codigo-hint">Selecciona plataforma para ver el siguiente disponible</div></div></div>
@@ -2344,7 +2346,7 @@ function closeSidebarMobile() {
         </div>
         <div class="ab i"><i class="ti ti-info-circle"></i>Al guardar, el sistema crea automáticamente los perfiles disponibles según el máximo de la plataforma.</div>
   </div>
-  <div class="mf"><button class="btn" onclick="closeModal('m-cuenta')">Cancelar</button><button class="btn btn-p" onclick="guardarCuenta()"><i class="ti ti-check"></i>Registrar cuenta</button></div>
+  <div class="mf"><button class="btn" onclick="cancelarModalCuenta()">Cancelar</button><button class="btn btn-p" onclick="guardarCuenta()"><i class="ti ti-check"></i>Registrar cuenta</button></div>
 </div></div>
 <!-- Proveedor -->
 <div class="ov" id="m-proveedor"><div class="modal" style="max-width:560px">
@@ -2665,7 +2667,7 @@ function closeSidebarMobile() {
         <div id="v-cli-sel" style="display:none">
           <div class="ab s" id="v-cli-info" style="margin-bottom:0"><i class="ti ti-user-check"></i><span id="v-cli-txt"></span><button class="btn btn-sm" style="margin-left:auto" onclick="limpiarClienteVenta()">Cambiar</button></div>
         </div>
-        <div id="v-btn-nuevo-cli-wrap" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div id="v-btn-nuevo-cli-wrap" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px">
           <span style="font-size:12px;color:var(--text3)">¿No encuentras al cliente?</span>
           <button class="btn btn-p btn-sm" id="btn-nuevo-cli" onclick="mostrarFormNuevoCli()"><i class="ti ti-user-plus"></i>Registrar nuevo cliente</button>
         </div>
@@ -3455,6 +3457,8 @@ async function renderDashboard() {
   } catch (e) { console.warn('[DASH] Error cargando egresos:', e.message); }
   const gananciaNeta = cobradoMes - egresosMes;
   set('dash-ganancia', '$'+gananciaNeta.toFixed(2));
+  const elGanancia = document.getElementById('dash-ganancia');
+  if (elGanancia) elGanancia.style.color = gananciaNeta >= 0 ? 'var(--green)' : 'var(--red)';
   const _tendGanancia = gananciaNeta >= cobradoMes * 0.7
     ? '<i class="ti ti-trending-up" style="color:var(--green);margin-right:3px"></i>'
     : '<i class="ti ti-trending-down" style="color:var(--amber);margin-right:3px"></i>';
@@ -3494,12 +3498,25 @@ async function renderDashboard() {
     await cargarInventario();
     const hoyDate = hoyPanamaDate();
     const limiteDate = new Date(hoyDate); limiteDate.setDate(limiteDate.getDate() + 15);
-    const proximasVcto = (INV_CACHE || [])
+    const proximasVctoTotal = (INV_CACHE || [])
       .filter(c => esActivo(c.estado) && c.fecha_vcto_prov)
       .map(c => ({ ...c, _vctoDate: new Date(c.fecha_vcto_prov + 'T00:00:00') }))
       .filter(c => c._vctoDate >= hoyDate && c._vctoDate <= limiteDate)
-      .sort((a,b) => a._vctoDate - b._vctoDate)
-      .slice(0, 6);
+      .sort((a,b) => a._vctoDate - b._vctoDate);
+    const proximasVcto = proximasVctoTotal.slice(0, 6);
+
+    const elResumen = document.getElementById('dash-alertas-resumen');
+    if (elResumen) {
+      if (!proximasVctoTotal.length) {
+        elResumen.textContent = '';
+      } else {
+        const porPlat = {};
+        proximasVctoTotal.forEach(c => { porPlat[c.plataforma] = (porPlat[c.plataforma]||0) + 1; });
+        const desglose = Object.entries(porPlat).map(([p,n]) => `${p}: ${n}`).join(', ');
+        elResumen.textContent = `Total: ${proximasVctoTotal.length} cuenta${proximasVctoTotal.length!==1?'s':''} — ${desglose}`;
+      }
+    }
+
     if (!proximasVcto.length) {
       apTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">Sin cuentas próximas a vencer en los próximos 15 días</td></tr>';
     } else {
@@ -4567,8 +4584,7 @@ async function confirmarVentaDesdeModal(){
         fIni: fIniStr, fVcto: vctoStr, monto: montoEntry, tipoCliente: 'Nuevo',
         precioTrasPromo: precioTrasPromoEntry
       };
-      const okSub = await dbGuardarSuscripcion(subParams);
-      if (!okSub) throw new Error('No se pudo guardar la suscripción de ' + p);
+      await dbGuardarSuscripcion(subParams);
     }
 
     const okCobro = await dbGuardarCobro({
@@ -5318,6 +5334,8 @@ async function guardarCuenta(){
         if (_editandoCuentaExistente) {
           const claveAnterior = INV_CACHE.find(c => c.id === codigo)?.clave || '';
           if (clave !== claveAnterior) payloadCuenta.clave_actualizada_en = new Date().toISOString();
+        } else {
+          payloadCuenta.egreso_id = _cuentaEgresoActivo || null;
         }
         const {error: e1} = await supa.from('cuentas_inventario').upsert(payloadCuenta, { onConflict: 'codigo' });
         if (e1) throw e1;
@@ -5450,7 +5468,7 @@ function mostrarConfirmAcceso(correo, plataforma, proveedor) {
     <div style="font-size:15px;font-weight:600;margin-bottom:8px">✅ Cuenta guardada</div>
     <div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5">¿Registrar ahora el acceso del proveedor para que el sistema pueda obtener códigos automáticamente?</div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn" onclick="document.getElementById('${ovId}').remove()">No, después</button>
+      <button class="btn" onclick="document.getElementById('${ovId}').remove(); if (_cuentaEgresoActivo) mostrarConfirmOtraCuenta();">No, después</button>
       <button class="btn btn-p" onclick="
         document.getElementById('${ovId}').remove();
         cargarSelectoresProveedores().then(()=>{
@@ -5466,6 +5484,103 @@ function mostrarConfirmAcceso(correo, plataforma, proveedor) {
     </div>
   </div>`;
   document.body.appendChild(ov);
+}
+
+// ¿Hay otra cuenta de esta misma compra (egreso)? — solo se llama dentro de un ciclo activo
+function mostrarConfirmOtraCuenta() {
+  const ovId = '_ov_otra_cuenta_confirm';
+  if (document.getElementById(ovId)) return;
+  const ov = document.createElement('div');
+  ov.id = ovId;
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+  ov.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:28px 24px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+    <div style="font-size:15px;font-weight:600;margin-bottom:8px">🔄 ¿Otra cuenta de esta compra?</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5">¿Este egreso incluyó otra cuenta que todavía no has registrado?</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" onclick="document.getElementById('${ovId}').remove(); _finalizarCicloCuentasEgreso();">No, ya no hay más</button>
+      <button class="btn btn-p" onclick="document.getElementById('${ovId}').remove(); _repetirCuentaEgreso();">Sí, hay otra cuenta</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+
+// Reabre "Nueva cuenta" limpio, re-precargando proveedor/fecha/vencimiento/costo del mismo egreso
+function _repetirCuentaEgreso() {
+  _editandoCuentaExistente = false;
+  openModal('m-cuenta');
+  if (_cuentaEgresoProv) { const cp = document.getElementById('cuenta-prov'); if (cp) cp.value = _cuentaEgresoProv; }
+  if (_cuentaEgresoFecha) { const fcEl = document.getElementById('cuenta-fecha-compra2'); if (fcEl) fcEl.value = _cuentaEgresoFecha; }
+  if (_cuentaEgresoVctoProv) { const vEl = document.getElementById('cuenta-vcto-prov'); if (vEl) vEl.value = _cuentaEgresoVctoProv; }
+  if (_cuentaEgresoMonto != null) { const costoEl = document.getElementById('cuenta-costo'); if (costoEl) costoEl.value = _cuentaEgresoMonto.toFixed(2); }
+}
+
+// Cierra el ciclo: reparte el monto total entre las N cuentas de este egreso y muestra el resumen editable
+async function _finalizarCicloCuentasEgreso() {
+  const egresoId = _cuentaEgresoActivo;
+  const montoTotal = _cuentaEgresoMonto;
+  _cuentaEgresoActivo = null;
+  _cuentaEgresoMonto = null;
+  _cuentaEgresoProv = null;
+  _cuentaEgresoFecha = null;
+  _cuentaEgresoVctoProv = null;
+  if (!egresoId) return;
+
+  const { data: cuentasEgreso, error } = await supa.from('cuentas_inventario')
+    .select('codigo, correo, costo_proveedor')
+    .eq('egreso_id', egresoId);
+  if (error) { toast('Error cargando cuentas de este egreso: ' + error.message, 'error'); return; }
+  if (!cuentasEgreso || !cuentasEgreso.length) return;
+
+  if (montoTotal != null && cuentasEgreso.length) {
+    const sugerido = parseFloat((montoTotal / cuentasEgreso.length).toFixed(2));
+    for (const c of cuentasEgreso) {
+      const { error: eUp } = await supa.from('cuentas_inventario')
+        .update({ costo_proveedor: sugerido })
+        .eq('codigo', c.codigo);
+      if (eUp) console.warn('[EGRESO] Error repartiendo costo de', c.codigo, ':', eUp.message);
+      else c.costo_proveedor = sugerido;
+    }
+    await cargarInventario();
+  }
+
+  mostrarResumenCostosEgreso(cuentasEgreso);
+}
+
+// Modal de resumen/ajuste final — el reparto ya se aplicó, esto es solo para editar manualmente
+function mostrarResumenCostosEgreso(cuentas) {
+  const ovId = '_ov_resumen_costos_egreso';
+  if (document.getElementById(ovId)) return;
+  const ov = document.createElement('div');
+  ov.id = ovId;
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+  const filas = cuentas.map(c => `
+    <div class="fr c2" style="margin-bottom:8px;align-items:center">
+      <div style="font-size:13px"><strong>${c.codigo}</strong><div style="font-size:11px;color:var(--text3)">${c.correo||'—'}</div></div>
+      <input type="text" data-codigo="${c.codigo}" value="${(parseFloat(c.costo_proveedor)||0).toFixed(2)}" style="max-width:110px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg3);color:var(--text);font-size:13px">
+    </div>`).join('');
+  ov.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:24px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+    <div style="font-size:15px;font-weight:600;margin-bottom:6px">Revisión de costos — ${cuentas.length} cuenta${cuentas.length!==1?'s':''}</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:16px">El costo ya se repartió en partes iguales. Ajusta si alguna cuenta tuvo un costo distinto.</div>
+    <div id="_resumen-costos-filas">${filas}</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
+      <button class="btn" onclick="document.getElementById('${ovId}').remove()">Cerrar</button>
+      <button class="btn btn-p" onclick="_guardarAjustesCostosEgreso('${ovId}')">Guardar ajustes</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+
+async function _guardarAjustesCostosEgreso(ovId) {
+  const inputs = document.querySelectorAll('#' + ovId + ' input[data-codigo]');
+  for (const inp of inputs) {
+    const codigo = inp.dataset.codigo;
+    const valor = parseFloat(inp.value.replace('$','').replace(',','.')) || 0;
+    const { error } = await supa.from('cuentas_inventario').update({ costo_proveedor: valor }).eq('codigo', codigo);
+    if (error) { toast('Error actualizando ' + codigo + ': ' + error.message, 'error'); return; }
+  }
+  await cargarInventario();
+  document.getElementById(ovId)?.remove();
+  toast('Costos actualizados ✓', 'ok');
 }
 
 // ── EDITAR CUENTA ─────────────────────────────────────────────
@@ -7781,12 +7896,32 @@ async function guardarProveedor() {
   }
 }
 
+// ── Ciclo "compra de múltiples cuentas en un egreso" ─────────
+let _cuentaEgresoActivo = null;    // id del egreso activo durante el ciclo (null = fuera de ciclo)
+let _cuentaEgresoMonto = null;     // monto total del egreso, para el reparto final
+let _cuentaEgresoProv = null;      // proveedor a re-precargar en cada cuenta del ciclo
+let _cuentaEgresoFecha = null;     // fecha de compra a re-precargar
+let _cuentaEgresoVctoProv = null;  // vencimiento proveedor a re-precargar
+
 function abrirNuevaCuenta() {
   _editandoCuentaExistente = false;
+  _cuentaEgresoActivo = null;
   cargarSelectoresProveedores();
   openModal('m-cuenta');
 }
+
+// Cancelar "Nueva cuenta" manualmente — si había un ciclo de egreso activo, se descarta
+// (el egreso ya guardado NO se borra; solo deja de esperar más cuentas ligadas a él)
+function cancelarModalCuenta() {
+  _cuentaEgresoActivo = null;
+  _cuentaEgresoMonto = null;
+  _cuentaEgresoProv = null;
+  _cuentaEgresoFecha = null;
+  _cuentaEgresoVctoProv = null;
+  closeModal('m-cuenta');
+}
 async function abrirNuevoEgreso() {
+  _cuentaEgresoActivo = null;
   await cargarInventario();
   await cargarSelectoresProveedores();
   const _a = new Date();
@@ -7959,6 +8094,11 @@ async function guardarEgreso() {
   if (categoria === 'Cuentas') {
     // Precargar formulario de "Nueva cuenta de plataforma" — el usuario revisa y confirma
     _editandoCuentaExistente = false;
+    _cuentaEgresoActivo = egresoId;
+    _cuentaEgresoMonto = total;
+    _cuentaEgresoProv = provIdSel;
+    _cuentaEgresoFecha = fecha;
+    _cuentaEgresoVctoProv = periodoHasta;
     await cargarSelectoresProveedores();
     openModal('m-cuenta');
     if (provIdSel) { const cp = document.getElementById('cuenta-prov'); if (cp) cp.value = provIdSel; }
@@ -8013,7 +8153,11 @@ async function dbCargarEgresos() {
   const cards = document.querySelectorAll('#v-egresos .mc');
   if (cards[0]) { cards[0].querySelector('.mv').textContent = '$'+totalEgr.toFixed(2); cards[0].querySelector('.ml').textContent = 'Egresos '+mesNombre; }
   if (cards[1]) { cards[1].querySelector('.mv').textContent = '$'+totalIng.toFixed(2); cards[1].querySelector('.ml').textContent = 'Ingresos '+mesNombre; }
-  if (cards[2]) { cards[2].querySelector('.mv').textContent = '$'+ganancia.toFixed(2); const ms=cards[2].querySelector('.ms'); if(ms) ms.textContent = 'Margen '+margen+'%'; }
+  if (cards[2]) {
+    const mvEl = cards[2].querySelector('.mv');
+    if (mvEl) { mvEl.textContent = '$'+ganancia.toFixed(2); mvEl.style.color = ganancia >= 0 ? 'var(--green)' : 'var(--red)'; }
+    const ms = cards[2].querySelector('.ms'); if (ms) ms.textContent = 'Margen '+margen+'%';
+  }
   if (cards[3]) cards[3].querySelector('.mv').textContent = '$'+totalCom.toFixed(2);
   if (!data || !data.length) {
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">No hay egresos registrados</td></tr>';
@@ -9489,6 +9633,7 @@ async function guardarAcceso() {
     notas:      notas   || null,
     correo:     correo
   };
+  if (!id) payload.egreso_id = _cuentaEgresoActivo || null;
 
   const { error } = id
     ? await supa.from('accesos').update(payload).eq('id', id)
@@ -9498,6 +9643,7 @@ async function guardarAcceso() {
   toast(id ? 'Acceso actualizado ✓' : 'Acceso guardado ✓', 'ok');
   codLoadAccesos();
   dbCargarAccesos();
+  if (!id && _cuentaEgresoActivo) mostrarConfirmOtraCuenta();
 }
 
 
