@@ -230,7 +230,7 @@ function renderVentasDB(lista) {
   const datos = lista || VENTAS_DB;
   const PC2 = {NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
   if (!datos.length) {
-    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">No hay ventas registradas</td></tr>';
+    tb.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">No hay ventas registradas</td></tr>';
     return;
   }
   tb.innerHTML = datos.map(v => {
@@ -263,6 +263,7 @@ function renderVentasDB(lista) {
       <td style="font-size:12px">${vigencia}</td>
       <td><span class="b bi">${v.canal||'WhatsApp'}</span></td>
       <td style="color:var(--green);font-weight:500">$${parseFloat(v.monto||0).toFixed(2)}</td>
+      <td class="tda">${USUARIO_ACTIVO?.rol === 'Master' ? `<button class="btn btn-sm btn-ic" onclick="eliminarVenta(${v.id})" title="Eliminar venta"><i class="ti ti-trash" style="color:var(--red)"></i></button>` : ''}</td>
     </tr>`;
   }).join('');
 }
@@ -279,6 +280,141 @@ function filtVentas(q) {
     return nombre.includes(r) || plats.includes(r) || perfil.includes(r) || (digits.length>=3 && pin.includes(digits));
   });
   renderVentasDB(filtradas);
+}
+
+// ── ELIMINAR VENTA (Master only) ─────────────────────────────
+// Por cada perfil de la venta, verifica si su suscripción sigue exactamente como quedó
+// al crearse (sin actividad posterior) antes de permitir revertirla.
+async function verificarVentaEliminable(venta) {
+  const perfilesStr = (venta.perfiles || '').trim();
+  if (!perfilesStr || perfilesStr === '—') {
+    return [{ perfil: '—', plat: null, subId: null, veredicto: 'bloqueado', motivo: 'Esta venta no tiene perfiles registrados — no se puede verificar con seguridad.' }];
+  }
+  const codigos = perfilesStr.split('+').map(s => s.trim()).filter(Boolean);
+  const resultados = [];
+  for (const codigo of codigos) {
+    const plat = plataformaDesdePerfil(codigo);
+    const { data, error } = await supa.from('suscripciones')
+      .select('id, estado, tipo_cliente, fecha_inicio, fecha_vcto')
+      .eq('cliente_id', venta.cliente_id)
+      .eq('perfil_id', codigo);
+    if (error) {
+      resultados.push({ perfil: codigo, plat, subId: null, veredicto: 'bloqueado', motivo: 'Error consultando la suscripción: ' + error.message });
+      continue;
+    }
+    if (!data || !data.length) {
+      resultados.push({ perfil: codigo, plat, subId: null, veredicto: 'bloqueado', motivo: 'No se encontró ninguna suscripción para este perfil.' });
+      continue;
+    }
+    const sub = data[0];
+    const problemas = [];
+    if (sub.estado !== 'activo') problemas.push(`estado actual es "${sub.estado}" (se esperaba "activo")`);
+    if (sub.tipo_cliente !== 'Nuevo') problemas.push(`tipo_cliente actual es "${sub.tipo_cliente}" (se esperaba "Nuevo") — probablemente ya fue renovada`);
+    if (sub.fecha_inicio !== venta.vigencia_ini) problemas.push(`fecha_inicio no coincide (venta: ${venta.vigencia_ini}, suscripción: ${sub.fecha_inicio})`);
+    if (sub.fecha_vcto !== venta.vigencia_fin) problemas.push(`fecha_vcto no coincide (venta: ${venta.vigencia_fin}, suscripción: ${sub.fecha_vcto})`);
+    if (problemas.length) {
+      resultados.push({ perfil: codigo, plat, subId: sub.id, veredicto: 'bloqueado', motivo: problemas.join('; ') });
+    } else {
+      resultados.push({ perfil: codigo, plat, subId: sub.id, veredicto: 'ok' });
+    }
+  }
+  return resultados;
+}
+
+async function eliminarVenta(id) {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede eliminar ventas', 'warn'); return; }
+  const venta = VENTAS_DB.find(v => v.id === id);
+  if (!venta) { toast('Venta no encontrada', 'error'); return; }
+  const veredictos = await verificarVentaEliminable(venta);
+  mostrarModalEliminarVenta(venta, veredictos);
+}
+
+function mostrarModalEliminarVenta(venta, veredictos) {
+  const ovId = '_ov_eliminar_venta';
+  document.getElementById(ovId)?.remove();
+  const hayBloqueo = veredictos.some(v => v.veredicto === 'bloqueado');
+  const plats = (venta.plataformas || venta.plats || '').split('+').filter(Boolean).map(p => platNombre(p)).join(' + ') || '—';
+  const fechaFmt = (venta.vigencia_ini||'').includes('-') ? venta.vigencia_ini.split('-').reverse().join('/') : (venta.vigencia_ini||'—');
+
+  const filasHtml = veredictos.map(v => {
+    if (v.veredicto === 'ok') {
+      return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:13px">
+        <span style="color:var(--green)">✅</span>
+        <div><strong>${v.perfil}</strong> — se marcará inactiva, el perfil quedará disponible</div>
+      </div>`;
+    }
+    return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:13px">
+      <span style="color:var(--red)">🔴</span>
+      <div><strong>${v.perfil}</strong> — BLOQUEADO
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${v.motivo}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const footerHtml = hayBloqueo
+    ? `<div class="ab w" style="margin-top:4px"><i class="ti ti-alert-triangle"></i>Uno o más perfiles impiden eliminar esta venta con seguridad. Resuélvelo manualmente (revisa la suscripción o el pago asociado) y vuelve a intentarlo.</div>
+       <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn" onclick="document.getElementById('${ovId}').remove()">Cerrar</button></div>`
+    : `<div class="ab w" style="margin-top:4px"><i class="ti ti-alert-triangle"></i>Esta acción no se puede deshacer. El cobro asociado a esta venta NO se eliminará ni modificará — ajústalo manualmente en "Editar cobro" si corresponde.</div>
+       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
+         <button class="btn" onclick="document.getElementById('${ovId}').remove()">Cancelar</button>
+         <button class="btn" id="btn-confirmar-eliminar-venta" style="background:var(--red);border-color:var(--red);color:#fff" onclick="_confirmarEliminarVenta(${venta.id})"><i class="ti ti-trash"></i> Eliminar definitivamente</button>
+       </div>`;
+
+  const ov = document.createElement('div');
+  ov.id = ovId;
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:24px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5);max-height:85vh;overflow-y:auto">
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px">${hayBloqueo ? '⚠️ No se puede eliminar' : '🗑️ Eliminar venta'}</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">${venta.nombre||'—'} · ${plats} · ${fechaFmt} · $${parseFloat(venta.monto||0).toFixed(2)}</div>
+    <div>${filasHtml}</div>
+    ${footerHtml}
+  </div>`;
+  document.body.appendChild(ov);
+}
+
+async function _confirmarEliminarVenta(id) {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede eliminar ventas', 'warn'); return; }
+  const venta = VENTAS_DB.find(v => v.id === id);
+  if (!venta) { toast('Venta no encontrada', 'error'); return; }
+
+  // Re-verificar justo antes de ejecutar — protege contra actividad ocurrida
+  // mientras el modal estaba abierto (concurrencia).
+  const veredictos = await verificarVentaEliminable(venta);
+  if (veredictos.some(v => v.veredicto === 'bloqueado')) {
+    toast('La situación cambió desde que se abrió esta ventana — ya no se puede eliminar. Revisa de nuevo.', 'error');
+    mostrarModalEliminarVenta(venta, veredictos);
+    return;
+  }
+
+  const btn = document.getElementById('btn-confirmar-eliminar-venta');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Eliminando...'; }
+
+  try {
+    for (let i = 0; i < veredictos.length; i++) {
+      const v = veredictos[i];
+      const { error: eSub } = await supa.from('suscripciones').update({ estado: 'inactivo' }).eq('id', v.subId);
+      if (eSub) throw new Error((i > 0 ? `Ya se revirtieron ${i} perfil(es) antes de este error. ` : '') + `Error actualizando suscripción ${v.perfil}: ${eSub.message}`);
+      const { error: ePerf } = await supa.from('perfiles').update({ estado: 'disponible' }).eq('id', v.perfil);
+      if (ePerf) throw new Error(`Suscripción ${v.perfil} ya quedó inactiva, pero falló liberar el perfil: ${ePerf.message}`);
+    }
+
+    const { error: eDel } = await supa.from('ventas').delete().eq('id', id);
+    if (eDel) throw new Error('Las suscripciones y perfiles ya se revirtieron, pero falló eliminar la venta: ' + eDel.message);
+
+    const resumen = veredictos.map(v => v.perfil).join('+');
+    await dbGuardarHistorial('Venta eliminada', (venta.nombre||'—') + ' — ' + resumen + ' — $' + parseFloat(venta.monto||0).toFixed(2), 'var(--red)');
+
+    document.getElementById('_ov_eliminar_venta')?.remove();
+    toast('Venta eliminada ✓', 'ok');
+
+    await dbCargarVentas();
+    await dbCargarSuscripciones();
+    await dbCargarPerfilesDisp();
+  } catch (e) {
+    console.error('[ELIMINAR VENTA]', e);
+    toast('Error: ' + (e.message || e), 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-trash"></i> Eliminar definitivamente'; }
+  }
 }
 
 // Cargar suscripciones al iniciar
@@ -1063,7 +1199,7 @@ function closeSidebarMobile() {
   <div style="display:flex;gap:9px;margin-bottom:14px">
     <div class="sbox" style="flex:1;max-width:360px"><i class="ti ti-search"></i><input type="text" id="v-busq-ventas" placeholder="Buscar venta..." oninput="filtVentas(this.value)"></div>
   </div>
-  <div class="card"><div class="tw tw-v"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Plataforma</th><th>Perfil</th><th>PIN</th><th>Vigencia</th><th>Canal</th><th>Monto</th></tr></thead><tbody id="tb-ventas"></tbody></table></div></div>
+  <div class="card"><div class="tw tw-v"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Plataforma</th><th>Perfil</th><th>PIN</th><th>Vigencia</th><th>Canal</th><th>Monto</th><th></th></tr></thead><tbody id="tb-ventas"></tbody></table></div></div>
 </div>
 <!-- COBRANZA -->
 <div class="view" id="v-cobranza">
@@ -1125,6 +1261,24 @@ function closeSidebarMobile() {
 </div>
 <!-- EGRESOS -->
 <div class="view" id="v-egresos">
+  <div style="display:flex;gap:9px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+    <div class="sbox" style="flex:1;max-width:320px"><i class="ti ti-search"></i><input type="text" id="egresos-busq" placeholder="Descripción, proveedor..." oninput="filtEgresos(this.value)"></div>
+    <select id="egresos-filtro-categoria" onchange="filtEgresosCategoria(this.value)">
+      <option value="">Todas las categorías</option>
+      <option value="Cuentas">Cuentas</option>
+      <option value="Publicidad">Publicidad</option>
+      <option value="Herramientas">Herramientas</option>
+      <option value="Otros">Otros</option>
+    </select>
+    <select id="egresos-filtro-forma" onchange="filtEgresosForma(this.value)">
+      <option value="">Todas las formas</option>
+      <option value="Yappy">Yappy</option>
+      <option value="Transferencia / ACH">Transferencia / ACH</option>
+      <option value="Binance Pay">Binance Pay</option>
+      <option value="Efectivo">Efectivo</option>
+    </select>
+    <span id="egresos-periodo-wrap" style="display:flex;gap:8px;align-items:center"></span>
+  </div>
   <div class="mg" style="margin-bottom:12px">
     <div class="mc" style="--mc-c:var(--red)"><div class="ml">Egresos mayo</div><div class="mv" style="color:var(--red)">$650</div></div>
     <div class="mc" style="--mc-c:var(--green)"><div class="ml">Ingresos mayo</div><div class="mv" style="color:var(--green)">$1,240</div></div>
@@ -3499,18 +3653,15 @@ async function renderDashboard() {
     }
   }
 
-  // ── Alertas proveedores (cuentas próximas a vencer) ───────────
+  // ── Alertas proveedores (cuentas que vencen hoy / mañana / pasado mañana) ────
   const apTbody = document.getElementById('dash-alertas-prov');
   if (apTbody) {
     await cargarInventario();
-    const hoyDate = hoyPanamaDate();
-    const limiteDate = new Date(hoyDate); limiteDate.setDate(limiteDate.getDate() + 15);
     const proximasVctoTotal = (INV_CACHE || [])
       .filter(c => esActivo(c.estado) && c.fecha_vcto_prov)
-      .map(c => ({ ...c, _vctoDate: new Date(c.fecha_vcto_prov + 'T00:00:00') }))
-      .filter(c => c._vctoDate >= hoyDate && c._vctoDate <= limiteDate)
-      .sort((a,b) => a._vctoDate - b._vctoDate);
-    const proximasVcto = proximasVctoTotal.slice(0, 6);
+      .map(c => ({ ...c, _diasR: _diasVctoProv(c.fecha_vcto_prov) }))
+      .filter(c => c._diasR !== null && c._diasR >= 0 && c._diasR <= 2)
+      .sort((a,b) => a._diasR - b._diasR || a.id.localeCompare(b.id));
 
     const elResumen = document.getElementById('dash-alertas-resumen');
     if (elResumen) {
@@ -3520,23 +3671,39 @@ async function renderDashboard() {
         const porPlat = {};
         proximasVctoTotal.forEach(c => { porPlat[c.plataforma] = (porPlat[c.plataforma]||0) + 1; });
         const desglose = Object.entries(porPlat).map(([p,n]) => `${p}: ${n}`).join(', ');
-        elResumen.textContent = `Total: ${proximasVctoTotal.length} cuenta${proximasVctoTotal.length!==1?'s':''} — ${desglose}`;
+        elResumen.textContent = `Total: ${proximasVctoTotal.length} cuenta${proximasVctoTotal.length!==1?'s':''} en los próximos 3 días — ${desglose}`;
       }
     }
 
-    if (!proximasVcto.length) {
-      apTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">Sin cuentas próximas a vencer en los próximos 15 días</td></tr>';
+    if (!proximasVctoTotal.length) {
+      apTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">Sin cuentas próximas a vencer hoy, mañana o pasado mañana</td></tr>';
     } else {
-      apTbody.innerHTML = proximasVcto.map(c => {
-        const clientesCount = SUBS_FULL.filter(s => s.est === 'activo' && s.perfil && s.perfil !== '—' && s.perfil.slice(0,-1) === c.id).length;
-        const vctoFmt = c.fecha_vcto_prov.split('-').reverse().join('/');
-        return `<tr>
-          <td style="font-family:var(--mono);font-size:12px">${c.id}<div style="font-size:10px;color:var(--text3)">${c.correo||'—'}</div></td>
-          <td style="font-size:12px">${c.proveedor||'—'}</td>
-          <td style="text-align:center">${clientesCount}</td>
-          <td style="font-size:12px">${vctoFmt}</td>
-        </tr>`;
-      }).join('');
+      const gruposDef = [
+        { dias: 0, label: 'HOY',           bg: 'rgba(240,77,77,.08)',   color: 'var(--red)'    },
+        { dias: 1, label: 'MAÑANA',        bg: 'rgba(245,166,35,.08)',  color: 'var(--amber)'  },
+        { dias: 2, label: 'PASADO MAÑANA', bg: 'rgba(108,143,255,.08)', color: 'var(--accent)' }
+      ];
+      const fmtFechaOffset = diasOffset => {
+        const d = new Date(hoyPanamaDate()); d.setDate(d.getDate() + diasOffset);
+        return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+      };
+      let html = '';
+      gruposDef.forEach(g => {
+        const cuentasGrupo = proximasVctoTotal.filter(c => c._diasR === g.dias);
+        if (!cuentasGrupo.length) return;
+        html += `<tr><td colspan="4" style="background:${g.bg};color:${g.color};font-weight:600;font-size:11px;padding:6px 11px">${g.label} (${fmtFechaOffset(g.dias)}) · ${cuentasGrupo.length} cuenta${cuentasGrupo.length!==1?'s':''}</td></tr>`;
+        html += cuentasGrupo.map(c => {
+          const clientesCount = SUBS_FULL.filter(s => s.est === 'activo' && s.perfil && s.perfil !== '—' && s.perfil.slice(0,-1) === c.id).length;
+          const vctoFmt = c.fecha_vcto_prov.split('-').reverse().join('/');
+          return `<tr>
+            <td style="font-family:var(--mono);font-size:12px">${c.id}<div style="font-size:10px;color:var(--text3)">${c.correo||'—'}</div></td>
+            <td style="font-size:12px">${c.proveedor||'—'}</td>
+            <td style="text-align:center">${clientesCount}</td>
+            <td style="font-size:12px">${vctoFmt}</td>
+          </tr>`;
+        }).join('');
+      });
+      apTbody.innerHTML = html;
     }
   }
 
@@ -3646,6 +3813,13 @@ function goTo(v,el){
       wrap.dataset.init = '1';
     }
     updMetricasCobros();
+  }
+  if(v==='egresos') {
+    const wrapE = document.getElementById('egresos-periodo-wrap');
+    if (wrapE && !wrapE.dataset.init) {
+      wrapE.innerHTML = htmlSelectorPeriodo('egresos', 'mes', '_aplicarFiltrosEgresos');
+      wrapE.dataset.init = '1';
+    }
   }
   closeSidebarMobile();
 }
@@ -4641,6 +4815,8 @@ async function confirmarVentaDesdeModal(){
     await dbCargarVentas();
     await dbCargarSuscripciones();
     _aplicarFiltrosSubs();
+    await dbCargarCobros();
+    if (typeof updMetricasCobros === 'function') updMetricasCobros();
     closeModal('m-venta');
 
     const _exitoEntry = entries[0];
@@ -4828,6 +5004,9 @@ async function confirmarPago() {
     sincronizarPlatsClientes();
     renderDashboard();
     await refrescarVistaActiva({ subs: true });
+    if (document.getElementById('v-cobros')?.classList.contains('on')) {
+      if (typeof updMetricasCobros === 'function') updMetricasCobros();
+    }
     toast('Pago registrado correctamente ✓', 'ok');
 
     // Reset completo del formulario
@@ -8317,16 +8496,24 @@ async function editarEgreso(id) {
   if (avisoPlanillaEl) avisoPlanillaEl.style.display = (data.categoria === 'Planilla') ? 'flex' : 'none';
 }
 
+const EGRESOS_DB = [];
 async function dbCargarEgresos() {
   const tbody = document.getElementById('tb-egresos');
-  if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
+  const { data, error } = await supa.from('egresos').select('*').order('fecha', { ascending: false }).limit(1000);
+  if (error) { if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:20px">Error cargando egresos</td></tr>'; return; }
+  EGRESOS_DB.length = 0;
+  (data || []).forEach(e => EGRESOS_DB.push(e));
+  actualizarMetricasEgresos();
+  _aplicarFiltrosEgresos();
+}
+
+// Tarjetas KPI de Egresos — siempre sobre el MES ACTUAL real, sin importar los filtros de la tabla.
+function actualizarMetricasEgresos() {
   const now = new Date();
   const mesActual = now.getMonth() + 1;
   const anioActual = now.getFullYear();
-  const { data, error } = await supa.from('egresos').select('*').order('fecha', { ascending: false }).limit(200);
-  if (error) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:20px">Error cargando egresos</td></tr>'; return; }
-  const esteMes = (data||[]).filter(e => {
+  const esteMes = EGRESOS_DB.filter(e => {
     if (!e.fecha) return false;
     const [y,m] = e.fecha.split('-');
     return parseInt(m) === mesActual && parseInt(y) === anioActual;
@@ -8349,11 +8536,17 @@ async function dbCargarEgresos() {
     const ms = cards[2].querySelector('.ms'); if (ms) ms.textContent = 'Margen '+margen+'%';
   }
   if (cards[3]) cards[3].querySelector('.mv').textContent = '$'+totalCom.toFixed(2);
-  if (!data || !data.length) {
+}
+
+function renderEgresos(lista) {
+  const tbody = document.getElementById('tb-egresos');
+  if (!tbody) return;
+  const datos = lista || EGRESOS_DB;
+  if (!datos.length) {
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">No hay egresos registrados</td></tr>';
     return;
   }
-  tbody.innerHTML = data.map(e => `<tr>
+  tbody.innerHTML = datos.map(e => `<tr>
     <td style="font-size:12px">${e.fecha ? e.fecha.split('-').reverse().join('/') : '—'}</td>
     <td style="font-size:12px">${e.categoria||'—'}</td>
     <td>${e.descripcion||'—'}</td>
@@ -8365,6 +8558,30 @@ async function dbCargarEgresos() {
     <td class="tda"><button class="btn btn-sm btn-ic" onclick="editarEgreso(${e.id})"><i class="ti ti-edit"></i></button></td>
   </tr>`).join('');
 }
+
+// Buscador (Descripción + Proveedor) + Categoría + Forma de pago + Período — mismo patrón que _aplicarFiltrosCobros().
+function _aplicarFiltrosEgresos() {
+  const q         = document.getElementById('egresos-busq')?.value || '';
+  const categoria = document.getElementById('egresos-filtro-categoria')?.value || '';
+  const forma     = document.getElementById('egresos-filtro-forma')?.value || '';
+  let data = EGRESOS_DB;
+  if (categoria) data = data.filter(e => e.categoria === categoria);
+  if (forma)     data = data.filter(e => e.forma_pago === forma);
+  const { ini, fin } = periodoLeerRango('egresos');
+  if (ini && fin) data = data.filter(e => e.fecha && e.fecha >= ini && e.fecha <= fin);
+  if (q) {
+    const r = q.toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    data = data.filter(e => {
+      const desc = (e.descripcion||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      const prov = (e.proveedor||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      return desc.includes(r) || prov.includes(r);
+    });
+  }
+  renderEgresos(data);
+}
+function filtEgresos(q) { _aplicarFiltrosEgresos(); }
+function filtEgresosCategoria(v) { _aplicarFiltrosEgresos(); }
+function filtEgresosForma(v) { _aplicarFiltrosEgresos(); }
 
 // ═══════════════════════════════════════════════════════════
 // PLANILLA (solo Master)
