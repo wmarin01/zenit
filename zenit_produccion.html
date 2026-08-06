@@ -13170,6 +13170,11 @@ async function cargarParametros() {
         const first = cont.querySelector('.cat-btn');
         if (first) first.classList.add('on');
       }
+      const selFiltroCat = document.getElementById('egresos-filtro-categoria');
+      if (selFiltroCat) {
+        selFiltroCat.innerHTML = '<option value="">Todas las categorías</option>' +
+          data.map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join('');
+      }
     }
   } catch(e) {}
 
