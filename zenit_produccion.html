@@ -184,6 +184,7 @@ async function dbCargarCobros() {
     COBROS.length = 0;
     data.forEach(c => {
       COBROS.push({
+        id: c.id,
         fecha: (() => {
           if (!c.fecha) return '—';
           if (c.fecha.includes('/')) return c.fecha; // ya es dd/mm/yyyy
@@ -3838,7 +3839,7 @@ function renderC(data){
     const montoWA = subsWA.reduce((acc, s) => acc + (Number(s.monto) || 0), 0);
     const fVctoWA = subsWA[0]?.fVcto || '';
     const platsNomWA = c.plats.map(p => platNombre(p)).join(' + ');
-    return `<tr><td style="font-family:var(--mono);font-size:11px">${c.id}</td><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${formatTel(c.tel)}</td><td><div class="chips" style="margin:0">${chips}</div></td><td>${plats}</td><td>${vb}</td><td>${eb}${cb}${claveB}</td><td class="tda"><button class="btn btn-sm btn-ic" onclick="abrirEditarCliente('${c.id}')"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago');selClientePago('${c.id}','${c.n} ${c.a}','${c.tel}')"><i class="ti ti-cash"></i></button><button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${c.n} ${c.a}','${platsNomWA}','${montoWA.toFixed(2)}','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}',{fecha_vcto:'${fVctoWA}'})"><i class="ti ti-brand-whatsapp"></i></button><button class="btn btn-sm btn-ic" onclick="openModal('m-cambio');cargarMotivosCambio();selClienteCambio('${c.id}','${c.n} ${c.a}','${c.tel}')"><i class="ti ti-arrows-exchange"></i></button>${claveBtn}</td></tr>`;
+    return `<tr><td style="font-family:var(--mono);font-size:11px">${c.id}</td><td><strong>${c.n} ${c.a}</strong></td><td style="font-size:12px">${formatTel(c.tel)}</td><td><div class="chips" style="margin:0">${chips}</div></td><td>${plats}</td><td>${vb}</td><td>${eb}${cb}${claveB}</td><td class="tda"><button class="btn btn-sm btn-ic" onclick="abrirEditarCliente('${c.id}')"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago');selClientePago('${c.id}','${c.n} ${c.a}','${c.tel}')"><i class="ti ti-cash"></i></button><button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${c.n} ${c.a}','${platsNomWA}','${montoWA.toFixed(2)}','${c.dias===0?'vencimiento':c.dias===1?'1d':'3d'}',{fecha_vcto:'${fVctoWA}'})"><i class="ti ti-brand-whatsapp"></i></button><button class="btn btn-sm btn-ic" onclick="openModal('m-cambio');cargarMotivosCambio();selClienteCambio('${c.id}','${c.n} ${c.a}','${c.tel}')"><i class="ti ti-arrows-exchange"></i></button>${claveBtn}${USUARIO_ACTIVO?.rol === 'Master' ? `<button class="btn btn-sm btn-ic" onclick="eliminarCliente('${c.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>` : ''}</td></tr>`;
   }).join('');
 }
 function filtC(q){
@@ -3904,6 +3905,97 @@ async function guardarEditarCliente() {
     toast('Error al guardar: ' + (e.message || e), 'error');
   } finally {
     btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Guardar cambios';
+  }
+}
+
+// ── ELIMINAR CLIENTE (solo Master, solo clientes sin movimientos) ──────────
+// mensajes_wa/historial_codigos no se chequean: estructuralmente no pueden tener
+// cliente_id de un cliente sin venta/suscripción previa (verificado en código).
+async function verificarClienteEliminable(id) {
+  const [subs, ventas, cobros] = await Promise.all([
+    supa.from('suscripciones').select('id', { count: 'exact', head: true }).eq('cliente_id', id),
+    supa.from('ventas').select('id', { count: 'exact', head: true }).eq('cliente_id', id),
+    supa.from('cobros').select('id', { count: 'exact', head: true }).eq('cliente_id', id)
+  ]);
+  return {
+    subs:   subs.count   || 0,
+    ventas: ventas.count || 0,
+    cobros: cobros.count || 0
+  };
+}
+
+async function eliminarCliente(id) {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede eliminar clientes', 'warn'); return; }
+  const cliente = CLIENTES.find(c => c.id === id);
+  if (!cliente) { toast('Cliente no encontrado', 'error'); return; }
+  const conteo = await verificarClienteEliminable(id);
+  mostrarModalEliminarCliente(cliente, conteo);
+}
+
+function mostrarModalEliminarCliente(cliente, conteo) {
+  const ovId = '_ov_eliminar_cliente';
+  document.getElementById(ovId)?.remove();
+  const nombre = (cliente.n + ' ' + (cliente.a||'')).trim();
+  const hayMovimientos = conteo.subs > 0 || conteo.ventas > 0 || conteo.cobros > 0;
+
+  const detalles = [];
+  if (conteo.subs   > 0) detalles.push(conteo.subs   + ' suscripción(es)');
+  if (conteo.ventas > 0) detalles.push(conteo.ventas + ' venta(s)');
+  if (conteo.cobros > 0) detalles.push(conteo.cobros + ' cobro(s)');
+
+  const footerHtml = hayMovimientos
+    ? `<div class="ab w" style="margin-top:4px"><i class="ti ti-alert-triangle"></i>Este cliente no se puede eliminar — tiene: ${detalles.join(', ')}. Elimínalos primero o consérvalo.</div>
+       <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn" onclick="document.getElementById('${ovId}').remove()">Cerrar</button></div>`
+    : `<div class="ab w" style="margin-top:4px"><i class="ti ti-alert-triangle"></i>Este cliente no tiene ningún movimiento asociado (sin suscripciones, ventas ni cobros). Esta acción no se puede deshacer.</div>
+       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
+         <button class="btn" onclick="document.getElementById('${ovId}').remove()">Cancelar</button>
+         <button class="btn" id="btn-confirmar-eliminar-cliente" style="background:var(--red);border-color:var(--red);color:#fff" onclick="_confirmarEliminarCliente('${cliente.id}')"><i class="ti ti-trash"></i> Eliminar definitivamente</button>
+       </div>`;
+
+  const ov = document.createElement('div');
+  ov.id = ovId;
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:24px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5);max-height:85vh;overflow-y:auto">
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px">${hayMovimientos ? '⚠️ No se puede eliminar' : '🗑️ Eliminar cliente'}</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">${nombre} · ${cliente.id} · ${formatTel(cliente.tel)||cliente.tel||'—'}</div>
+    ${footerHtml}
+  </div>`;
+  document.body.appendChild(ov);
+}
+
+async function _confirmarEliminarCliente(id) {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede eliminar clientes', 'warn'); return; }
+  const cliente = CLIENTES.find(c => c.id === id);
+  if (!cliente) { toast('Cliente no encontrado', 'error'); return; }
+
+  // Re-verificar justo antes de ejecutar — protege contra actividad ocurrida
+  // mientras el modal estaba abierto (concurrencia).
+  const conteo = await verificarClienteEliminable(id);
+  if (conteo.subs > 0 || conteo.ventas > 0 || conteo.cobros > 0) {
+    toast('La situación cambió desde que se abrió esta ventana — ya no se puede eliminar. Revisa de nuevo.', 'error');
+    mostrarModalEliminarCliente(cliente, conteo);
+    return;
+  }
+
+  const btn = document.getElementById('btn-confirmar-eliminar-cliente');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Eliminando...'; }
+  try {
+    const { error: errContactos } = await supa.from('contactos').delete().eq('cliente_id', id);
+    if (errContactos) throw errContactos;
+    const { error: errCliente } = await supa.from('clientes').delete().eq('id', id);
+    if (errCliente) throw errCliente;
+
+    document.getElementById('_ov_eliminar_cliente')?.remove();
+    await dbGuardarHistorial('Cliente eliminado', id + ' · ' + (cliente.n+' '+(cliente.a||'')).trim(), 'var(--red)');
+
+    const idx = CLIENTES.findIndex(c => c.id === id);
+    if (idx !== -1) CLIENTES.splice(idx, 1);
+    filtC(document.querySelector('#v-clientes .sbox input')?.value || '');
+    toast('Cliente eliminado ✓', 'ok');
+  } catch(e) {
+    console.error('[ELIMINAR-CLIENTE]', e);
+    toast('Error al eliminar: ' + (e.message || e), 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-trash"></i> Eliminar definitivamente'; }
   }
 }
 
@@ -9896,26 +9988,10 @@ async function registrarNuevoCliente() {
   };
   CLIENTES.push(newCli);
 
-  // Agregar inmediatamente a tabla de clientes
-  const tbody = document.getElementById('tc');
-  if (tbody) {
-    const plats = '';
-    const chips = contactos.map(ct => `<span class="chip">${CI[ct.t]||'<i class="ti ti-dots"></i>'} ${ct.v}</span>`).join('');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="font-family:var(--mono);font-size:11px">${newId}</td>
-      <td><strong>${nombre} ${apellido}</strong></td>
-      <td style="font-size:12px">${tel}</td>
-      <td><div class="chips" style="margin:0">${chips}</div></td>
-      <td>—</td>
-      <td>—</td>
-      <td><span class="b bg">Activo</span></td>
-      <td class="tda">
-        <button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago');selClientePago('${newId}','${nombre} ${apellido}','${tel}')"><i class="ti ti-cash"></i></button>
-        <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${nombre} ${apellido}','—','—','entrega')"><i class="ti ti-brand-whatsapp"></i></button>
-      </td>`;
-    tbody.appendChild(tr);
-  }
+  // Repintar la tabla de clientes con el template completo de renderC() (vía filtC(),
+  // que preserva el filtro de búsqueda activo si lo hay) — evita mantener una plantilla
+  // manual duplicada que se desincroniza cada vez que se agrega un botón nuevo a renderC().
+  filtC(document.querySelector('#v-clientes .sbox input')?.value || '');
 
   // Seleccionar el cliente recién creado en la venta
   selClienteVenta(newId, nombre + ' ' + apellido, tel);
@@ -10129,7 +10205,7 @@ function renderCobros(data) {
       <td style="font-family:var(--mono);font-size:12px">${c.doc}</td>
       <td style="font-size:11px;color:var(--text3)">${c.operador}</td>
       <td>${estBadge}</td>
-      <td class="tda"><button class="btn btn-sm btn-ic" onclick="abrirEditarCobro(this)"><i class="ti ti-edit"></i></button></td>
+      <td class="tda"><button class="btn btn-sm btn-ic" onclick="abrirEditarCobro(this)"><i class="ti ti-edit"></i></button>${USUARIO_ACTIVO?.rol === 'Master' ? `<button class="btn btn-sm btn-ic" onclick="eliminarCobro(${COBROS.indexOf(c)})" title="Eliminar"><i class="ti ti-trash"></i></button>` : ''}</td>
     </tr>`;
   }).join('');
 }
@@ -10181,6 +10257,92 @@ async function guardarEditarCobro() {
     toast('Error al guardar: ' + (e.message || e), 'error');
   } finally {
     btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>Guardar cambios';
+  }
+}
+
+// ── ELIMINAR COBRO (solo Master) ────────────────────────────────
+function eliminarCobro(idx) {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede eliminar cobros', 'warn'); return; }
+  const cobro = COBROS[idx];
+  if (!cobro) { toast('Cobro no encontrado', 'error'); return; }
+  const candidatas = cobro.tipo === 'Renovación' ? buscarSuscripcionesCandidatas(cobro) : [];
+  mostrarModalEliminarCobro(cobro, candidatas);
+}
+
+// Correlación aproximada, no garantizada: cliente_id + plataforma (split por '+') + |fVcto - fecha cobro| ≤ 2 días.
+function buscarSuscripcionesCandidatas(cobro) {
+  const plats = (cobro.plat || '').split('+').filter(Boolean);
+  const [dd, mm, yy] = (cobro.fecha || '').split('/');
+  if (!dd || !mm || !yy) return [];
+  const fechaCobro = new Date(+yy, +mm - 1, +dd);
+  return SUBS_FULL.filter(s => {
+    if (s.clienteId !== cobro.clienteId) return false;
+    if (!plats.includes(s.plat)) return false;
+    if (!s.fVcto || s.fVcto === '—') return false;
+    const [sdd, smm, syy] = s.fVcto.split('/');
+    if (!sdd || !smm || !syy) return false;
+    const fechaVcto = new Date(+syy, +smm - 1, +sdd);
+    const diffDias = Math.abs((fechaVcto - fechaCobro) / 86400000);
+    return diffDias <= 2;
+  });
+}
+
+function mostrarModalEliminarCobro(cobro, candidatas) {
+  const ovId = '_ov_eliminar_cobro';
+  document.getElementById(ovId)?.remove();
+  const plats = (cobro.plat || '').split('+').filter(Boolean).map(p => platNombre(p)).join(' + ') || '—';
+
+  const candidatasHtml = cobro.tipo === 'Renovación'
+    ? `<div style="margin-top:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Suscripciones candidatas (correlación aproximada, no garantizada)</div>
+        ${candidatas.length
+          ? candidatas.map(s => `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;padding:8px;background:var(--bg3);border-radius:8px;font-size:12px">
+              <div><strong>${s.nombre||'—'}</strong> — ${s.plat} · ${s.perfil||'—'} · vence ${s.fVcto}</div>
+              <button class="btn btn-sm" onclick="_editarSubDesdeEliminarCobro(${s.id})"><i class="ti ti-edit"></i> Editar suscripción</button>
+            </div>`).join('')
+          : `<div style="font-size:12px;color:var(--text3)">No se encontraron suscripciones cercanas por fecha/plataforma — revisa manualmente si corresponde ajustar algo.</div>`}
+        <div class="ab w" style="margin-top:8px"><i class="ti ti-alert-triangle"></i>Estas suscripciones se muestran solo como referencia — el sistema no las modifica automáticamente. Si el vencimiento quedó mal, ajústalo manualmente aquí.</div>
+      </div>`
+    : '';
+
+  const ov = document.createElement('div');
+  ov.id = ovId;
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:24px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5);max-height:85vh;overflow-y:auto">
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px">🗑️ Eliminar cobro</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">${cobro.nombre||'—'} · ${plats} · ${cobro.fecha||'—'} · $${(cobro.monto||0).toFixed(2)}</div>
+    <div class="ab w"><i class="ti ti-alert-triangle"></i>Esta acción no se puede deshacer. No se modificará ninguna suscripción, perfil o venta asociada.</div>
+    ${candidatasHtml}
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
+      <button class="btn" onclick="document.getElementById('${ovId}').remove()">Cancelar</button>
+      <button class="btn" id="btn-confirmar-eliminar-cobro" style="background:var(--red);border-color:var(--red);color:#fff" onclick="_confirmarEliminarCobro(${cobro.id})"><i class="ti ti-trash"></i> Eliminar definitivamente</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+
+function _editarSubDesdeEliminarCobro(id) {
+  document.getElementById('_ov_eliminar_cobro')?.remove();
+  abrirEditarSubById(id);
+}
+
+async function _confirmarEliminarCobro(id) {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede eliminar cobros', 'warn'); return; }
+  const btn = document.getElementById('btn-confirmar-eliminar-cobro');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Eliminando...'; }
+  try {
+    const cobro = COBROS.find(c => c.id === id);
+    const { error } = await supa.from('cobros').delete().eq('id', id);
+    if (error) throw error;
+    document.getElementById('_ov_eliminar_cobro')?.remove();
+    await dbGuardarHistorial('Cobro eliminado', (cobro?.clienteId||'—') + ' · $' + (cobro?.monto||0).toFixed(2), 'var(--red)');
+    await dbCargarCobros();
+    if (typeof updMetricasCobros === 'function') updMetricasCobros();
+    toast('Cobro eliminado ✓', 'ok');
+  } catch(e) {
+    console.error('[ELIMINAR-COBRO]', e);
+    toast('Error al eliminar: ' + (e.message || e), 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-trash"></i> Eliminar definitivamente'; }
   }
 }
 
@@ -13536,12 +13698,108 @@ function renderInventario(lista) {
             <button class="btn btn-sm btn-ic" onclick="abrirEditarCuenta(this)"><i class="ti ti-edit"></i></button>
             ${inv.plataforma === 'NF' ? `<button class="btn btn-sm btn-ic" title="Renovar con pin" onclick="abrirRenovarPin('${inv.id}','${inv.fecha_vcto_prov||''}')"><i class="ti ti-rotate-clockwise"></i></button>` : ''}
             ${!esMovil() ? `<button class="btn btn-sm btn-ic" title="Abrir Chrome" onclick="abrirChromeInventario('${inv.id}','${inv.plataforma}','${(inv.correo||'').replace(/'/g,"\\'")}','${(inv.proveedor||'').replace(/'/g,"\\'")}')"><i class="ti ti-brand-chrome"></i></button>` : ''}
+            ${USUARIO_ACTIVO?.rol === 'Master' ? `<button class="btn btn-sm btn-ic" title="Eliminar" onclick="eliminarCuenta('${inv.id}')"><i class="ti ti-trash"></i></button>` : ''}
           </td>`;
         tbody.appendChild(tr2);
       });
     });
 }
 
+// ── ELIMINAR CUENTA DE INVENTARIO (solo Master, solo cuentas nunca usadas) ──
+// Bloquea si CUALQUIER perfil de la cuenta tiene CUALQUIER fila en suscripciones,
+// sin importar el estado (activo, sin_renovar, inactivo...) — solo se permite
+// eliminar una cuenta que nunca se haya usado en absoluto.
+async function verificarCuentaEliminable(codigo) {
+  const { data: perfiles } = await supa.from('perfiles').select('id').eq('inventario_id', codigo);
+  const ids = (perfiles || []).map(p => p.id);
+  if (!ids.length) return { perfiles: 0, perfilesConSub: 0 };
+  const { data: subs } = await supa.from('suscripciones').select('perfil_id').in('perfil_id', ids);
+  const conSub = new Set((subs || []).map(s => (s.perfil_id || '').trim()));
+  return { perfiles: ids.length, perfilesConSub: conSub.size };
+}
+
+async function eliminarCuenta(codigo) {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede eliminar cuentas', 'warn'); return; }
+  const cuenta = INV_CACHE.find(c => c.id === codigo);
+  if (!cuenta) { toast('Cuenta no encontrada', 'error'); return; }
+  const veredicto = await verificarCuentaEliminable(codigo);
+  mostrarModalEliminarCuenta(cuenta, veredicto);
+}
+
+function mostrarModalEliminarCuenta(cuenta, veredicto) {
+  const ovId = '_ov_eliminar_cuenta';
+  document.getElementById(ovId)?.remove();
+  const bloqueada = veredicto.perfilesConSub > 0;
+
+  const footerHtml = bloqueada
+    ? `<div class="ab w" style="margin-top:4px"><i class="ti ti-alert-triangle"></i>Esta cuenta no se puede eliminar — ${veredicto.perfilesConSub} de sus ${veredicto.perfiles} perfil(es) tiene(n) al menos una suscripción registrada (sin importar el estado). Solo se pueden eliminar cuentas que nunca se hayan usado.</div>
+       <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn" onclick="document.getElementById('${ovId}').remove()">Cerrar</button></div>`
+    : `<div class="ab w" style="margin-top:4px"><i class="ti ti-alert-triangle"></i>Esta acción no se puede deshacer. También se eliminarán sus ${veredicto.perfiles} perfil(es) y cualquier acceso registrado con el mismo correo y plataforma.</div>
+       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
+         <button class="btn" onclick="document.getElementById('${ovId}').remove()">Cancelar</button>
+         <button class="btn" id="btn-confirmar-eliminar-cuenta" style="background:var(--red);border-color:var(--red);color:#fff" onclick="_confirmarEliminarCuenta('${cuenta.id}')"><i class="ti ti-trash"></i> Eliminar definitivamente</button>
+       </div>`;
+
+  const ov = document.createElement('div');
+  ov.id = ovId;
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:24px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5);max-height:85vh;overflow-y:auto">
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px">${bloqueada ? '⚠️ No se puede eliminar' : '🗑️ Eliminar cuenta'}</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">${cuenta.id} · ${cuenta.plataforma ? platNombre(cuenta.plataforma) : '—'} · ${cuenta.correo||'—'}</div>
+    ${footerHtml}
+  </div>`;
+  document.body.appendChild(ov);
+}
+
+async function _confirmarEliminarCuenta(codigo) {
+  if (USUARIO_ACTIVO?.rol !== 'Master') { toast('Solo el rol Master puede eliminar cuentas', 'warn'); return; }
+  const cuenta = INV_CACHE.find(c => c.id === codigo);
+  if (!cuenta) { toast('Cuenta no encontrada', 'error'); return; }
+
+  // Re-verificar justo antes de ejecutar — protege contra actividad ocurrida
+  // mientras el modal estaba abierto (concurrencia).
+  const veredicto = await verificarCuentaEliminable(codigo);
+  if (veredicto.perfilesConSub > 0) {
+    toast('La situación cambió desde que se abrió esta ventana — ya no se puede eliminar. Revisa de nuevo.', 'error');
+    mostrarModalEliminarCuenta(cuenta, veredicto);
+    return;
+  }
+
+  const btn = document.getElementById('btn-confirmar-eliminar-cuenta');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Eliminando...'; }
+  try {
+    const { error: errPerfiles } = await supa.from('perfiles').delete().eq('inventario_id', codigo);
+    if (errPerfiles) throw errPerfiles;
+
+    // Accesos: correlación blanda por correo+plataforma, sin bloquear por duplicados.
+    if (cuenta.correo) {
+      const { error: errAccesos } = await supa.from('accesos').delete()
+        .eq('correo', cuenta.correo).eq('plataforma', cuenta.plataforma || null);
+      if (errAccesos) console.warn('[ELIMINAR-CUENTA] Error borrando accesos asociados:', errAccesos.message);
+    }
+
+    const { error: errCuenta } = await supa.from('cuentas_inventario').delete().eq('codigo', codigo);
+    if (errCuenta) throw errCuenta;
+
+    document.getElementById('_ov_eliminar_cuenta')?.remove();
+    await dbGuardarHistorial('Cuenta eliminada', codigo + ' · ' + (cuenta.plataforma ? platNombre(cuenta.plataforma) : '—') + ' · ' + (cuenta.correo||'—'), 'var(--red)');
+
+    const idx = INV_CACHE.findIndex(c => c.id === codigo);
+    if (idx !== -1) INV_CACHE.splice(idx, 1);
+    delete INV_SUBS_MAP[codigo];
+    filtrarInventario();
+
+    await dbCargarPerfilesDisp();
+    await dbCargarAccesos();
+    codLoadAccesos();
+
+    toast('Cuenta eliminada ✓', 'ok');
+  } catch(e) {
+    console.error('[ELIMINAR-CUENTA]', e);
+    toast('Error al eliminar: ' + (e.message || e), 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-trash"></i> Eliminar definitivamente'; }
+  }
+}
 
 let _renovarCuentaId = null;
 let _renovarFechaVcto = null;
@@ -14143,6 +14401,7 @@ async function codAccesoEliminar(id) {
   if (error) { toast('Error: ' + error.message,'err'); return; }
   toast('Eliminado ✓','ok');
   codLoadAccesos();
+  dbCargarAccesos();
 }
 
 // ── FIN MENSAJES WHATSAPP ─────────────────────────────────────────────────────
