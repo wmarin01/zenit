@@ -1125,7 +1125,7 @@ function closeSidebarMobile() {
     <div class="card">
       <div class="ct"><i class="ti ti-alert-triangle" style="color:var(--amber)"></i>Alertas proveedores</div>
       <div id="dash-alertas-resumen" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
-      <div class="tw"><table><thead><tr><th>Cuenta</th><th>Proveedor</th><th>Clientes</th><th>Vence</th></tr></thead><tbody id="dash-alertas-prov"><tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">Cargando...</td></tr></tbody></table></div>
+      <div class="tw"><table><thead><tr><th>Cuenta</th><th>Proveedor</th><th>Clientes</th><th>Vence</th><th></th></tr></thead><tbody id="dash-alertas-prov"><tr><td colspan="5" style="text-align:center;color:var(--text3);padding:12px">Cargando...</td></tr></tbody></table></div>
       <div style="margin-top:12px">
         <div class="ct" style="margin-bottom:8px"><i class="ti ti-device-tv" style="color:var(--accent)"></i>Inventario por plataforma</div>
         <div id="dash-inventario" style="display:flex;flex-direction:column;gap:5px">Cargando...</div>
@@ -3224,6 +3224,42 @@ function closeSidebarMobile() {
     <button class="btn btn-p" id="btn-confirmar-definitivo" style="display:none" onclick="confirmarCambio()"><i class="ti ti-check"></i>Confirmar definitivo</button>
   </div>
 </div></div>
+<!-- Convertir a combo -->
+<div class="ov" id="m-combo"><div class="modal" style="max-width:640px">
+  <div class="mh"><div class="mico" style="background:#3a2f6e"><i class="ti ti-transform"></i></div><div><div class="mtit">Convertir a combo</div><div class="msub" id="combo-sub">Busca el cliente para continuar</div></div><button class="mcl" onclick="closeModal('m-combo')"><i class="ti ti-x"></i></button></div>
+  <div class="mb">
+    <!-- Búsqueda de cliente -->
+    <div id="combo-busq-sec" class="fsec">
+      <div class="fst">Buscar cliente</div>
+      <div class="sbox" style="margin-bottom:10px"><i class="ti ti-search"></i><input type="text" id="combo-busq" placeholder="Teléfono, nombre o apellido..." oninput="buscarClienteCombo(this.value)"></div>
+      <div id="combo-resultados" style="display:none;flex-direction:column;gap:5px"></div>
+      <div id="combo-cli-sel" style="display:none">
+        <div class="ab s" style="margin-bottom:0"><i class="ti ti-user-check"></i><span id="combo-cli-txt"></span><button class="btn btn-sm" style="margin-left:auto" onclick="limpiarClienteCombo()">Cambiar</button></div>
+      </div>
+    </div>
+    <!-- Suscripciones individuales del cliente -->
+    <div id="combo-contenido" style="display:none">
+      <div class="fsec">
+        <div class="fst">Suscripciones individuales activas — selecciona 2 o más de plataformas distintas</div>
+        <div id="combo-subs-lista"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;align-items:center;margin-top:6px;font-size:13px;color:var(--text2)">
+        Total seleccionado: <strong id="combo-total" style="color:var(--green)">$0.00</strong>
+      </div>
+    </div>
+    <!-- Panel de resumen -->
+    <div id="combo-resumen-panel" style="display:none">
+      <div class="ab s" style="margin-bottom:14px"><i class="ti ti-eye"></i>Revisa los datos antes de confirmar definitivamente</div>
+      <div id="combo-resumen-body"></div>
+    </div>
+  </div>
+  <div class="mf">
+    <button class="btn" id="btn-combo-cancelar" onclick="closeModal('m-combo')">Cancelar</button>
+    <button class="btn btn-p" id="btn-revisar-combo" style="display:none" onclick="mostrarResumenCombo()"><i class="ti ti-eye"></i>Revisar combo</button>
+    <button class="btn" id="btn-combo-atras" style="display:none" onclick="volverResumenCombo()"><i class="ti ti-arrow-left"></i> Atrás</button>
+    <button class="btn btn-p" id="btn-confirmar-combo" style="display:none" onclick="confirmarCombo()"><i class="ti ti-check"></i>Confirmar definitivo</button>
+  </div>
+</div></div>
 <!-- Cambio contraseña -->
 <div class="ov" id="m-clave"><div class="modal" style="max-width:580px">
   <div class="mh"><div class="mico" style="background:#3a2f6e"><i class="ti ti-lock"></i></div><div><div class="mtit">Cambio de contraseña</div><div class="msub" id="m-clave-sub">—</div></div><button class="mcl" onclick="closeModal('m-clave')"><i class="ti ti-x"></i></button></div>
@@ -3677,7 +3713,7 @@ async function renderDashboard() {
     }
 
     if (!proximasVctoTotal.length) {
-      apTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">Sin cuentas próximas a vencer hoy, mañana o pasado mañana</td></tr>';
+      apTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:12px">Sin cuentas próximas a vencer hoy, mañana o pasado mañana</td></tr>';
     } else {
       const gruposDef = [
         { dias: 0, label: 'HOY',           bg: 'rgba(240,77,77,.08)',   color: 'var(--red)'    },
@@ -3692,7 +3728,7 @@ async function renderDashboard() {
       gruposDef.forEach(g => {
         const cuentasGrupo = proximasVctoTotal.filter(c => c._diasR === g.dias);
         if (!cuentasGrupo.length) return;
-        html += `<tr><td colspan="4" style="background:${g.bg};color:${g.color};font-weight:600;font-size:11px;padding:6px 11px">${g.label} (${fmtFechaOffset(g.dias)}) · ${cuentasGrupo.length} cuenta${cuentasGrupo.length!==1?'s':''}</td></tr>`;
+        html += `<tr><td colspan="5" style="background:${g.bg};color:${g.color};font-weight:600;font-size:11px;padding:6px 11px">${g.label} (${fmtFechaOffset(g.dias)}) · ${cuentasGrupo.length} cuenta${cuentasGrupo.length!==1?'s':''}</td></tr>`;
         html += cuentasGrupo.map(c => {
           const clientesCount = SUBS_FULL.filter(s => s.est === 'activo' && s.perfil && s.perfil !== '—' && s.perfil.slice(0,-1) === c.id).length;
           const vctoFmt = c.fecha_vcto_prov.split('-').reverse().join('/');
@@ -3701,6 +3737,7 @@ async function renderDashboard() {
             <td style="font-size:12px">${c.proveedor||'—'}</td>
             <td style="text-align:center">${clientesCount}</td>
             <td style="font-size:12px">${vctoFmt}</td>
+            <td class="tda"><button class="btn btn-sm btn-ic" title="Ver en Inventario" onclick="irACuentaInventario('${c.id}')"><i class="ti ti-server"></i></button></td>
           </tr>`;
         }).join('');
       });
@@ -3772,7 +3809,7 @@ function goTo(v,el){
   else if (v==='clientes')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button>`;
   else if (v==='ventas')        { ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button>`; renderVentasDB(); }
   else if (v==='cobros')        ha.innerHTML=`<button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
-  else if (v==='suscripciones') ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
+  else if (v==='suscripciones') ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="resetModalCombo();openModal('m-combo')"><i class="ti ti-transform"></i>Convertir a combo</button><button class="hbtn" onclick="toast('Exportar próximamente','info')"><i class="ti ti-download"></i>Exportar</button>`;
   else if (v==='cobranza')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-venta')"><i class="ti ti-plus"></i>Nueva venta</button><button class="hbtn" onclick="openModal('m-pago')"><i class="ti ti-cash"></i>Registrar pago</button>`;
       else if (v==='inventario')    { 
         ha.innerHTML = (!USUARIO_ACTIVO || USUARIO_ACTIVO.rol === 'Master') 
@@ -9320,6 +9357,218 @@ function limpiarClienteCambio() {
   resetModalCambio();
 }
 
+// ── FLUJO CONVERTIR A COMBO ───────────────────────────────────
+let comboData = {clienteId:'', clienteNombre:'', clienteTel:'', candidatas: []};
+
+function buscarClienteCombo(q) {
+  const cont = document.getElementById('combo-resultados');
+  const sel  = document.getElementById('combo-cli-sel');
+  if (sel && sel.style.display !== 'none') return;
+  if (q.length < 2) { if (cont) cont.style.display = 'none'; return; }
+  const res = buscarClientes(q);
+  if (!res.length) {
+    if (cont) {
+      cont.style.display = 'flex';
+      cont.innerHTML = `<div style="padding:11px 13px;border:1px solid rgba(245,166,35,.25);border-radius:var(--rsm);background:rgba(245,166,35,.06)">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><i class="ti ti-user-question" style="color:var(--amber)"></i><span style="font-size:13px;font-weight:500;color:var(--text)">Cliente no encontrado</span></div>
+        <div style="font-size:12px;color:var(--text2)">No existe un cliente con "<strong>${q}</strong>". Verifica el dato ingresado.</div>
+      </div>`;
+    }
+  } else {
+    renderResultadosCli(res, 'combo-resultados', 'selClienteCombo');
+  }
+}
+
+function selClienteCombo(id, nombre, tel) {
+  comboData = { clienteId: id, clienteNombre: nombre, clienteTel: tel, candidatas: [] };
+  document.getElementById('combo-resultados').style.display = 'none';
+  document.getElementById('combo-cli-sel').style.display = 'block';
+  document.getElementById('combo-cli-txt').textContent = nombre + ' · ' + tel + ' · ' + id;
+  document.getElementById('combo-busq').value = '';
+  document.getElementById('combo-sub').textContent = nombre + ' · Selecciona las suscripciones';
+
+  comboData.candidatas = SUBS_FULL.filter(s => s.clienteId === id && s.tipo === 'Individual' && esActivo(s.est));
+  renderCandidatasCombo();
+
+  document.getElementById('combo-contenido').style.display = 'block';
+  document.getElementById('btn-revisar-combo').style.display = comboData.candidatas.length >= 2 ? 'inline-flex' : 'none';
+}
+
+function renderCandidatasCombo() {
+  const lista = document.getElementById('combo-subs-lista');
+  if (!lista) return;
+  const cands = comboData.candidatas;
+  if (cands.length < 2) {
+    lista.innerHTML = `<div class="ab i"><i class="ti ti-info-circle"></i>Este cliente no tiene 2 o más suscripciones individuales activas de plataformas distintas.</div>`;
+    actualizarComboTotal();
+    return;
+  }
+  lista.innerHTML = cands.map((s, i) => {
+    const dot = PC[s.plat] || 'var(--accent)';
+    return `<div class="pi" style="align-items:flex-start;cursor:default">
+      <input type="checkbox" id="combo-chk-${i}" data-idx="${i}" onchange="actualizarComboTotal()" style="width:auto;margin-top:3px;flex-shrink:0;cursor:pointer">
+      <div style="flex:1;margin-left:8px">
+        <div style="font-size:13px;font-weight:500"><span class="dot" style="background:${dot};width:8px;height:8px;margin-right:5px"></span>${platNombre(s.plat)} · ${s.perfil||'—'}</div>
+        <div style="font-size:11px;color:var(--text3)">${s.correo||'—'} · Vence ${s.fVcto||'—'}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+        <span style="font-size:12px;color:var(--text3)">$</span>
+        <input type="text" id="combo-monto-${i}" value="${(s.monto||0).toFixed(2)}" oninput="actualizarComboTotal()" style="width:70px;padding:5px 7px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg2);color:var(--text);font-size:12px;text-align:right">
+      </div>
+    </div>`;
+  }).join('');
+  actualizarComboTotal();
+}
+
+function actualizarComboTotal() {
+  let total = 0;
+  document.querySelectorAll('#combo-subs-lista input[type=checkbox]:checked').forEach(chk => {
+    const idx = chk.dataset.idx;
+    const val = parseFloat((document.getElementById('combo-monto-'+idx)?.value||'0').replace(/[^0-9.]/g,'')) || 0;
+    total += val;
+  });
+  const el = document.getElementById('combo-total');
+  if (el) el.textContent = '$' + total.toFixed(2);
+}
+
+function mostrarResumenCombo() {
+  if (!comboData.clienteId) { toast('Selecciona un cliente primero','warn'); return; }
+  const checks = Array.from(document.querySelectorAll('#combo-subs-lista input[type=checkbox]:checked'));
+  if (checks.length < 2) { toast('Selecciona al menos 2 suscripciones para formar el combo','warn'); return; }
+
+  const seleccionadas = checks.map(chk => {
+    const idx = parseInt(chk.dataset.idx);
+    const cand = comboData.candidatas[idx];
+    const montoEl = document.getElementById('combo-monto-'+idx);
+    const monto = parseFloat((montoEl?.value||'0').replace(/[^0-9.]/g,'')) || 0;
+    return { ...cand, monto };
+  });
+
+  const plats = seleccionadas.map(s => s.plat);
+  if (new Set(plats).size !== plats.length) {
+    toast('No puedes seleccionar dos suscripciones de la misma plataforma','error');
+    return;
+  }
+
+  const comboId = normalizarCombo(plats.join('+'));
+  const total = seleccionadas.reduce((acc,s)=>acc+s.monto,0);
+
+  window._comboPendiente = { seleccionadas, comboId, total };
+
+  const filas = seleccionadas.map(s => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px;color:var(--text)">${platNombre(s.plat)} · ${s.perfil||'—'}</span>
+      <span style="font-size:13px;color:var(--green);font-weight:500">$${s.monto.toFixed(2)}</span>
+    </div>`).join('');
+
+  document.getElementById('combo-resumen-body').innerHTML = `
+    <div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <span style="flex:0 0 126px;font-size:12px;color:var(--text2);font-weight:500">Cliente</span>
+      <span style="font-size:13px;color:var(--text)"><strong>${comboData.clienteNombre}</strong></span>
+    </div>
+    <div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <span style="flex:0 0 126px;font-size:12px;color:var(--text2);font-weight:500">Combo ID</span>
+      <span style="font-size:13px;color:var(--purple);font-family:var(--mono)">${comboId}</span>
+    </div>
+    ${filas}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px">
+      <span style="font-size:13px;font-weight:600;color:var(--text)">Total</span>
+      <span style="font-size:15px;font-weight:700;color:var(--green)">$${total.toFixed(2)}</span>
+    </div>`;
+
+  document.getElementById('combo-contenido').style.display = 'none';
+  document.getElementById('combo-busq-sec').style.display = 'none';
+  document.getElementById('combo-resumen-panel').style.display = 'block';
+  document.getElementById('btn-revisar-combo').style.display = 'none';
+  document.getElementById('btn-combo-cancelar').style.display = 'none';
+  document.getElementById('btn-combo-atras').style.display = '';
+  document.getElementById('btn-confirmar-combo').style.display = '';
+  document.getElementById('combo-sub').textContent = 'Revisa los datos del combo';
+}
+
+function volverResumenCombo() {
+  document.getElementById('combo-resumen-panel').style.display = 'none';
+  document.getElementById('combo-contenido').style.display = 'block';
+  document.getElementById('combo-busq-sec').style.display = '';
+  document.getElementById('btn-combo-atras').style.display = 'none';
+  document.getElementById('btn-confirmar-combo').style.display = 'none';
+  document.getElementById('btn-combo-cancelar').style.display = '';
+  document.getElementById('btn-revisar-combo').style.display = 'inline-flex';
+  document.getElementById('combo-sub').textContent = comboData.clienteNombre ? comboData.clienteNombre + ' · Selecciona las suscripciones' : 'Busca el cliente para continuar';
+}
+
+async function confirmarCombo(){
+  const pending = window._comboPendiente;
+  if (!pending || !comboData.clienteId) { toast('Selecciona un cliente primero','warn'); return; }
+  const { seleccionadas, comboId, total } = pending;
+
+  const btn = document.getElementById('btn-confirmar-combo');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
+
+  let errores = 0;
+  for (const s of seleccionadas) {
+    const { error } = await supa.from('suscripciones').update({
+      tipo: 'Combo', combo_id: comboId, monto: s.monto
+    }).eq('id', s.id);
+    if (error) {
+      console.error('[COMBO] Error actualizando suscripción', s.id, error.message);
+      toast('⚠️ Error actualizando la suscripción ' + (s.perfil || s.id) + '. Corrígelo manualmente.', 'error');
+      errores++;
+    } else {
+      const memIdx = SUBS_FULL.findIndex(x => x.id == s.id);
+      if (memIdx !== -1) { SUBS_FULL[memIdx].tipo = 'Combo'; SUBS_FULL[memIdx].combo = comboId; SUBS_FULL[memIdx].monto = s.monto; }
+    }
+  }
+
+  await dbGuardarHistorial(
+    'Conversión a combo',
+    `${comboData.clienteNombre} · ${seleccionadas.map(s=>s.plat).join('+')} → combo ${comboId} · $${total.toFixed(2)}` + (errores ? ` · ${errores} error(es)` : ''),
+    'var(--purple)'
+  );
+
+  closeModal('m-combo');
+  resetModalCombo();
+  await dbCargarSuscripciones();
+  _aplicarFiltrosSubs();
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-check"></i>Confirmar definitivo';
+
+  if (!errores) toast('Combo creado correctamente ✓', 'ok');
+  else toast(`Combo creado con ${errores} error(es) — revisa el historial`, 'warn');
+}
+
+function resetModalCombo() {
+  comboData = {clienteId:'', clienteNombre:'', clienteTel:'', candidatas: []};
+  window._comboPendiente = null;
+
+  const inp = document.getElementById('combo-busq');
+  if (inp) inp.value = '';
+  const res = document.getElementById('combo-resultados');
+  if (res) { res.innerHTML = ''; res.style.display = 'none'; }
+
+  const cliSel = document.getElementById('combo-cli-sel');
+  if (cliSel) cliSel.style.display = 'none';
+  const cliTxt = document.getElementById('combo-cli-txt');
+  if (cliTxt) cliTxt.textContent = '';
+
+  const busqSec = document.getElementById('combo-busq-sec'); if (busqSec) busqSec.style.display = '';
+  const contenido = document.getElementById('combo-contenido'); if (contenido) contenido.style.display = 'none';
+  const resumen = document.getElementById('combo-resumen-panel'); if (resumen) resumen.style.display = 'none';
+  const lista = document.getElementById('combo-subs-lista'); if (lista) lista.innerHTML = '';
+  const totalEl = document.getElementById('combo-total'); if (totalEl) totalEl.textContent = '$0.00';
+
+  const btnRevisar = document.getElementById('btn-revisar-combo'); if (btnRevisar) btnRevisar.style.display = 'none';
+  const btnAtras = document.getElementById('btn-combo-atras'); if (btnAtras) btnAtras.style.display = 'none';
+  const btnConfirmar = document.getElementById('btn-confirmar-combo'); if (btnConfirmar) btnConfirmar.style.display = 'none';
+  const btnCancelar = document.getElementById('btn-combo-cancelar'); if (btnCancelar) btnCancelar.style.display = '';
+
+  const sub = document.getElementById('combo-sub'); if (sub) sub.textContent = 'Busca el cliente para continuar';
+}
+
+function limpiarClienteCombo() {
+  resetModalCombo();
+}
+
 
 // ── HISTORIAL DINÁMICO ───────────────────────────────────────
 async function dbCargarHistorial() {
@@ -13621,6 +13870,17 @@ function filtrarInventario() {
     return id.includes(busca) || cor.includes(busca) || pro.includes(busca);
   });
   renderInventario(lista);
+}
+
+function irACuentaInventario(codigo) {
+  const navInv = document.querySelector('.ni[onclick*="\'inventario\'"]');
+  goTo('inventario', navInv);
+  const inpPlat = document.getElementById('inv-plat');
+  const inpEstado = document.getElementById('inv-estado');
+  const inpBusca = document.getElementById('inv-busca');
+  if (inpPlat) inpPlat.value = '';
+  if (inpEstado) inpEstado.value = '';
+  if (inpBusca) inpBusca.value = codigo;
 }
 
 function esMovil() {
