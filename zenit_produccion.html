@@ -146,10 +146,32 @@ async function dbGuardarHistorial(accion, detalle, color) {
   });
 }
 
+// Trae TODAS las filas de una tabla, paginando en bloques de 1000 para evitar
+// el truncamiento silencioso del límite por defecto de PostgREST.
+// construirQuery(query) es opcional: recibe el query builder tras .from().select()
+// para encadenar .eq()/.order()/etc. antes de que se agregue el .range() de paginación.
+async function fetchTodasLasFilas(tabla, columnas, construirQuery) {
+  let todas = [];
+  let page = 0;
+  while (true) {
+    let query = supa.from(tabla).select(columnas);
+    if (construirQuery) query = construirQuery(query);
+    const { data, error } = await query.range(page * 1000, page * 1000 + 999);
+    if (error) throw error;
+    if (!data || !data.length) break;
+    todas = todas.concat(data);
+    if (data.length < 1000) break;
+    page++;
+  }
+  return todas;
+}
+
 // Cargar clientes al iniciar
 async function dbCargarClientes() {
-  const { data, error } = await supa.from('clientes').select('*').order('created_at');
-  if (error) { console.error('Error cargando clientes:', error); return; }
+  let data;
+  try {
+    data = await fetchTodasLasFilas('clientes', '*', q => q.order('created_at'));
+  } catch (error) { console.error('Error cargando clientes:', error); return; }
   if (data && data.length > 0) {
     CLIENTES.length = 0;
     data.forEach(c => {
@@ -435,7 +457,10 @@ async function dbCargarSuscripciones() {
     page++;
   }
 
-  const { data: cuentasClaves } = await supa.from('cuentas_inventario').select('codigo,clave,link,proveedor,estado,clave_actualizada_en,fecha_vcto_proveedor');
+  let cuentasClaves = [];
+  try {
+    cuentasClaves = await fetchTodasLasFilas('cuentas_inventario', 'codigo,clave,link,proveedor,estado,clave_actualizada_en,fecha_vcto_proveedor');
+  } catch (error) { console.warn('Error cargando cuentas_inventario para _claveMap:', error); }
 
   // Mapa código_cuenta → clave para enriquecer suscripciones sin clave
   const _claveMap = {};
@@ -2496,6 +2521,7 @@ function closeSidebarMobile() {
     <div class="fsec"><div class="fst">Datos de la cuenta</div>
       <div class="fr c3"><div class="fg"><label>Plataforma<span class="req">*</span></label><select id="cuenta-plat" onchange="updCuentaCodigo()"></select></div><div class="fg"><label>Proveedor<span class="req">*</span></label><select id="cuenta-prov"><option value="">— Cargando... —</option></select></div><div class="fg"><label>Código<span class="req">*</span></label><input type="text" id="cuenta-codigo" placeholder="NF0001" oninput="validarCodigoCuenta(this)" style="text-transform:uppercase"><div class="hint ok" id="cuenta-codigo-hint">Selecciona plataforma para ver el siguiente disponible</div></div></div>
       <div class="fr c2"><div class="fg"><label>Correo de acceso<span class="req">*</span></label><input type="text" id="cuenta-correo" placeholder="cuenta@gmail.com"></div><div class="fg"><label>Clave de acceso<span class="req">*</span></label><input type="text" id="cuenta-clave" placeholder="Contraseña de la cuenta"></div></div>
+      <div class="fg" style="margin-top:8px"><label style="display:flex;align-items:center;gap:8px;font-weight:400;cursor:pointer"><input type="checkbox" id="cuenta-pin-4d" style="width:auto"> <span id="cuenta-pin-4d-label">Esta cuenta usa PIN de 4 dígitos</span></label></div>
       <div class="fg" id="grp-cuenta-link" style="display:none;margin-top:8px"><label>Link de acceso (IPTV)</label><input type="url" id="cuenta-link" placeholder="https://panel.iptv.com/..."></div>
     </div>
     <div class="fsec"><div class="fst">Fechas y costo</div>
@@ -3187,7 +3213,7 @@ function closeSidebarMobile() {
                 <button class="btn btn-sm btn-ic" onclick="toggleClaveCambio(this,'cambio-clave-ant')" title="Ver clave"><i class="ti ti-eye"></i></button>
               </div>
             </div></div>
-          <div class="fr c2"><div class="fg"><label>PIN actual</label><input type="text" id="cambio-pin-ant" value="" readonly></div><div class="fg"><label>Vencimiento</label><input type="text" id="cambio-vcto-ant" value="" readonly><div class="hint ok">Se mantiene en la cuenta nueva</div></div></div>
+          <div class="fr c2"><div class="fg"><label>PIN actual</label><input type="text" id="cambio-pin-ant" value="" readonly><div class="hint w" id="cambio-pin-ant-hint" style="display:none"></div></div><div class="fg"><label>Vencimiento</label><input type="text" id="cambio-vcto-ant" value="" readonly><div class="hint ok">Se mantiene en la cuenta nueva</div></div></div>
         </div>
       </div>
       <div><div class="fst" style="color:var(--green);margin-bottom:8px">Cuenta nueva — se asigna</div>
@@ -3203,7 +3229,7 @@ function closeSidebarMobile() {
           </div>
           <div class="fr c2">
             <div class="fg"><label>Correo (auto)</label><input type="text" id="cambio-correo-nuevo" readonly placeholder="Al seleccionar perfil"><div class="hint ok">Al seleccionar perfil</div></div>
-            <div class="fg"><label>PIN nuevo</label><input type="text" id="cambio-pin-nuevo" placeholder="Se mantiene igual"><div class="hint ok">Pre-cargado. Modificable.</div></div>
+            <div class="fg"><label>PIN nuevo</label><input type="text" id="cambio-pin-nuevo" placeholder="Se mantiene igual" oninput="validarPinNuevoCambio()"><div class="hint ok">Pre-cargado. Modificable.</div><div class="hint w" id="cambio-pin-nuevo-hint" style="display:none"></div></div>
           </div>
         </div>
       </div>
@@ -4818,7 +4844,7 @@ async function verDatosAccesoVenta(){
   const usuarios = getUsuariosVenta();
   const pins     = {};
   entries.forEach(({p, key, perf}) => {
-    if (perf) pins[key] = ventaData.pins?.[key] || ventaData.pins?.[p] || generarPIN(ventaData.clienteId, p, perf.num);
+    if (perf) pins[key] = ventaData.pins?.[key] || ventaData.pins?.[p] || generarPIN(ventaData.clienteId, p, perf.num, perf.digitosPin ?? null);
   });
   const faltaPerfil = entries.find(e => !e.perf);
   if (faltaPerfil) { toast('Selecciona un perfil para ' + (platNombre(faltaPerfil.p)), 'warn'); return; }
@@ -5317,6 +5343,14 @@ async function confirmarCambio(){
   const motivo          = document.getElementById('sel-motivo')?.value || '—';
   const nota            = document.querySelector('#m-cambio textarea')?.value?.trim() || '';
 
+  // Validación bloqueante: el PIN nuevo debe tener la cantidad de dígitos que exige la cuenta nueva
+  const digitosEfectivos = cambioData.digitosPinNuevo;
+  const digitosActuales  = pinNuevo.trim().length;
+  if (digitosEfectivos && digitosActuales !== digitosEfectivos) {
+    toast(`El PIN debe tener ${digitosEfectivos} dígitos para esta cuenta (tiene ${digitosActuales}). Ajústalo antes de confirmar.`, 'error');
+    return;
+  }
+
   // Suscripción activa del cliente
   const subSel = document.getElementById('acceso-sub-sel');
   const parts  = (subSel?.value || '').split('|');
@@ -5656,6 +5690,7 @@ async function guardarCuenta(){
       if (duplicado) { toast('Este correo ya está registrado en la cuenta ' + duplicado.id + ' (' + platVal + ')', 'warn'); return; }
 
       const maxPerf = (PLATAFORMAS||[]).find(x => x.codigo === platVal)?.max_perfiles ?? 5;
+      const pin4d = document.getElementById('cuenta-pin-4d')?.checked ? 4 : null;
 
       const btn = document.querySelector('#m-cuenta .btn-p');
       btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
@@ -5670,7 +5705,8 @@ async function guardarCuenta(){
           fecha_compra: fechaC || null,
           fecha_vcto_proveedor: fechaV || null,
           costo_proveedor: costo,
-          estado: estadoCta, notas
+          estado: estadoCta, notas,
+          digitos_pin: pin4d
         };
         if (_editandoCuentaExistente) {
           const claveAnterior = INV_CACHE.find(c => c.id === codigo)?.clave || '';
@@ -5940,6 +5976,7 @@ function abrirEditarCuenta(btn) {
   const costo    = cells[9]?.textContent?.trim().replace('$','') || '';
   const notas    = tr.dataset.notas || '';
   const linkVal  = tr.dataset.link || '';
+  const digitosPinVal = tr.dataset.digitosPin || '';
 
   // Plataforma
   const platSel = document.getElementById('cuenta-plat');
@@ -5951,6 +5988,7 @@ function abrirEditarCuenta(btn) {
     });
     if (!platCode2) platCode2 = platSel.value;
   }
+  updCuentaPin4dLabel();
   // Campos de texto
   const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
   setVal('cuenta-codigo',    codigo);
@@ -5961,6 +5999,8 @@ function abrirEditarCuenta(btn) {
   setVal('cuenta-link',      linkVal);
   setVal('cuenta-fecha-compra2', fcCompra);
   setVal('cuenta-vcto-prov',     fcVcto);
+  const pin4dEl = document.getElementById('cuenta-pin-4d');
+  if (pin4dEl) pin4dEl.checked = digitosPinVal === '4';
   _editandoCuentaExistente = true;
   const proveedorActual = tr.dataset.proveedor || '';
   cargarSelectoresProveedores().then(() => {
@@ -6394,11 +6434,7 @@ async function dbCargarPerfilesDisp() {
     const ESTADOS_EXCLUIDOS = ['bloqueada', 'suspendida', 'inactiva'];
 
     // 1. Traer cuentas con estado='activo' (excluye bloqueado/suspendida/inactivo)
-    const {data: cuentas, error: e1} = await supa
-      .from('cuentas_inventario')
-      .select('codigo, plataforma, correo, clave, estado, link, fecha_vcto_proveedor')
-      .eq('estado', 'activo');
-    if (e1) throw e1;
+    const cuentas = await fetchTodasLasFilas('cuentas_inventario', 'codigo, plataforma, correo, clave, estado, link, fecha_vcto_proveedor, digitos_pin', q => q.eq('estado', 'activo'));
     const cuentaMap = {};
     (cuentas || []).forEach(c => {
       if (!ESTADOS_EXCLUIDOS.includes((c.estado || '').toLowerCase())) {
@@ -6407,19 +6443,11 @@ async function dbCargarPerfilesDisp() {
     });
 
     // 2. Traer perfil_id de suscripciones activas para excluirlos
-    const {data: subs, error: e2} = await supa
-      .from('suscripciones')
-      .select('perfil_id')
-      .eq('estado', 'activo');
-    if (e2) throw e2;
+    const subs = await fetchTodasLasFilas('suscripciones', 'perfil_id', q => q.eq('estado', 'activo'));
     const ocupados = new Set((subs || []).map(s => (s.perfil_id || '').trim()).filter(Boolean));
 
     // 3. Traer perfiles disponibles (listos para asignar)
-    const {data: perfs, error: e3} = await supa
-      .from('perfiles')
-      .select('id, inventario_id, numero')
-      .eq('estado', 'disponible');
-    if (e3) throw e3;
+    const perfs = await fetchTodasLasFilas('perfiles', 'id, inventario_id, numero', q => q.eq('estado', 'disponible'));
 
     // 4. Reconstruir PERFILES_DISP: perfiles de cuentas activas sin suscripción activa
     PLATAFORMAS.forEach(p => { PERFILES_DISP[p.codigo] = []; });
@@ -6437,7 +6465,8 @@ async function dbCargarPerfilesDisp() {
         clave:  inv.clave  || '—',
         link:   inv.link   || '',
         origen: p.inventario_id + ' · perfil ' + p.numero,
-        fechaVctoProv: inv.fecha_vcto_proveedor || null
+        fechaVctoProv: inv.fecha_vcto_proveedor || null,
+        digitosPin: inv.digitos_pin ?? null
       });
     });
     Object.keys(PERFILES_DISP).forEach(k => {
@@ -7184,8 +7213,8 @@ function autoSeleccionarMejoresPerfiles() {
   });
 }
 
-function generarPIN(clienteId, plat, num) {
-  const digitosPIN = (PLATAFORMAS||[]).find(x => x.codigo === plat)?.digitos_pin ?? 4;
+function generarPIN(clienteId, plat, num, digitosPinCuenta) {
+  const digitosPIN = digitosPinCuenta ?? (PLATAFORMAS||[]).find(x => x.codigo === plat)?.digitos_pin ?? 4;
   if (digitosPIN === 0) return '';
   // Buscar cliente en array, o usar nombre del ventaData como fallback
   let cliente = CLIENTES.find(c => c.id === clienteId);
@@ -7242,7 +7271,7 @@ function renderPinsVenta() {
   if (entries.length === 1) {
     const {plat: p, perf} = entries[0];
     if (!perf) { wrap.innerHTML = '<label>PIN</label><div style="color:var(--text3);font-size:12px;margin-top:6px">Selecciona un perfil</div>'; return; }
-    const pin = generarPIN(ventaData.clienteId, p, perf.num);
+    const pin = generarPIN(ventaData.clienteId, p, perf.num, perf.digitosPin ?? null);
     ventaData.pins[p] = pin;
     wrap.innerHTML = `
       <label>PIN generado automáticamente</label>
@@ -7274,7 +7303,7 @@ function renderPinsVenta() {
         return;
       }
       const pinKey = key || p;
-      ventaData.pins[pinKey] = generarPIN(ventaData.clienteId, p, perf.num);
+      ventaData.pins[pinKey] = generarPIN(ventaData.clienteId, p, perf.num, perf.digitosPin ?? null);
       const pin = ventaData.pins[pinKey];
       html2 += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg3);border:1px solid rgba(108,143,255,.3);border-radius:var(--rsm);margin-bottom:5px">
         <span class="dot" style="background:${dotC(p)};width:9px;height:9px;border-radius:50%"></span>
@@ -7314,9 +7343,9 @@ function selPerfilVenta(el, codigo, num, plat) {
     allPi.forEach(p => { const c = p.id?.replace('perf-',''); if (platPerfs.includes(c)) p.classList.remove('on'); });
     el.classList.add('on');
     const perfData = (PERFILES_DISP[plat]||[]).find(x => x.codigo === codigo);
-    ventaData.perfilesSel[plat] = {codigo, num, plat, correo: perfData?.correo || '—', clave: perfData?.clave || '—', link: perfData?.link || ''};
+    ventaData.perfilesSel[plat] = {codigo, num, plat, correo: perfData?.correo || '—', clave: perfData?.clave || '—', link: perfData?.link || '', digitosPin: perfData?.digitosPin ?? null};
     if (!ventaData.pins) ventaData.pins = {};
-    ventaData.pins[plat] = generarPIN(ventaData.clienteId, plat, num);
+    ventaData.pins[plat] = generarPIN(ventaData.clienteId, plat, num, perfData?.digitosPin ?? null);
   } else {
     // Múltiples perfiles de la misma plataforma — usar índice
     const yaSeleccionados = Object.keys(ventaData.perfilesSel).filter(k => k === plat || k.startsWith(plat+'_'));
@@ -7336,12 +7365,10 @@ function selPerfilVenta(el, codigo, num, plat) {
     const key = maxPerfs === 1 ? plat : plat + '_' + idx;
     el.classList.add('on');
     const perfData = (PERFILES_DISP[plat]||[]).find(x => x.codigo === codigo);
-    ventaData.perfilesSel[key] = {codigo, num, plat, correo: perfData?.correo || '—', clave: perfData?.clave || '—', link: perfData?.link || ''};
+    ventaData.perfilesSel[key] = {codigo, num, plat, correo: perfData?.correo || '—', clave: perfData?.clave || '—', link: perfData?.link || '', digitosPin: perfData?.digitosPin ?? null};
     if (!ventaData.pins) ventaData.pins = {};
-    ventaData.pins[key] = generarPIN(ventaData.clienteId, plat, num);
+    ventaData.pins[key] = generarPIN(ventaData.clienteId, plat, num, perfData?.digitosPin ?? null);
   }
-  if (!ventaData.pins) ventaData.pins = {};
-  ventaData.pins[plat] = generarPIN(ventaData.clienteId, plat, num);
   renderPinsVenta();
 }
 
@@ -7708,7 +7735,17 @@ function updResumenPago(rows) {
 }
 
 // ── NUEVA CUENTA: código dinámico ─────────────────────────────
+function updCuentaPin4dLabel() {
+  const platVal = document.getElementById('cuenta-plat')?.value || '';
+  const plat = (PLATAFORMAS||[]).find(x => x.codigo === platVal);
+  const nombre = plat?.nombre || platVal || 'esta plataforma';
+  const defecto = plat?.digitos_pin ?? 4;
+  const labelEl = document.getElementById('cuenta-pin-4d-label');
+  if (labelEl) labelEl.textContent = `Esta cuenta usa PIN de 4 dígitos (el estándar de ${nombre} es ${defecto})`;
+}
+
 async function updCuentaCodigo() {
+  updCuentaPin4dLabel();
   const sel = document.getElementById('cuenta-plat');
   const inp = document.getElementById('cuenta-codigo');
   const hint = document.getElementById('cuenta-codigo-hint');
@@ -8327,8 +8364,11 @@ let _cuentaEgresoVctoProv = null;  // vencimiento proveedor a re-precargar
 function abrirNuevaCuenta() {
   _editandoCuentaExistente = false;
   _cuentaEgresoActivo = null;
+  const pin4dEl = document.getElementById('cuenta-pin-4d');
+  if (pin4dEl) pin4dEl.checked = false;
   cargarSelectoresProveedores();
   openModal('m-cuenta');
+  updCuentaPin4dLabel();
 }
 
 // Cancelar "Nueva cuenta" manualmente — si había un ciclo de egreso activo, se descarta
@@ -9179,6 +9219,20 @@ function poblarCamposAntCambio(sel) {
   const cuentaId = sel.perfil ? sel.perfil.slice(0,6) : null;
   const clave = (cuentaId && INV_SUBS_MAP[cuentaId]?.clave) || sel.clave || '—';
   if (kE) { kE.value = clave !== '—' ? '••••••••' : '—'; kE.dataset.real = clave; }
+
+  // Aviso de dígitos de PIN de la cuenta vieja, si tiene override distinto al default de la plataforma
+  const hintAnt = document.getElementById('cambio-pin-ant-hint');
+  if (hintAnt) hintAnt.style.display = 'none';
+  if (hintAnt && cuentaId) {
+    supa.from('cuentas_inventario').select('digitos_pin').eq('codigo', cuentaId).maybeSingle().then(({data}) => {
+      const digitosCuenta = data?.digitos_pin ?? null;
+      const platDefault = (PLATAFORMAS||[]).find(x => x.codigo === sel.plat)?.digitos_pin ?? 4;
+      if (digitosCuenta && digitosCuenta !== platDefault) {
+        hintAnt.textContent = `⚠️ Esta cuenta usa PIN de ${digitosCuenta} dígitos`;
+        hintAnt.style.display = 'block';
+      }
+    }).catch(() => {});
+  }
 }
 
 function poblarPerfilesDisponiblesCambio(plat) {
@@ -9198,7 +9252,7 @@ function poblarPerfilesDisponiblesCambio(plat) {
   lista.innerHTML = Object.entries(grupos).map(([cuenta, {correo, items}]) =>
     '<div style="font-size:10px;color:var(--text3);margin:4px 0 2px">' + cuenta + ' · ' + correo + '</div>' +
     items.map(p =>
-      '<div class="pi" data-codigo="' + p.codigo + '" data-correo="' + (p.correo||'') + '" data-clave="' + (p.clave||'') + '" data-link="' + (p.link||'') + '" onclick="selPerfilCambio(this)" style="margin-bottom:3px">' +
+      '<div class="pi" data-codigo="' + p.codigo + '" data-correo="' + (p.correo||'') + '" data-clave="' + (p.clave||'') + '" data-link="' + (p.link||'') + '" data-plat="' + plat + '" data-digitos-pin="' + (p.digitosPin ?? '') + '" onclick="selPerfilCambio(this)" style="margin-bottom:3px">' +
       '<span class="pcode">' + p.codigo + '</span>' +
       '<span class="porig">' + p.origen + '</span>' +
       '<span class="b bg">Disponible</span></div>'
@@ -9233,6 +9287,31 @@ function selPerfilCambio(el) {
   cambioData.perfilNuevo = el.dataset.codigo;
   cambioData.correoNuevo = el.dataset.correo;
   cambioData.claveNueva  = el.dataset.clave;
+
+  // Dígitos de PIN efectivos de la cuenta nueva (override de la cuenta, si no el default de su plataforma)
+  const digitosCuenta = el.dataset.digitosPin ? parseInt(el.dataset.digitosPin) : null;
+  const platDefault = (PLATAFORMAS||[]).find(x => x.codigo === el.dataset.plat)?.digitos_pin ?? 4;
+  cambioData.digitosPinNuevo = digitosCuenta || platDefault;
+
+  validarPinNuevoCambio();
+}
+
+// Compara la longitud real del texto en #cambio-pin-nuevo contra los dígitos efectivos
+// de la cuenta nueva (cambioData.digitosPinNuevo) y muestra/oculta el aviso correspondiente.
+// Se llama tanto al seleccionar el perfil como en cada oninput del campo, porque el operador
+// puede editar el PIN manualmente después de seleccionar.
+function validarPinNuevoCambio() {
+  const hintNuevo = document.getElementById('cambio-pin-nuevo-hint');
+  const pinEl = document.getElementById('cambio-pin-nuevo');
+  if (!hintNuevo || !pinEl) return;
+  const efectivo = cambioData.digitosPinNuevo;
+  const actual = pinEl.value.trim().length;
+  if (efectivo && actual !== efectivo) {
+    hintNuevo.textContent = `⚠️ Esta cuenta requiere PIN de ${efectivo} dígitos (tiene ${actual})`;
+    hintNuevo.style.display = 'block';
+  } else {
+    hintNuevo.style.display = 'none';
+  }
 }
 
 function selClienteCambio(id, nombre, tel) {
@@ -9321,6 +9400,8 @@ function resetModalCambio() {
   if (pinAnt) pinAnt.value = '';
   const vctoAnt = document.getElementById('cambio-vcto-ant');
   if (vctoAnt) vctoAnt.value = '';
+  const pinAntHint = document.getElementById('cambio-pin-ant-hint');
+  if (pinAntHint) pinAntHint.style.display = 'none';
 
   // Cuenta nueva
   const platNuevaGrp = document.getElementById('plat-nueva-grp');
@@ -9333,6 +9414,8 @@ function resetModalCambio() {
   if (correoNuevo) correoNuevo.value = '';
   const pinNuevo = document.getElementById('cambio-pin-nuevo');
   if (pinNuevo) pinNuevo.value = '';
+  const pinNuevoHint = document.getElementById('cambio-pin-nuevo-hint');
+  if (pinNuevoHint) pinNuevoHint.style.display = 'none';
 
   // Nota interna
   const textarea = document.querySelector('#m-cambio textarea');
@@ -11728,10 +11811,26 @@ async function rptsPerfilesGenerar() {
   const totalEl = document.getElementById('rpts-pf-total');
   if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3)"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
   try {
-    const {data: perfs, error: e1} = await supa.from('perfiles').select('id, inventario_id, numero, estado');
-    if (e1) throw e1;
-    const {data: cuentas, error: e2} = await supa.from('cuentas_inventario').select('codigo, plataforma, correo, estado, proveedor');
-    if (e2) throw e2;
+    let perfs = [];
+    let ppage = 0;
+    while (true) {
+      const {data, error} = await supa.from('perfiles').select('id, inventario_id, numero, estado').range(ppage*1000, ppage*1000+999);
+      if (error) throw error;
+      if (!data || !data.length) break;
+      perfs = perfs.concat(data);
+      if (data.length < 1000) break;
+      ppage++;
+    }
+    let cuentas = [];
+    let cpage = 0;
+    while (true) {
+      const {data, error} = await supa.from('cuentas_inventario').select('codigo, plataforma, correo, estado, proveedor').range(cpage*1000, cpage*1000+999);
+      if (error) throw error;
+      if (!data || !data.length) break;
+      cuentas = cuentas.concat(data);
+      if (data.length < 1000) break;
+      cpage++;
+    }
     const cuentaMap = {};
     (cuentas || []).forEach(c => { cuentaMap[c.codigo] = c; });
 
@@ -13805,7 +13904,7 @@ async function cargarInventario() {
     let page = 0;
     while(true) {
       const {data, error} = await supa.from('cuentas_inventario')
-        .select('codigo,plataforma,correo,clave,max_perfiles,fecha_compra,fecha_vcto_proveedor,costo_proveedor,proveedor,estado,notas,link')
+        .select('codigo,plataforma,correo,clave,max_perfiles,fecha_compra,fecha_vcto_proveedor,costo_proveedor,proveedor,estado,notas,link,digitos_pin')
         .order('plataforma').order('codigo')
         .range(page*1000, page*1000+999);
       if (error) throw error;
@@ -13822,7 +13921,8 @@ async function cargarInventario() {
         proveedor: c.proveedor,
         estado: c.estado,
         notas: c.notas,
-        link: c.link
+        link: c.link,
+        digitos_pin: c.digitos_pin ?? null
       })));
       if (data.length < 1000) break;
       page++;
@@ -13937,6 +14037,7 @@ function renderInventario(lista) {
         tr2.dataset.fechaVcto = inv.fecha_vcto_prov || '';
         tr2.dataset.link = inv.link || '';
         tr2.dataset.proveedor = inv.proveedor || '';
+        tr2.dataset.digitosPin = inv.digitos_pin ?? '';
         const correoCopyBtn = inv.correo ? `<button class="btn btn-sm btn-ic" data-copy="${inv.correo}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>` : '';
         const claveCopyBtn = inv.clave ? `<button class="btn btn-sm btn-ic" data-copy="${inv.clave}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>` : '';
         const correoCell = inv.plataforma === 'IP' && inv.link
