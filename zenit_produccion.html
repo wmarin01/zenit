@@ -49,7 +49,7 @@ function fechaAISO(d) {
 
 // Guardar cobro
 async function dbGuardarCobro(cobro) {
-  const { error } = await supa.from('cobros').insert({
+  const { data, error } = await supa.from('cobros').insert({
     fecha: cobro.fechaIni || hoyPanama(),
     tipo: cobro.tipo,
     cliente_id: cobro.clienteId,
@@ -65,9 +65,11 @@ async function dbGuardarCobro(cobro) {
     operador: cobro.operador,
     estado: 'procesado',
     dup_autorizado: cobro.dupAutorizado || false
-  });
-  if (error) console.error('Error guardando cobro:', error);
-  return !error;
+  }).select('id').single();
+  if (error) { console.error('Error guardando cobro:', error); return null; }
+  // Devuelve el id de la fila creada (truthy) en vez de solo true/false — los
+  // call sites existentes usan !resultado, así que siguen funcionando igual.
+  return data?.id ?? null;
 }
 
 // Guardar venta
@@ -557,14 +559,19 @@ function sincronizarPlatsClientes() {
 let COLABORADORES = [];
 let PLANILLA_MOVIMIENTOS_CACHE = [];
 
-async function refrescarVistaActiva({ subs = false, inventario = false, egresos = false } = {}) {
+async function refrescarVistaActiva({ subs = false, inventario = false, egresos = false, clientes = false, perfilesDisp = false } = {}) {
   if (subs) await dbCargarSuscripciones();       // recarga SUBS_FULL + sincroniza CLIENTES + renderC()
   if (inventario) await cargarInventario();      // recarga INV_CACHE + re-renderiza Inventario
   if (egresos) await dbCargarEgresos();          // recarga tabla de Egresos
+  if (clientes) await dbCargarClientes();        // recarga CLIENTES desde Supabase
+  if (perfilesDisp) await dbCargarPerfilesDisp(); // recarga PERFILES_DISP (Nueva Venta / Cambio de Cuenta)
 
   // Si no se recargó desde la BD, igual resincronizamos agregados de CLIENTES por si el
-  // llamador ya mutó SUBS_FULL en memoria (ej. notificarClaveActualizada).
-  if (!subs) sincronizarPlatsClientes();
+  // llamador ya mutó SUBS_FULL en memoria (ej. notificarClaveActualizada). sincronizarPlatsClientes()
+  // ya repinta la tabla de Clientes (renderC) sin importar cuál vista esté activa, así que también
+  // se repite cuando clientes:true reemplazó el array DESPUÉS de que dbCargarSuscripciones() ya lo
+  // hubiera sincronizado una vez (si subs y clientes vienen juntos en true).
+  if (!subs || clientes) sincronizarPlatsClientes();
 
   const vistaOn = document.querySelector('.view.on');
   const vista = vistaOn ? vistaOn.id.replace(/^v-/, '') : '';
@@ -2054,8 +2061,9 @@ function closeSidebarMobile() {
 <!-- HISTORIAL -->
 <div class="view" id="v-historial">
   <div style="display:flex;gap:9px;margin-bottom:14px;flex-wrap:wrap">
-    <div class="sbox" style="flex:1;max-width:360px"><i class="ti ti-search"></i><input type="text" placeholder="Buscar en historial..."></div>
-    <select><option>Todas las acciones</option><option>Ventas</option><option>Pagos</option><option>Cambio cuenta</option><option>Cambio plataforma</option><option>Cambio contraseña</option><option>Comp. duplicado</option></select>
+    <div class="sbox" style="flex:1;max-width:360px"><i class="ti ti-search"></i><input type="text" id="historial-busq" placeholder="Buscar en historial..." oninput="filtHistorial(this.value)"></div>
+    <select id="historial-filtro-accion" onchange="filtHistorialAccion(this.value)"><option>Todas las acciones</option><option value="Venta">Ventas</option><option value="Pago">Pagos</option><option value="Cambio de cuenta">Cambio cuenta</option><option>Cambio plataforma</option><option>Cambio contraseña</option><option>Comp. duplicado</option></select>
+    <span id="historial-periodo-wrap" style="display:flex;gap:8px;align-items:center"></span>
   </div>
   <div class="card"><div class="tw tw-v"><table><thead><tr><th>Fecha / Hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody id="tb-historial"><tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">Cargando historial...</td></tr></tbody></table></div></div>
 </div>
@@ -3862,7 +3870,7 @@ function goTo(v,el){
         cargarSelectoresProveedores();
         cargarMensajesWA();
       }
-  else if (v==='historial')     { ha.innerHTML=''; setTimeout(()=>{ if(typeof dbCargarHistorial==='function') dbCargarHistorial(); },100); }
+  else if (v==='historial')     { ha.innerHTML=''; dbCargarHistorial(); }
   else if (v==='usuarios')      ha.innerHTML=`<button class="hbtn p" onclick="openModal('m-usuario')"><i class="ti ti-plus"></i>Nuevo usuario</button>`;
   else if (v==='ayuda')         ha.innerHTML='';
   else                          ha.innerHTML='';
@@ -3883,6 +3891,13 @@ function goTo(v,el){
     if (wrapE && !wrapE.dataset.init) {
       wrapE.innerHTML = htmlSelectorPeriodo('egresos', 'mes', '_aplicarFiltrosEgresos');
       wrapE.dataset.init = '1';
+    }
+  }
+  if(v==='historial') {
+    const wrapH = document.getElementById('historial-periodo-wrap');
+    if (wrapH && !wrapH.dataset.init) {
+      wrapH.innerHTML = htmlSelectorPeriodo('historial', 'mes', 'dbCargarHistorial');
+      wrapH.dataset.init = '1';
     }
   }
   closeSidebarMobile();
@@ -3959,7 +3974,7 @@ async function guardarEditarCliente() {
       CLIENTES[idx].est = estado;
     }
 
-    await refrescarVistaActiva({ subs: true });
+    await refrescarVistaActiva({ subs: true, clientes: true });
     closeModal('m-edit-cli');
     toast('Cliente actualizado ✓', 'ok');
     await dbGuardarHistorial('Edición cliente', id + ' · ' + nombre + ' ' + apellido, 'var(--accent)');
@@ -4972,6 +4987,7 @@ async function confirmarVentaDesdeModal(){
     _aplicarFiltrosSubs();
     await dbCargarCobros();
     if (typeof updMetricasCobros === 'function') updMetricasCobros();
+    if (document.getElementById('v-inventario')?.classList.contains('on')) await cargarInventario();
     closeModal('m-venta');
 
     const _exitoEntry = entries[0];
@@ -5067,14 +5083,14 @@ async function confirmarPago() {
     });
 
     const fechaPago = document.getElementById('pago-fecha')?.value || hoyPanama();
-    const ok = await dbGuardarCobro({
+    const cobroId = await dbGuardarCobro({
       tipo: 'Renovación', clienteId, nombre, tel: normalizeTel(tel), plat: plats,
       correo: '', usuario: '', monto, banco, forma: forma || 'Yappy', doc: comp,
       fechaIni: fechaPago,
       operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
       dupAutorizado: false
     });
-    if (!ok) throw new Error('Error al guardar cobro');
+    if (!cobroId) throw new Error('Error al guardar cobro');
 
     // Actualizar suscripciones seleccionadas
     for (const cb of checkboxes) {
@@ -5145,6 +5161,7 @@ async function confirmarPago() {
       ? _fechaPagoInput.split('-').reverse().join('/')
       : (() => { const d=new Date(); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); })();
     COBROS.unshift({
+      id: cobroId,
       fecha: _fechaDisplay,
       tipo: 'Renovación', clienteId, nombre,
       tel: normalizeTel(tel), plat: plats,
@@ -5797,7 +5814,7 @@ async function guardarCuenta(){
 
     // Recarga INV_CACHE y SUBS_FULL (clave_actualizada_en recién guardado) y
     // re-renderiza la vista activa (Clientes/Suscripciones/Cobranza/Inventario)
-    await refrescarVistaActiva({ subs: true, inventario: true });
+    await refrescarVistaActiva({ subs: true, inventario: true, perfilesDisp: true });
 
     if (!_editandoCuentaExistente) {
       toast(codigo + ' registrada · ' + maxPerf + ' perfiles generados ✓','ok');
@@ -9654,14 +9671,53 @@ function limpiarClienteCombo() {
 
 
 // ── HISTORIAL DINÁMICO ───────────────────────────────────────
+let HISTORIAL_DATA = [];
+
 async function dbCargarHistorial() {
   const tbody = document.getElementById('tb-historial') || document.querySelector('#v-historial tbody');
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
-  const { data, error } = await supa.from('historial').select('*').order('fecha', { ascending: false }).limit(200);
+  const { ini, fin } = periodoLeerRango('historial');
+  if (!ini || !fin) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">Selecciona un rango de fechas válido</td></tr>';
+    return;
+  }
+  const { data, error } = await supa.from('historial')
+    .select('*')
+    .gte('fecha', ini + 'T00:00:00')
+    .lte('fecha', fin + 'T23:59:59')
+    .order('fecha', { ascending: false });
   if (error) { tbody.innerHTML = '<tr><td colspan="4" style="color:var(--red);padding:20px;text-align:center">Error cargando historial</td></tr>'; return; }
-  if (!data || !data.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">Sin registros en el historial</td></tr>';
+  HISTORIAL_DATA = data || [];
+  _aplicarFiltrosHistorial();
+}
+
+function _aplicarFiltrosHistorial() {
+  const q       = document.getElementById('historial-busq')?.value || '';
+  const accion  = document.getElementById('historial-filtro-accion')?.value || '';
+  let data = HISTORIAL_DATA;
+  if (accion && accion !== 'Todas las acciones') {
+    const af = accion.toLowerCase();
+    data = data.filter(h => (h.accion||'').toLowerCase().includes(af));
+  }
+  if (q) {
+    const r = q.toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    data = data.filter(h => {
+      const det = (h.detalle||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      const op  = (h.operador||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      return det.includes(r) || op.includes(r);
+    });
+  }
+  renderHistorial(data);
+}
+function filtHistorial(q) { _aplicarFiltrosHistorial(); }
+function filtHistorialAccion(v) { _aplicarFiltrosHistorial(); }
+
+function renderHistorial(data) {
+  const tbody = document.getElementById('tb-historial');
+  if (!tbody) return;
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">Sin registros para este filtro</td></tr>';
     return;
   }
   tbody.innerHTML = data.map(h => {
@@ -10377,7 +10433,10 @@ async function dbCargarAccesos() {
     <td style="font-size:12px;font-family:var(--mono)">${a.correo||'—'}</td>
     <td><span class="clave-acc" style="filter:blur(4px);cursor:pointer" onclick="this.style.filter='none'">${a.clave||'—'}</span></td>
     <td style="font-size:12px">${a.notas||'—'}</td>
-    <td class="tda"><button class="btn btn-sm btn-ic" onclick="codAccesoEditar('${a.id}')"><i class="ti ti-edit"></i></button></td>
+    <td class="tda">
+      <button class="btn btn-sm btn-ic" onclick="codAccesoEditar('${a.id}')" title="Editar"><i class="ti ti-edit"></i></button>
+      <button class="btn btn-sm btn-ic" style="color:var(--red)" onclick="codAccesoEliminar('${a.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+    </td>
   </tr>`).join('');
 
   // Poblar select de proveedor en modal de lote
@@ -10573,14 +10632,13 @@ async function guardarEditarCobro() {
 
   try {
     const { error } = await supa.from('cobros')
-      .update({ fecha, monto, forma_pago: forma, banco, operador })
-      .eq('fecha', cobro.fecha)
-      .eq('cliente_id', cobro.clienteId)
-      .eq('documento', cobro.doc);
+      .update({ fecha: fechaISO, monto, forma_pago: forma, banco, operador })
+      .eq('id', cobro.id);
     if (error) throw error;
 
     COBROS[idx] = { ...cobro, fecha, monto, forma, banco, operador };
     _aplicarFiltrosCobros();
+    if (typeof updMetricasCobros === 'function') updMetricasCobros();
     closeModal('m-edit-cobro');
     toast('Cobro actualizado ✓', 'ok');
     await dbGuardarHistorial('Edición cobro', cobro.clienteId + ' · $' + monto.toFixed(2), 'var(--green)');
@@ -14240,7 +14298,7 @@ async function guardarRenovarPin() {
       if (eCosto2) console.warn('[renovar] Error actualizando costo en cuentas_inventario:', eCosto2.message);
     }
     await cargarPines();
-    await refrescarVistaActiva({ subs: true, inventario: true });
+    await refrescarVistaActiva({ subs: true, inventario: true, perfilesDisp: true });
     closeModal('m-renovar-pin');
     toast(`Cuenta ${_renovarCuentaId} renovada hasta ${nuevaFecha.split('-').reverse().join('/')} ✓`, 'ok');
     await dbGuardarHistorial('Renovación con pin', `${_renovarCuentaId} · pin ${opt.text.split(' · ')[0]} · vcto ${nuevaFecha}`, 'var(--accent)');
