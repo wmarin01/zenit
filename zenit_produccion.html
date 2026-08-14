@@ -1924,6 +1924,20 @@ function closeSidebarMobile() {
   <div class="tab" onclick="tabAccesos(this,'ac-accesos-lista')"><i class="ti ti-key"></i> Accesos</div>
 </div>
 <div id="ac-mensajes">
+  <div class="card" style="padding:0"><div class="tw tw-v">
+    <table style="min-width:760px">
+      <thead><tr>
+        <th>Fecha</th>
+        <th>Cliente</th>
+        <th>Teléfono</th>
+        <th>Tipo</th>
+        <th>Mensaje</th>
+        <th>Estado</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="tb-mensajes-wa"></tbody>
+    </table>
+  </div></div>
 </div>
 <div id="ac-accesos-lista" style="display:none">
   <div style="display:flex;gap:9px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
@@ -5189,8 +5203,6 @@ async function confirmarPago() {
     });
     const fvReset = document.getElementById('pago-fecha-vcto');
     if (fvReset) fvReset.textContent = '—';
-    const parcial = document.getElementById('pago-parcial');
-    if (parcial) parcial.checked = false;
     const supsLista = document.getElementById('pago-subs-lista');
     if (supsLista) supsLista.innerHTML = '';
     const mesesLista = document.getElementById('pago-meses-lista');
@@ -6658,9 +6670,6 @@ function ventaPaso3() {
     if (cli) {
       const nombreBase = title_case((cli.n + ' ' + cli.a).trim());
       setTimeout(() => {
-        // Campo genérico individual
-        const uSingle = document.getElementById('v-usuario');
-        if (uSingle && !uSingle.value) uSingle.value = nombreBase;
         // Campos por plataforma (v-usuario-NF, v-usuario-DS, etc.)
         ventaData.plats.forEach((p, i) => {
           const idxEnPlat = ventaData.plats.slice(0,i).filter(x=>x===p).length;
@@ -7959,8 +7968,6 @@ function openModal(id, title) {
     if (usrWrap) usrWrap.innerHTML = '';
     const pinWrap = document.getElementById('v-pins-wrap');
     if (pinWrap) pinWrap.innerHTML = '<label>PIN generado automáticamente</label><div style="color:var(--text3);font-size:12px;margin-top:6px">Selecciona un perfil para generar el PIN</div>';
-    // Limpiar campo usuario
-    document.getElementById('v-usuario') && (document.getElementById('v-usuario').value = '');
     // Limpiar precio y meses
     const vp = document.getElementById('v-precio');
     if (vp) vp.value = '';
@@ -10516,7 +10523,6 @@ async function guardarAcceso() {
   if (error) { toast('Error: ' + error.message, 'err'); return; }
   closeModal('m-acceso');
   toast(id ? 'Acceso actualizado ✓' : 'Acceso guardado ✓', 'ok');
-  codLoadAccesos();
   dbCargarAccesos();
   if (!id && _cuentaEgresoActivo) mostrarConfirmOtraCuenta();
 }
@@ -10991,8 +10997,7 @@ function updMetricasCobros() {
 // ── GESTIÓN COMPROBANTE DUPLICADO ─────────────────────────────
 async function abrirRevisionDuplicado() {
   const comp = document.querySelector('input[oninput*="valComp"]')?.value?.trim()
-    || document.getElementById('pago-comp')?.value?.trim()
-    || document.getElementById('comp')?.value?.trim();
+    || document.getElementById('pago-comp')?.value?.trim();
   if (!comp) return;
 
   const existing = document.getElementById('mini-dup-modal');
@@ -11247,7 +11252,7 @@ function iniciarRealtime() {
     console.log('[RT] cambio en suscripciones');
     (async () => {
       await dbCargarSuscripciones();
-      if (document.getElementById('v-subs')?.classList.contains('on')) _aplicarFiltrosSubs();
+      if (document.getElementById('v-suscripciones')?.classList.contains('on')) _aplicarFiltrosSubs();
       renderDashboard();
     })();
   });
@@ -14210,7 +14215,6 @@ async function _confirmarEliminarCuenta(codigo) {
 
     await dbCargarPerfilesDisp();
     await dbCargarAccesos();
-    codLoadAccesos();
 
     toast('Cuenta eliminada ✓', 'ok');
   } catch(e) {
@@ -14775,28 +14779,6 @@ function zcodReset() {
 
 // ─── GESTIÓN TABLA ACCESOS ───────────────────────────────────────────────────
 
-async function codLoadAccesos() {
-  const tbody = document.getElementById('tb-accesos-body');
-  if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:12px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i></td></tr>';
-  const { data, error } = await supa.from('accesos').select('*').order('correo');
-  if (error) { tbody.innerHTML = `<tr><td colspan="7"><div class="ab e"><i class="ti ti-alert-triangle"></i>${error.message}</div></td></tr>`; return; }
-  const TL = { correo_propio:'✉️', web:'🌐', telegram:'✈️', manual:'✍️' };
-  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:16px">Sin registros</td></tr>'; return; }
-  tbody.innerHTML = data.map(a => `<tr>
-    <td style="font-size:12px;font-family:var(--mono)">${a.correo||'—'}</td>
-    <td style="font-size:12px">${a.proveedor||'—'}</td>
-    <td><span class="b bi">${a.plataforma||'—'}</span></td>
-    <td style="font-size:12px">${TL[a.tipo_bot]||''} ${a.tipo_bot||'—'}</td>
-    <td style="font-size:11px">${a.link ? `<a href="${a.link}" target="_blank" rel="noopener" style="color:var(--accent)">Abrir</a>` : '—'}</td>
-    <td style="font-size:12px">${a.usuario||'—'}</td>
-    <td class="tda">
-      <button class="btn btn-sm btn-ic" onclick="codAccesoEditar('${a.id}')" title="Editar"><i class="ti ti-edit"></i></button>
-      <button class="btn btn-sm btn-ic" style="color:var(--red)" onclick="codAccesoEliminar('${a.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
-    </td>
-  </tr>`).join('');
-}
-
 async function codAccesoEditar(id) {
   const { data, error } = await supa.from('accesos').select('*').eq('id', id).single();
   if (error || !data) { toast('Error al cargar registro','err'); return; }
@@ -14819,7 +14801,6 @@ async function codAccesoEliminar(id) {
   const { error } = await supa.from('accesos').delete().eq('id', id);
   if (error) { toast('Error: ' + error.message,'err'); return; }
   toast('Eliminado ✓','ok');
-  codLoadAccesos();
   dbCargarAccesos();
 }
 
