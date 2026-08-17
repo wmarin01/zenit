@@ -3641,6 +3641,13 @@ actualizarFechaHeader();
 const TITLES={dashboard:'Dashboard',clientes:'Clientes',ventas:'Ventas',cobranza:'Cobranza',inventario:'Inventario',proveedores:'Proveedores',egresos:'Egresos',planilla:'Planilla',pines:'Pines',reportes:'Reportes',tablas:'Tablas',parametros:'Parámetros',historial:'Historial',usuarios:'Usuarios y permisos',ayuda:'Ayuda'};
 
 // ── DASHBOARD DINÁMICO ──────────────────────────────────────────
+let DASH_ALERTAS_GRUPOS = {};
+const DASH_ALERTAS_SUBRANGOS = [
+  { key: 'v0_7',   label: '0-7 días',   color: '#dc2626', bg: 'rgba(220,38,38,.12)',  test: d => d <= 7 },
+  { key: 'v8_15',  label: '8-15 días',  color: '#b91c1c', bg: 'rgba(185,28,28,.12)',  test: d => d > 7 && d <= 15 },
+  { key: 'v16_31', label: '16-31 días', color: '#991b1b', bg: 'rgba(153,27,27,.12)',  test: d => d > 15 && d <= 31 },
+  { key: 'v31mas', label: '+31 días',   color: '#7f1d1d', bg: 'rgba(127,29,29,.12)',  test: d => d > 31 }
+];
 async function renderDashboard() {
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const mesActual = hoy.getMonth() + 1;
@@ -3649,7 +3656,8 @@ async function renderDashboard() {
   const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
 
   // ── Clientes activos ──────────────────────────────────────────
-  const cliActivos = CLIENTES.filter(c => c.est === 'activo').length;
+  const clientesConSubActiva = new Set(SUBS_FULL.filter(s => s.est === 'activo').map(s => s.clienteId));
+  const cliActivos = clientesConSubActiva.size;
   const hace7 = new Date(hoy); hace7.setDate(hace7.getDate()-7);
   const nuevosEstaSemana = CLIENTES.filter(c => {
     if (!c.createdAt) return false;
@@ -3738,14 +3746,18 @@ async function renderDashboard() {
     }
   }
 
-  // ── Alertas proveedores (cuentas que vencen hoy / mañana / pasado mañana) ────
+  // ── Alertas proveedores (vencidas + próximas a vencer: hoy / mañana / pasado mañana) ────
   const apTbody = document.getElementById('dash-alertas-prov');
   if (apTbody) {
     await cargarInventario();
+    DASH_ALERTAS_GRUPOS = {};
     const proximasVctoTotal = (INV_CACHE || [])
       .filter(c => esActivo(c.estado) && c.fecha_vcto_prov)
       .map(c => ({ ...c, _diasR: _diasVctoProv(c.fecha_vcto_prov) }))
-      .filter(c => c._diasR !== null && c._diasR >= 0 && c._diasR <= 2)
+      .filter(c => c._diasR !== null && c._diasR <= 2)
+      .map(c => ({ ...c, _clientesCount: SUBS_FULL.filter(s => s.est === 'activo' && s.perfil && s.perfil !== '—' && s.perfil.slice(0,-1) === c.id).length }))
+      // Vencidas sin ningún cliente activo afectado no aportan valor operativo — se excluyen antes de agrupar.
+      .filter(c => c._diasR >= 0 || c._clientesCount > 0)
       .sort((a,b) => a._diasR - b._diasR || a.id.localeCompare(b.id));
 
     const elResumen = document.getElementById('dash-alertas-resumen');
@@ -3753,20 +3765,23 @@ async function renderDashboard() {
       if (!proximasVctoTotal.length) {
         elResumen.textContent = '';
       } else {
+        const totalVencidas = proximasVctoTotal.filter(c => c._diasR < 0).length;
+        const totalPorVencer = proximasVctoTotal.length - totalVencidas;
         const porPlat = {};
         proximasVctoTotal.forEach(c => { porPlat[c.plataforma] = (porPlat[c.plataforma]||0) + 1; });
         const desglose = Object.entries(porPlat).map(([p,n]) => `${p}: ${n}`).join(', ');
-        elResumen.textContent = `Total: ${proximasVctoTotal.length} cuenta${proximasVctoTotal.length!==1?'s':''} en los próximos 3 días — ${desglose}`;
+        elResumen.textContent = `Total: ${proximasVctoTotal.length} cuenta${proximasVctoTotal.length!==1?'s':''} — ${totalVencidas} vencida${totalVencidas!==1?'s':''}, ${totalPorVencer} por vencer (hoy/mañana/pasado mañana) — ${desglose}`;
       }
     }
 
     if (!proximasVctoTotal.length) {
-      apTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:12px">Sin cuentas próximas a vencer hoy, mañana o pasado mañana</td></tr>';
+      apTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:12px">Sin cuentas vencidas ni próximas a vencer (hoy, mañana o pasado mañana)</td></tr>';
     } else {
       const gruposDef = [
-        { dias: 0, label: 'HOY',           bg: 'rgba(240,77,77,.08)',   color: 'var(--red)'    },
-        { dias: 1, label: 'MAÑANA',        bg: 'rgba(245,166,35,.08)',  color: 'var(--amber)'  },
-        { dias: 2, label: 'PASADO MAÑANA', bg: 'rgba(108,143,255,.08)', color: 'var(--accent)' }
+        { key: 'vencidas', dias: null, label: 'VENCIDAS',     bg: 'rgba(185,28,28,.15)',  color: '#b91c1c'       },
+        { key: 'hoy',      dias: 0,    label: 'HOY',           bg: 'rgba(240,77,77,.08)',  color: 'var(--red)'    },
+        { key: 'manana',   dias: 1,    label: 'MAÑANA',        bg: 'rgba(245,166,35,.08)', color: 'var(--amber)'  },
+        { key: 'pasman',   dias: 2,    label: 'PASADO MAÑANA', bg: 'rgba(108,143,255,.08)',color: 'var(--accent)' }
       ];
       const fmtFechaOffset = diasOffset => {
         const d = new Date(hoyPanamaDate()); d.setDate(d.getDate() + diasOffset);
@@ -3774,20 +3789,25 @@ async function renderDashboard() {
       };
       let html = '';
       gruposDef.forEach(g => {
-        const cuentasGrupo = proximasVctoTotal.filter(c => c._diasR === g.dias);
+        let cuentasGrupo;
+        if (g.key === 'vencidas') {
+          cuentasGrupo = proximasVctoTotal.filter(c => c._diasR < 0);
+          DASH_ALERTAS_SUBRANGOS.forEach(sr => {
+            DASH_ALERTAS_GRUPOS[sr.key] = cuentasGrupo.filter(c => sr.test(Math.abs(c._diasR)));
+          });
+        } else {
+          cuentasGrupo = proximasVctoTotal.filter(c => c._diasR === g.dias);
+          DASH_ALERTAS_GRUPOS[g.key] = cuentasGrupo;
+        }
         if (!cuentasGrupo.length) return;
-        html += `<tr><td colspan="5" style="background:${g.bg};color:${g.color};font-weight:600;font-size:11px;padding:6px 11px">${g.label} (${fmtFechaOffset(g.dias)}) · ${cuentasGrupo.length} cuenta${cuentasGrupo.length!==1?'s':''}</td></tr>`;
-        html += cuentasGrupo.map(c => {
-          const clientesCount = SUBS_FULL.filter(s => s.est === 'activo' && s.perfil && s.perfil !== '—' && s.perfil.slice(0,-1) === c.id).length;
-          const vctoFmt = c.fecha_vcto_prov.split('-').reverse().join('/');
-          return `<tr>
-            <td style="font-family:var(--mono);font-size:12px">${c.id}<div style="font-size:10px;color:var(--text3)">${c.correo||'—'}</div></td>
-            <td style="font-size:12px">${c.proveedor||'—'}</td>
-            <td style="text-align:center">${clientesCount}</td>
-            <td style="font-size:12px">${vctoFmt}</td>
-            <td class="tda"><button class="btn btn-sm btn-ic" title="Ver en Inventario" onclick="irACuentaInventario('${c.id}')"><i class="ti ti-server"></i></button></td>
-          </tr>`;
-        }).join('');
+        const fechaSufijo = g.key === 'vencidas' ? '' : ` (${fmtFechaOffset(g.dias)})`;
+        html += `<tr style="cursor:pointer" onclick="dashAlertToggle('${g.key}')">
+          <td colspan="5" style="background:${g.bg};color:${g.color};font-weight:600;font-size:11px;padding:6px 11px;display:flex;align-items:center;justify-content:space-between">
+            <span>${g.label}${fechaSufijo} · ${cuentasGrupo.length} cuenta${cuentasGrupo.length!==1?'s':''}</span>
+            <i class="ti ti-chevron-down" id="dash-al-chev-${g.key}"></i>
+          </td>
+        </tr>
+        <tr id="dash-al-det-${g.key}" style="display:none"><td colspan="5" style="padding:0;background:var(--bg3)"><table style="width:100%;border-collapse:collapse"><tbody id="dash-al-cont-${g.key}"></tbody></table></td></tr>`;
       });
       apTbody.innerHTML = html;
     }
@@ -3832,6 +3852,54 @@ async function renderDashboard() {
         </tr>`;
       }).join('');
     }
+  }
+}
+
+function _dashAlertFilaCuenta(c) {
+  const vctoFmt = c.fecha_vcto_prov.split('-').reverse().join('/');
+  return `<tr>
+    <td style="font-family:var(--mono);font-size:12px">${c.id}<div style="font-size:10px;color:var(--text3)">${c.correo||'—'}</div></td>
+    <td style="font-size:12px">${c.proveedor||'—'}</td>
+    <td style="text-align:center">${c._clientesCount}</td>
+    <td style="font-size:12px">${vctoFmt}</td>
+    <td class="tda"><button class="btn btn-sm btn-ic" title="Ver en Inventario" onclick="irACuentaInventario('${c.id}')"><i class="ti ti-server"></i></button></td>
+  </tr>`;
+}
+
+function _dashAlertRenderContenido(key) {
+  if (key === 'vencidas') {
+    return DASH_ALERTAS_SUBRANGOS.map(sr => {
+      const cuentas = DASH_ALERTAS_GRUPOS[sr.key] || [];
+      if (!cuentas.length) return '';
+      return `<tr style="cursor:pointer" onclick="dashAlertToggle('${sr.key}')">
+        <td colspan="5" style="background:${sr.bg};color:${sr.color};font-weight:600;font-size:11px;padding:6px 11px;display:flex;align-items:center;justify-content:space-between">
+          <span>${sr.label} · ${cuentas.length} cuenta${cuentas.length!==1?'s':''}</span>
+          <i class="ti ti-chevron-down" id="dash-al-chev-${sr.key}"></i>
+        </td>
+      </tr>
+      <tr id="dash-al-det-${sr.key}" style="display:none"><td colspan="5" style="padding:0"><table style="width:100%;border-collapse:collapse"><tbody id="dash-al-cont-${sr.key}"></tbody></table></td></tr>`;
+    }).join('');
+  }
+  const cuentas = DASH_ALERTAS_GRUPOS[key] || [];
+  return cuentas.map(_dashAlertFilaCuenta).join('');
+}
+
+function dashAlertToggle(key) {
+  const det = document.getElementById('dash-al-det-' + key);
+  const chev = document.getElementById('dash-al-chev-' + key);
+  const cont = document.getElementById('dash-al-cont-' + key);
+  if (!det) return;
+  const abierto = det.style.display !== 'none';
+  if (abierto) {
+    det.style.display = 'none';
+    if (chev) chev.className = 'ti ti-chevron-down';
+    return;
+  }
+  det.style.display = '';
+  if (chev) chev.className = 'ti ti-chevron-up';
+  if (cont && !cont.dataset.cargado) {
+    cont.innerHTML = _dashAlertRenderContenido(key);
+    cont.dataset.cargado = '1';
   }
 }
 
@@ -6597,14 +6665,16 @@ function renderResultadosCli(data, contId, onSelect) {
   if (!cont) return;
   if (!data.length) { cont.style.display='flex'; cont.innerHTML='<div style="font-size:12px;color:var(--text3);padding:6px">No se encontraron resultados</div>'; return; }
   cont.style.display = 'flex';
+  const clientesConSubActiva = new Set(SUBS_FULL.filter(s => s.est === 'activo').map(s => s.clienteId));
   cont.innerHTML = data.map(c => {
     const plats = c.plats.map(p=>`<span class="dot" style="background:${PC[p]};width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:2px"></span>${p}`).join(' ');
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 11px;border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;background:var(--bg3)" 
+    const tieneSubActiva = clientesConSubActiva.has(c.id);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 11px;border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;background:var(--bg3)"
       onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='var(--bg3)'"
       onclick="${onSelect}('${c.id}','${c.n} ${c.a}','${c.tel}')">
       <div style="width:28px;height:28px;border-radius:50%;background:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0">${c.n[0]}${c.a[0]}</div>
       <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--text)">${c.n} ${c.a}</div><div style="font-size:11px;color:var(--text3)">${formatTel(c.tel)} &nbsp;·&nbsp; ${c.id} &nbsp;·&nbsp; ${plats}</div></div>
-      <span class="b ${c.est==='activo'?'bg':'ba'}">${c.est==='activo'?'Activo':'Sin renovar'}</span>
+      <span class="b ${tieneSubActiva?'bg':'ba'}">${tieneSubActiva?'Activo':'Sin renovar'}</span>
     </div>`;
   }).join('');
 }
@@ -14240,7 +14310,10 @@ async function abrirRenovarPin(cuentaId, fechaVcto) {
     }
   }
   _renovarFechaVcto = vctoIso;
-  document.getElementById('renovar-pin-sub').textContent = 'Cuenta: ' + cuentaId;
+  const cuenta = INV_CACHE.find(c => c.id === cuentaId);
+  const correo = cuenta?.correo || '';
+  const copyBtn = correo ? `<button class="btn btn-sm btn-ic" data-copy="${correo}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>` : '';
+  document.getElementById('renovar-pin-sub').innerHTML = `Cuenta: ${cuentaId}${correo ? ' · ' + correo : ''} ${copyBtn}`;
   document.getElementById('renovar-vcto-actual').value = vctoIso;
   document.getElementById('renovar-vcto-nuevo').value = '';
   // Cargar pines si aún no están en memoria
