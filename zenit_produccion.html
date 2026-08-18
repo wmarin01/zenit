@@ -5307,7 +5307,7 @@ function mostrarResumenCambio() {
   const nota = document.querySelector('#m-cambio textarea')?.value?.trim() || '';
 
   const rows = [
-    { l:'Cliente',         v:`<strong>${cambioData.clienteNombre||'—'}</strong>` },
+    { l:'Cliente',         v:`<strong>${cambioData.clienteNombre||'—'}</strong> ${cambioData.clienteNombre ? `<button class="btn btn-sm btn-ic" data-copy="${cambioData.clienteNombre}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>` : ''}` },
     { l:'Teléfono',        v: cambioData.clienteTel||'—' },
     { l:'Vencimiento',     v: vcto },
     { l:'Motivo',          v: motivo },
@@ -5370,11 +5370,17 @@ function mostrarResumenCambio() {
             <div style="display:grid;gap:8px">
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <span style="font-size:12px;color:var(--text3)">Correo</span>
-                <span style="font-size:13px;font-family:monospace;color:var(--text)">${_correoNuevoR||'—'}</span>
+                <span style="display:flex;align-items:center;gap:4px">
+                  <span style="font-size:13px;font-family:monospace;color:var(--text)">${_correoNuevoR||'—'}</span>
+                  ${_correoNuevoR ? `<button class="btn btn-sm btn-ic" data-copy="${_correoNuevoR}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>` : ''}
+                </span>
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <span style="font-size:12px;color:var(--text3)">Clave</span>
-                <span style="font-size:13px;font-family:monospace;color:var(--text)">${_claveNuevo||'—'}</span>
+                <span style="display:flex;align-items:center;gap:4px">
+                  <span style="font-size:13px;font-family:monospace;color:var(--text)">${_claveNuevo||'—'}</span>
+                  ${_claveNuevo ? `<button class="btn btn-sm btn-ic" data-copy="${_claveNuevo}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>` : ''}
+                </span>
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <span style="font-size:12px;color:var(--text3)">PIN perfil 1</span>
@@ -5386,7 +5392,10 @@ function mostrarResumenCambio() {
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <span style="font-size:12px;color:var(--text3)">PIN cliente</span>
-                <span style="font-size:14px;font-weight:700;letter-spacing:2px;color:var(--accent)">${pinClienteNuevo}</span>
+                <span style="display:flex;align-items:center;gap:4px">
+                  <span style="font-size:14px;font-weight:700;letter-spacing:2px;color:var(--accent)">${pinClienteNuevo}</span>
+                  ${pinClienteNuevo && pinClienteNuevo !== '—' ? `<button class="btn btn-sm btn-ic" data-copy="${pinClienteNuevo}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>` : ''}
+                </span>
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <span style="font-size:12px;color:var(--text3)">Perfil Chrome (navegador)</span>
@@ -9340,11 +9349,12 @@ function poblarPerfilesDisponiblesCambio(plat) {
   const grupos = {};
   perfs.sort((a, b) => a.codigo.localeCompare(b.codigo));
   perfs.forEach(p => {
-    if (!grupos[p.cuenta]) grupos[p.cuenta] = {correo: p.correo, items: []};
+    if (!grupos[p.cuenta]) grupos[p.cuenta] = {correo: p.correo, fechaVctoProv: p.fechaVctoProv, diasR: _diasVctoProv(p.fechaVctoProv), items: []};
     grupos[p.cuenta].items.push(p);
   });
-  lista.innerHTML = Object.entries(grupos).map(([cuenta, {correo, items}]) =>
-    '<div style="font-size:10px;color:var(--text3);margin:4px 0 2px">' + cuenta + ' · ' + correo + '</div>' +
+  const gruposOrdenados = _ordenarCuentasPorVigencia(Object.entries(grupos));
+  lista.innerHTML = gruposOrdenados.map(([cuenta, {correo, items, fechaVctoProv}]) =>
+    '<div style="font-size:10px;color:var(--text3);margin:4px 0 2px;display:flex;align-items:center;flex-wrap:wrap;gap:6px"><span>' + cuenta + ' · ' + correo + '</span>' + _badgeVctoProv(fechaVctoProv) + '</div>' +
     items.map(p =>
       '<div class="pi" data-codigo="' + p.codigo + '" data-correo="' + (p.correo||'') + '" data-clave="' + (p.clave||'') + '" data-link="' + (p.link||'') + '" data-plat="' + plat + '" data-digitos-pin="' + (p.digitosPin ?? '') + '" onclick="selPerfilCambio(this)" style="margin-bottom:3px">' +
       '<span class="pcode">' + p.codigo + '</span>' +
