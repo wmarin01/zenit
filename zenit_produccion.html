@@ -2769,8 +2769,8 @@ function closeSidebarMobile() {
     <input type="hidden" id="edit-sub-clienteid">
     <!-- Fila 1: Correo + Clave -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-      <div class="fg"><label>Correo</label><input type="email" id="edit-sub-correo" placeholder="correo@gmail.com"></div>
-      <div class="fg"><label>Clave</label>
+      <div class="fg"><label style="display:flex;justify-content:space-between;align-items:center">Correo <button class="btn btn-sm btn-ic" style="padding:1px 5px" title="Copiar correo" id="edit-sub-correo-copy" data-copy="" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button></label><input type="email" id="edit-sub-correo" placeholder="correo@gmail.com"></div>
+      <div class="fg"><label style="display:flex;justify-content:space-between;align-items:center">Clave <button class="btn btn-sm btn-ic" style="padding:1px 5px" title="Copiar clave" id="edit-sub-clave-copy" data-copy="" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button></label>
         <div style="position:relative">
           <input type="password" id="edit-sub-clave" placeholder="contraseña" style="padding-right:36px">
           <button onclick="const i=document.getElementById('edit-sub-clave');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3)"><i class="ti ti-eye"></i></button>
@@ -2779,8 +2779,8 @@ function closeSidebarMobile() {
     </div>
     <!-- Fila 2: Usuario + PIN -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-      <div class="fg"><label>Usuario</label><input type="text" id="edit-sub-usuario" placeholder="Nombre usuario"></div>
-      <div class="fg"><label>PIN</label><input type="text" id="edit-sub-pin" placeholder="0000" maxlength="6"></div>
+      <div class="fg"><label style="display:flex;justify-content:space-between;align-items:center">Usuario <button class="btn btn-sm btn-ic" style="padding:1px 5px" title="Copiar usuario" id="edit-sub-usuario-copy" data-copy="" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button></label><input type="text" id="edit-sub-usuario" placeholder="Nombre usuario"></div>
+      <div class="fg"><label style="display:flex;justify-content:space-between;align-items:center">PIN <button class="btn btn-sm btn-ic" style="padding:1px 5px" title="Copiar PIN" id="edit-sub-pin-copy" data-copy="" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button></label><input type="text" id="edit-sub-pin" placeholder="0000" maxlength="6"></div>
     </div>
     <!-- Fila 3: F. Inicio + F. Vencimiento -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
@@ -9983,6 +9983,11 @@ function abrirEditarSub(s) {
   document.getElementById('edit-sub-clave').value     = s.clave  || '';
   document.getElementById('edit-sub-usuario').value   = s.usuario || '';
   document.getElementById('edit-sub-pin').value       = s.pin    || '';
+  // Botones de copiar: valor original con el que se precargó el modal (no el valor actual del input si se edita).
+  document.getElementById('edit-sub-correo-copy').dataset.copy  = s.correo  || '';
+  document.getElementById('edit-sub-clave-copy').dataset.copy   = s.clave   || '';
+  document.getElementById('edit-sub-usuario-copy').dataset.copy = s.usuario || '';
+  document.getElementById('edit-sub-pin-copy').dataset.copy     = s.pin     || '';
   document.getElementById('edit-sub-monto').value     = s.monto  || '';
   document.getElementById('edit-sub-motivo').value    = '';
   // Convertir dd/mm/yyyy → YYYY-MM-DD para input date
@@ -10116,12 +10121,12 @@ function renderSubs(data) {
     return `<tr>
       <td style="font-family:var(--mono);font-size:11px">${s.clienteId}</td>
       <td style="font-family:var(--mono);font-size:12px"><strong>${s.perfil}</strong></td>
-      <td style="font-size:12px">${s.correo}<div style="font-size:10px;color:var(--text3)">${s.cuentaEstado || '—'}</div>${vencCuentaHtml}</td>
-      <td style="font-size:12px"><span class="clave-sub-${s.perfil.replace('-','_')}">••••••</span><button class="btn btn-sm btn-ic" style="padding:2px 4px;margin-left:3px" onclick="toggleClaveSub(this,'${s.clave}')" title="Ver clave"><i class="ti ti-eye"></i></button></td>
+      <td style="font-size:12px">${s.correo} ${s.correo ? `<button class="btn btn-sm btn-ic" data-copy="${s.correo}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>` : ''}<div style="font-size:10px;color:var(--text3)">${s.cuentaEstado || '—'}</div>${vencCuentaHtml}</td>
+      <td style="font-size:12px"><span class="clave-sub-${s.perfil.replace('-','_')}">••••••</span><button class="btn btn-sm btn-ic" style="padding:2px 4px;margin-left:3px" onclick="toggleClaveSub(this,'${s.clave}')" title="Ver clave"><i class="ti ti-eye"></i></button>${s.clave ? `<button class="btn btn-sm btn-ic" style="padding:2px 4px;margin-left:3px" data-copy="${s.clave}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))" title="Copiar clave"><i class="ti ti-copy"></i></button>` : ''}</td>
       <td><strong>${s.nombre}</strong></td>
       <td style="font-size:12px">${formatTel(s.tel)}</td>
-      <td style="font-size:12px">${s.usuario}</td>
-      <td style="font-family:var(--mono);letter-spacing:3px">${s.pin}</td>
+      <td style="font-size:12px">${s.usuario} ${s.usuario ? `<button class="btn btn-sm btn-ic" data-copy="${s.usuario}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>` : ''}</td>
+      <td style="font-family:var(--mono);letter-spacing:3px">${s.pin} ${s.pin ? `<button class="btn btn-sm btn-ic" data-copy="${s.pin}" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>toast('Copiado','ok'))"><i class="ti ti-copy"></i></button>` : ''}</td>
       <td style="font-size:12px">${s.fIni}</td>
       <td style="font-size:12px">${s.fVcto}</td>
       <td>${diasBadge}</td>
