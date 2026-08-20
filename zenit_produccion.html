@@ -1417,6 +1417,7 @@ function closeSidebarMobile() {
           <select id="vct-tipo" style="width:100%">
             <option value="vencer">Por vencer</option>
             <option value="vencidos">Vencidos</option>
+            <option value="mayor">Mayor a X días</option>
             <option value="todos">Todos</option>
           </select>
         </div>
@@ -11777,6 +11778,7 @@ function vctGenerar() {
   if (plat) data = data.filter(s => s.plat === plat);
   if (tipo === 'vencer')        data = data.filter(s => s.dias === dias);
   else if (tipo === 'vencidos') data = data.filter(s => s.dias === -dias);
+  else if (tipo === 'mayor')    data = data.filter(s => s.dias > dias);
   data = [...data].sort((a, b) => a.dias - b.dias);
 
   // Agrupar por cliente + día de vencimiento: varias suscripciones del mismo cliente
@@ -11817,7 +11819,9 @@ function vctGenerar() {
     ? (dias === 0 ? 'Vencen hoy' : `Por vencer en exactamente ${dias} día${dias !== 1 ? 's' : ''}`)
     : tipo === 'vencidos'
       ? (dias === 0 ? 'Vencidos hoy' : `Vencidos hace exactamente ${dias} día${dias !== 1 ? 's' : ''}`)
-      : 'Todos';
+      : tipo === 'mayor'
+        ? `Vencimiento a más de ${dias} día${dias !== 1 ? 's' : ''}`
+        : 'Todos';
   const platLabel = plat
     ? (PLATAFORMAS || []).find(p => p.codigo === plat)?.nombre || plat
     : 'todas las plataformas';
