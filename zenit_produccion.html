@@ -5175,25 +5175,47 @@ async function confirmarPago() {
     if (!cobroId) throw new Error('Error al guardar cobro');
 
     // Actualizar suscripciones seleccionadas
+    // Agrupar checkboxes MARCADOS por su combosubids — cada grupo se procesa UNA sola vez
+    // (individual = grupo de tamaño 1, mismo código, sin rama especial). Esto evita que un
+    // combo de N plataformas reprocese y vuelva a sumar meses N veces sobre una fecha ya mutada.
+    const gruposRenovar = new Map(); // combosubids (string) → { rows: [{subId, r, meses}], comboKey, esCombo }
     for (const cb of checkboxes) {
       const idx   = parseInt(cb.dataset.idx);
       const subId = cb.dataset.subid;
       const r     = pagoSubsActuales[idx];
       if (!subId || !r) continue;
+      const groupKey = cb.dataset.combosubids || JSON.stringify([subId]);
+      if (!gruposRenovar.has(groupKey)) gruposRenovar.set(groupKey, { rows: [], comboKey: r.comboKey, esCombo: r.esCombo });
+      const meses = parseInt(document.getElementById('meses-sub-'+idx)?.value || '1');
+      gruposRenovar.get(groupKey).rows.push({ subId, r, meses });
+    }
 
+    for (const [, g] of gruposRenovar) {
       // Si es combo: tipo según cuántas plataformas se renovaron
       let tipoUpdate = null;
-      if (r.esCombo) {
-        const cg = comboAnalysis.get(r.comboKey);
-        tipoUpdate = cg.unchecked.length === 0 ? 'Combo' : 'Individual';
+      if (g.esCombo && g.comboKey) {
+        const cg = comboAnalysis.get(g.comboKey);
+        tipoUpdate = cg && cg.unchecked.length === 0 ? 'Combo' : 'Individual';
       }
 
-      const meses = parseInt(document.getElementById('meses-sub-'+idx)?.value || '1');
+      // Meses del grupo: si las plataformas del mismo combo tienen meses distintos, usar el máximo
+      // (nunca darle al cliente menos de lo que pagó en ninguna de las plataformas).
+      const meses = Math.max(...g.rows.map(x => x.meses));
+
+      // Fecha base del grupo: snapshot ORIGINAL (r.vcto de pagoSubsActuales, inmutable — nunca
+      // SUBS_FULL, que es lo que causaba la mutación-sobre-mutación). Si las plataformas del combo
+      // tenían vencimientos distintos entre sí, partir de la más próxima a vencer (la más conservadora).
+      let fechaBase = null;
+      for (const {r} of g.rows) {
+        const [dd,mm,yy] = (r.vcto||'').split('/');
+        if (!dd || !mm || !yy) continue;
+        const d = new Date(+yy, +mm-1, +dd);
+        if (!fechaBase || d < fechaBase) fechaBase = d;
+      }
+
       let nuevaFVcto = null;
-      const subActual = SUBS_FULL.find(s => String(s.id) === String(subId));
-      if (subActual) {
-        const [dd,mm,yy] = (subActual.fVcto||'').split('/');
-        const base = new Date(+yy, +mm-1, +dd);
+      if (fechaBase) {
+        const base = new Date(fechaBase);
         base.setMonth(base.getMonth() + meses);
         nuevaFVcto = fechaAISO(base);
       }
@@ -5201,7 +5223,9 @@ async function confirmarPago() {
       // La renovación cumple el propósito del precio promocional: de aquí en adelante precio normal
       const payload = { fecha_vcto: nuevaFVcto, estado: 'activo', tipo_cliente: 'Renovación', precio_tras_promo: null };
       if (tipoUpdate) payload.tipo = tipoUpdate;
-      const _idsActualizar = cb.dataset.combosubids ? JSON.parse(cb.dataset.combosubids) : [subId];
+      // Solo los ids REALMENTE marcados de este grupo — nunca el combosubids estático completo,
+      // para que una renovación parcial de combo no contamine la fecha_vcto de la plataforma no marcada.
+      const _idsActualizar = g.rows.map(x => x.subId);
       for (const _sid of _idsActualizar) {
         const { error: errVcto } = await supa.from('suscripciones').update(payload).eq('id', _sid);
         if (errVcto) {
