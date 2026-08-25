@@ -2639,6 +2639,14 @@ function closeSidebarMobile() {
           <input type="date" id="precio-desde">
         </div>
       </div>
+      <div class="fr c2">
+        <div class="fg"><label>Estado</label>
+          <select id="precio-estado">
+            <option value="vigente">Vigente</option>
+            <option value="inactivo">Suspendido</option>
+          </select>
+        </div>
+      </div>
     </div>
 
     <!-- Individual -->
@@ -8127,6 +8135,8 @@ function openModal(id, title) {
       document.getElementById('precio-title').textContent = 'Editar precio';
       document.getElementById('precio-tipo').value = tipoNorm;
       document.getElementById('precio-desde').value = fechaIso;
+      const estadoSel = document.getElementById('precio-estado');
+      if (estadoSel) estadoSel.value = p.estado || 'vigente';
       updPrecioTipo(tipoNorm);
       if (tipoNorm === 'individual') {
         updPrecioPerfiles((p.plataformas||'').trim());
@@ -8162,6 +8172,8 @@ function openModal(id, title) {
       document.getElementById('precio-title').textContent = 'Nuevo precio';
       const pt = document.getElementById('precio-tipo');
       if (pt) { pt.value = 'individual'; updPrecioTipo('individual'); }
+      const pe = document.getElementById('precio-estado');
+      if (pe) pe.value = 'vigente';
       const pv = document.getElementById('precio-val-ind');
       if (pv) pv.value = '';
       const pd = document.getElementById('precio-desde');
@@ -8204,6 +8216,18 @@ function abrirEditarPrecio(id) {
   if (!p) { toast('Plan no encontrado', 'warn'); return; }
   _editPrecioId = id;
   openModal('m-precio', 'Editar precio');
+}
+
+async function togglePrecioEstado(id, nuevoEstado) {
+  try {
+    const { error } = await supa.from('planes_precios').update({ estado: nuevoEstado }).eq('id', id);
+    if (error) throw error;
+    await cargarParametros();
+    await cargarPlanesPrecios();
+    toast(nuevoEstado === 'vigente' ? 'Plan reactivado ✓' : 'Plan suspendido ✓', 'ok');
+  } catch(e) {
+    toast('Error al cambiar el estado: ' + (e.message || e), 'error');
+  }
 }
 
 function updPrecioTipo(v) {
@@ -8296,6 +8320,7 @@ async function guardarPrecio() {
   try {
     let error;
     if (precioId) {
+      payload.estado = document.getElementById('precio-estado')?.value || 'vigente';
       ({ error } = await supa.from('planes_precios').update(payload).eq('id', precioId));
     } else {
       payload.tipo = tipo === 'individual' ? 'Individual' : 'Combo';
@@ -13880,10 +13905,15 @@ async function cargarParametros() {
 
   // Planes y precios
   try {
-    const {data} = await supa.from('planes_precios').select('*').eq('estado','vigente').order('plataformas');
+    const {data} = await supa.from('planes_precios').select('*').order('plataformas');
     if (data && data.length) {
       PLANES_PRECIOS = data;
-      document.getElementById('tb-planes').innerHTML = data.map(p=>`
+      document.getElementById('tb-planes').innerHTML = data.map(p=>{
+        const esVigente = (p.estado || 'vigente') === 'vigente';
+        const estadoBadge = esVigente ? '<span class="b bg">Vigente</span>' : '<span class="b bp">Suspendido</span>';
+        const toggleTitle = esVigente ? 'Suspender' : 'Reactivar';
+        const toggleIcon = esVigente ? 'ti-player-pause' : 'ti-player-play';
+        return `
         <tr data-id="${p.id}">
           <td>${p.plataformas||''}</td>
           <td><span class="b bi">${p.tipo||''}</span></td>
@@ -13891,10 +13921,14 @@ async function cargarParametros() {
           <td style="color:var(--green);font-weight:500">$${parseFloat(p.precio||0).toFixed(2)}</td>
           <td style="font-size:11px;color:var(--text3)">${p.desglose||'—'}</td>
           <td>${p.vigente_desde||''}</td>
-          <td><span class="b bg">Vigente</span></td>
+          <td>${estadoBadge}</td>
           <td style="font-size:11px;color:var(--text3)">${p.notas||'—'}</td>
-          <td class="tda"><button class="btn btn-sm btn-ic" onclick="abrirEditarPrecio(${p.id})"><i class="ti ti-edit"></i></button></td>
-        </tr>`).join('');
+          <td class="tda">
+            <button class="btn btn-sm btn-ic" onclick="abrirEditarPrecio(${p.id})" title="Editar"><i class="ti ti-edit"></i></button>
+            <button class="btn btn-sm btn-ic" onclick="togglePrecioEstado(${p.id},'${esVigente ? 'inactivo' : 'vigente'}')" title="${toggleTitle}"><i class="ti ${toggleIcon}"></i></button>
+          </td>
+        </tr>`;
+      }).join('');
     }
   } catch(e) {}
 
