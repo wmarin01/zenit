@@ -3747,7 +3747,7 @@ async function renderDashboard() {
         return `<tr>
           <td><strong>${s.nombre}</strong></td>
           <td>${platDot}</td>
-          <td style="color:var(--green);font-weight:500">$${(s.monto||0).toFixed(2)}</td>
+          <td style="color:var(--green);font-weight:500">$${montoVigente(s).toFixed(2)}</td>
           <td>${s.fVcto}</td>
           <td>${vb}</td>
         </tr>`;
@@ -4268,7 +4268,7 @@ async function tabCob(el,id){
         <td style="font-size:12px;color:var(--text2)">${s.usuario||'—'}</td>
         <td style="font-size:12px">${formatTel(s.tel)}</td>
         <td>${platDot}</td>
-        <td style="color:var(--green);font-weight:500">$${(s.monto||0).toFixed(2)}</td>
+        <td style="color:var(--green);font-weight:500">$${montoVigente(s).toFixed(2)}</td>
         <td><span class="b br">Hoy</span></td>
         <td style="font-size:11px;white-space:nowrap">${s.correo} <button class="btn btn-sm btn-ic" title="Copiar correo" onclick="navigator.clipboard.writeText('${s.correo}').then(()=>toast('Correo copiado ✓','ok'))"><i class="ti ti-copy"></i></button></td>
         <td style="font-size:11px;white-space:nowrap">${s.clave} <button class="btn btn-sm btn-ic" title="Copiar clave" onclick="navigator.clipboard.writeText('${s.clave}').then(()=>toast('Clave copiada ✓','ok'))"><i class="ti ti-copy"></i></button></td>
@@ -4276,7 +4276,7 @@ async function tabCob(el,id){
         <td style="font-size:11px;white-space:nowrap">${_pin1H} <button class="btn btn-sm btn-ic" title="Copiar PIN perfil 1" onclick="navigator.clipboard.writeText('${_pin1H}').then(()=>toast('PIN copiado ✓','ok'))"><i class="ti ti-copy"></i></button></td>
         <td><div class="rdots"><div class="rd p"></div><span class="rl">3d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd s" style="margin-left:3px"></div><span class="rl">hoy</span></div></td>
         <td class="tda">
-          <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${platNombre(s.plat)}','${(s.monto||0).toFixed(2)}','vencimiento',{fecha_vcto:'${s.fVcto||''}'})"><i class="ti ti-brand-whatsapp"></i>WA</button>
+          <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${platNombre(s.plat)}','${montoVigente(s).toFixed(2)}','vencimiento',{fecha_vcto:'${s.fVcto||''}'})"><i class="ti ti-brand-whatsapp"></i>WA</button>
           <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
           <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${_platRealCob}&nombre=${encodeURIComponent(nombreChromeCob)}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
           ${s.clavePendiente ? `<button class="btn btn-sm btn-ic" style="color:#f5c842" title="Notificar cambio de clave" onclick="notificarClaveActualizada(${s.id})"><i class="ti ti-key"></i></button>` : ''}
@@ -4312,7 +4312,7 @@ async function tabCob(el,id){
         <td style="font-size:12px">${formatTel(s.tel)}</td>
         <td>${platDot}</td>
         <td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${s.perfil && s.perfil !== '—' ? s.perfil : (s.plat||'—')}</td>
-        <td style="color:var(--red);font-weight:500">$${(s.monto||0).toFixed(2)}</td>
+        <td style="color:var(--red);font-weight:500">$${montoVigente(s).toFixed(2)}</td>
         <td style="font-size:12px;white-space:nowrap">${s.fVcto||'—'}</td>
         <td style="font-size:11px;white-space:nowrap">${s.correo} <button class="btn btn-sm btn-ic" title="Copiar correo" onclick="navigator.clipboard.writeText('${s.correo}').then(()=>toast('Correo copiado ✓','ok'))"><i class="ti ti-copy"></i></button></td>
         <td style="font-size:11px;white-space:nowrap">${s.clave} <button class="btn btn-sm btn-ic" title="Copiar clave" onclick="navigator.clipboard.writeText('${s.clave}').then(()=>toast('Clave copiada ✓','ok'))"><i class="ti ti-copy"></i></button></td>
@@ -4320,7 +4320,7 @@ async function tabCob(el,id){
         <td style="font-size:11px;white-space:nowrap">${_pin1V} <button class="btn btn-sm btn-ic" title="Copiar PIN perfil 1" onclick="navigator.clipboard.writeText('${_pin1V}').then(()=>toast('PIN copiado ✓','ok'))"><i class="ti ti-copy"></i></button></td>
         <td><span class="b br">Hace ${diasText}</span></td>
         <td class="tda">
-          <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${platNombre(s.plat)}','${(s.monto||0).toFixed(2)}','vencimiento',{fecha_vcto:'${s.fVcto||''}'})"><i class="ti ti-brand-whatsapp"></i>WA</button>
+          <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${platNombre(s.plat)}','${montoVigente(s).toFixed(2)}','vencimiento',{fecha_vcto:'${s.fVcto||''}'})"><i class="ti ti-brand-whatsapp"></i>WA</button>
           <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
           <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${_platRealCob}&nombre=${encodeURIComponent(nombreChromeCob)}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
           ${s.clavePendiente ? `<button class="btn btn-sm btn-ic" style="color:#f5c842" title="Notificar cambio de clave" onclick="notificarClaveActualizada(${s.id})"><i class="ti ti-key"></i></button>` : ''}
@@ -4335,11 +4335,11 @@ async function tabCob(el,id){
       <td><strong>${s.nombre}</strong>${s.cuentaBloqueada ? ' <span class="b br" title="Esta cuenta se encuentra bloqueada por el proveedor. El cliente continúa con suscripción activa y aún no se le ha realizado el cambio de cuenta correspondiente.">Cuenta bloqueada</span>' : ''}${s.clavePendiente ? ' <span class="b ba" title="La clave de esta cuenta se actualizó y aún no se avisó a este cliente.">🔑 Clave actualizada — avisar</span>' : ''}</td>
       <td style="font-size:12px">${formatTel(s.tel)}</td>
       <td>${platDot}</td>
-      <td style="color:var(--green);font-weight:500">$${(s.monto||0).toFixed(2)}</td>
+      <td style="color:var(--green);font-weight:500">$${montoVigente(s).toFixed(2)}</td>
       <td>${s.fVcto}</td>
       <td><div class="rdots"><div class="rd p"></div><span class="rl">3d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd ${s.diasVcto===0?'s':'p'}" style="margin-left:3px"></div><span class="rl">hoy</span></div></td>
       <td class="tda">
-        <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${platNombre(s.plat)}','${(s.monto||0).toFixed(2)}','${s.diasVcto===0?'vencimiento':s.diasVcto===1?'1d':'3d'}',{fecha_vcto:'${s.fVcto||''}'})"><i class="ti ti-brand-whatsapp"></i>WA</button>
+        <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${platNombre(s.plat)}','${montoVigente(s).toFixed(2)}','${s.diasVcto===0?'vencimiento':s.diasVcto===1?'1d':'3d'}',{fecha_vcto:'${s.fVcto||''}'})"><i class="ti ti-brand-whatsapp"></i>WA</button>
         <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
         ${s.clavePendiente ? `<button class="btn btn-sm btn-ic" style="color:#f5c842" title="Notificar cambio de clave" onclick="notificarClaveActualizada(${s.id})"><i class="ti ti-key"></i></button>` : ''}
       </td></tr>`;
@@ -4546,7 +4546,7 @@ async function notificarClaveActualizada(subId) {
   if (!s) { toast('Suscripción no encontrada', 'warn'); return; }
 
   const ctx = { correo: s.correo, clave: s.clave, usuario: s.usuario, pin: s.pin, fecha_vcto: s.fVcto, vcto: s.fVcto };
-  const html = WA.clave(s.nombre, platNombre(s.plat), (s.monto||0).toFixed(2), ctx);
+  const html = WA.clave(s.nombre, platNombre(s.plat), montoVigente(s).toFixed(2), ctx);
   const tmp = document.createElement('div');
   tmp.innerHTML = html;
 
@@ -5230,12 +5230,12 @@ async function confirmarPago() {
       }
 
       // La renovación cumple el propósito del precio promocional: de aquí en adelante precio normal
-      const payload = { fecha_vcto: nuevaFVcto, estado: 'activo', tipo_cliente: 'Renovación', precio_tras_promo: null };
-      if (tipoUpdate) payload.tipo = tipoUpdate;
-      // Solo los ids REALMENTE marcados de este grupo — nunca el combosubids estático completo,
-      // para que una renovación parcial de combo no contamine la fecha_vcto de la plataforma no marcada.
-      const _idsActualizar = g.rows.map(x => x.subId);
-      for (const _sid of _idsActualizar) {
+      // (payload por fila, no compartido — si esa fila tenía precio_tras_promo pendiente, ese valor
+      // pasa a ser el nuevo monto permanente de la suscripción).
+      for (const {subId: _sid, r: _rowR} of g.rows) {
+        const payload = { fecha_vcto: nuevaFVcto, estado: 'activo', tipo_cliente: 'Renovación', precio_tras_promo: null };
+        if (tipoUpdate) payload.tipo = tipoUpdate;
+        if (_rowR.precioTrasPromo != null) payload.monto = _rowR.precioTrasPromo;
         const { error: errVcto } = await supa.from('suscripciones').update(payload).eq('id', _sid);
         if (errVcto) {
           console.error('[PAGO] Error actualizando vencimiento de suscripción', _sid, errVcto.message);
@@ -5248,6 +5248,7 @@ async function confirmarPago() {
           SUBS_FULL[memIdx].est = 'activo';
           SUBS_FULL[memIdx].tipoCliente = 'Renovación';
           SUBS_FULL[memIdx].dias = meses * 30;
+          if (_rowR.precioTrasPromo != null) SUBS_FULL[memIdx].monto = _rowR.precioTrasPromo;
           SUBS_FULL[memIdx].precioTrasPromo = null;
           if (tipoUpdate) SUBS_FULL[memIdx].tipo = tipoUpdate;
         }
@@ -10181,7 +10182,7 @@ function renderSubs(data) {
       <td style="font-size:12px">${s.fVcto}</td>
       <td>${diasBadge}</td>
       <td>${tcBadge}</td>
-      <td style="color:var(--green);font-weight:500">$${s.monto.toFixed(2)}</td>
+      <td style="color:var(--green);font-weight:500">$${montoVigente(s).toFixed(2)}</td>
       <td>${tipoBadge}</td>
       <td><span class="pd"><span class="dot" style="background:${pc}"></span>${s.plat}</span></td>
       <td>${comboStr}</td>
@@ -10189,7 +10190,7 @@ function renderSubs(data) {
       <td class="tda">
         <button class="btn btn-sm btn-ic" onclick="abrirEditarSubById(${s.id})" title="Editar"><i class="ti ti-edit"></i></button>
         <button class="btn btn-sm btn-s btn-ic" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${_sNom}','${s.tel}')" title="Registrar pago"><i class="ti ti-cash"></i></button>
-        <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${_sNom}','${_sPlat}','${s.monto.toFixed(2)}','${s.dias===0?'vencimiento':s.dias<=1?'1d':'3d'}',{correo:'${_sCorreo}',clave:'${_sClave}',perfil:'${_sPerfil}',pin:'${_sPin}',vcto:'${_sVcto}',fecha_vcto:'${_sVcto}',usuario:'${_sUsuario}',link:'${_sLink}',platCod:'${s.plat}'})" title="WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>
+        <button class="btn btn-sm btn-a btn-ic" onclick="abrirWA('${_sNom}','${_sPlat}','${montoVigente(s).toFixed(2)}','${s.dias===0?'vencimiento':s.dias<=1?'1d':'3d'}',{correo:'${_sCorreo}',clave:'${_sClave}',perfil:'${_sPerfil}',pin:'${_sPin}',vcto:'${_sVcto}',fecha_vcto:'${_sVcto}',usuario:'${_sUsuario}',link:'${_sLink}',platCod:'${s.plat}'})" title="WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>
         ${esActivo(s.est) ? `<button class="btn btn-sm btn-ic" onclick="reenviarAccesos(${s.id})" title="Reenviar accesos"><i class="ti ti-send"></i></button>` : ''}
         ${s.clavePendiente ? `<button class="btn btn-sm btn-ic" style="color:#f5c842" title="Notificar cambio de clave" onclick="notificarClaveActualizada(${s.id})"><i class="ti ti-key"></i></button>` : ''}
         <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${_platRealSub}&nombre=${encodeURIComponent(nombreChromeSub)}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
@@ -10679,6 +10680,10 @@ let PRECIOS_IND = {};
 function esActivo(valor)    { return ['activo','activa'].includes((valor||'').toLowerCase()); }
 function esInactivo(valor)  { return ['inactivo','inactiva'].includes((valor||'').toLowerCase()); }
 function esBloqueado(valor) { return ['bloqueado','bloqueada'].includes((valor||'').toLowerCase()); }
+
+function montoVigente(s) {
+  return (s && s.precioTrasPromo != null) ? s.precioTrasPromo : ((s && s.monto) || 0);
+}
 
 function normalizarCombo(plataformas) {
   if (!plataformas || typeof plataformas !== 'string') return plataformas || '';
@@ -11890,7 +11895,7 @@ function vctRenderizar() {
       <td><strong>${r.nombre}</strong></td>
       <td style="font-family:var(--mono);font-size:12px;color:var(--text3)">${r.codPais.replace('+','')}</td>
       <td style="font-family:var(--mono);font-size:12px;white-space:nowrap">${r.numTel.replace(/[\s\-]/g,'')}<button onclick="vctCopiarTel('${(r.codPais+r.numTel).replace(/[^\d]/g,'')}',this)" title="Copiar número" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:0 0 0 4px;vertical-align:middle"><i class="ti ti-copy" style="font-size:13px"></i></button></td>
-      <td style="color:var(--green);font-weight:500">$${Number(r.monto).toFixed(2)}</td>
+      <td style="color:var(--green);font-weight:500">$${Number(r.tienePromoPendiente ? r.montoTrasPromo : r.monto).toFixed(2)}</td>
       <td style="font-size:12px;white-space:nowrap">${r.fVcto}</td>
       <td>${diasBadge}</td>
       <td>${estBadge}</td>
@@ -11905,7 +11910,7 @@ function vctCopiarWA(idx) {
   const nombre = r.nombre.split(' ')[0];
   const plat   = r.platNom;
   const fecha  = r.fVcto;
-  const monto  = Number(r.monto).toFixed(2);
+  const monto  = Number(r.tienePromoPendiente ? r.montoTrasPromo : r.monto).toFixed(2);
   const d      = r.dias;
   const buscarPlantilla = nombre => (PLANTILLAS_WA||[]).find(t => t.nombre?.trim().toLowerCase() === nombre);
   const sustituir = (plantilla, vars) => plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
@@ -11964,7 +11969,7 @@ function vctExportar(formato) {
   const cols = ['Perfil','Plataforma','Tipo','Cliente','Cód. País','Teléfono','Monto','F. Vencimiento','Días','Estado'];
   const rowFn = r => [
     r.perfil, r.platNom, r.tipo, r.nombre, r.codPais, r.numTel,
-    '$' + Number(r.monto).toFixed(2), r.fVcto,
+    '$' + Number(r.tienePromoPendiente ? r.montoTrasPromo : r.monto).toFixed(2), r.fVcto,
     r.dias < 0 ? `Hace ${Math.abs(r.dias)} días` : r.dias === 0 ? 'Hoy' : `${r.dias} días`,
     r.est
   ];
@@ -13433,12 +13438,12 @@ async function rptfProyeccionGenerar() {
     const fmt = n => '$' + n.toFixed(2);
 
     const { data: cobrosMes, error } = await supa.from('cobros')
-      .select('cliente_id, plataforma, monto, fecha')
+      .select('cliente_id, plataforma, monto, fecha, tipo')
       .gte('fecha', mesIni).lte('fecha', hoyISO);
     if (error) throw error;
 
     const yaCobrado = (cobrosMes||[]).reduce((s,c) => s+(parseFloat(c.monto)||0), 0);
-    const pagados   = new Set((cobrosMes||[]).map(c => `${c.cliente_id||''}|${c.plataforma||''}`));
+    const pagados   = new Set((cobrosMes||[]).filter(c => c.tipo === 'Renovación').map(c => `${c.cliente_id||''}|${c.plataforma||''}`));
 
     // Active subs with vcto in current month (from SUBS_FULL)
     const vctoISO = s => {
@@ -13447,7 +13452,7 @@ async function rptfProyeccionGenerar() {
     };
     const subsDelMes  = SUBS_FULL.filter(s => { const v = vctoISO(s); return s.est==='activo' && v>=mesIni && v<=mesFin; });
     const pendientes  = subsDelMes.filter(s => !pagados.has(`${s.clienteId||''}|${s.plat||''}`));
-    const porCobrar   = pendientes.reduce((s,x) => s+(x.monto||0), 0);
+    const porCobrar   = pendientes.reduce((s,x) => s+montoVigente(x), 0);
     const total       = yaCobrado + porCobrar;
 
     let html = `<div class="mg" style="margin-bottom:16px">
@@ -13461,7 +13466,7 @@ async function rptfProyeccionGenerar() {
       .map(s => {
         const nom = (PLATAFORMAS||[]).find(p=>p.codigo===s.plat)?.nombre || s.plat || '—';
         const dc  = _RPTF_DOT[s.plat] || '--accent';
-        return `<tr><td>${s.nombre}</td><td><span class="pd"><span class="dot" style="background:var(${dc})"></span>${nom}</span></td><td style="text-align:right;color:var(--amber)">$${(s.monto||0).toFixed(2)}</td><td>${s.fVcto}</td></tr>`;
+        return `<tr><td>${s.nombre}</td><td><span class="pd"><span class="dot" style="background:var(${dc})"></span>${nom}</span></td><td style="text-align:right;color:var(--amber)">$${montoVigente(s).toFixed(2)}</td><td>${s.fVcto}</td></tr>`;
       }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">Sin cobros pendientes este mes</td></tr>';
 
     html += `<div class="card"><div class="ct" style="font-size:12px;margin-bottom:10px"><i class="ti ti-clock" style="color:var(--amber)"></i>Pendientes de cobro este mes</div><div class="tw"><table><thead><tr><th>Cliente</th><th>Plataforma</th><th style="text-align:right">Monto</th><th>F. Vencimiento</th></tr></thead><tbody>${pendRows}</tbody></table></div></div>`;
