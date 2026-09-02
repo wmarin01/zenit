@@ -7527,8 +7527,9 @@ function calcVctoVenta() {
 
 // ── CÁLCULO FECHA VENCIMIENTO CON REGLA DÍAS PARES ───────────
 function calcFechaVcto(fechaIni, meses) {
-  const d = new Date(fechaIni);
-  d.setMonth(d.getMonth() + meses);
+  const [_yIni, _mIni, _dIni] = fechaIni.split('-').map(Number);
+  const d = new Date(_yIni, _mIni - 1, _dIni);
+  d.setDate(d.getDate() + (30 * meses - 1));
   let dia = d.getDate();
   const exceptDias = [1, 15, 31];
   if (dia % 2 !== 0 && !exceptDias.includes(dia)) { dia += 1; }
@@ -10221,7 +10222,7 @@ async function reenviarAccesos(subId) {
       pins[key]     = x.pin     || '—';
       usuarios[key] = x.usuario || '—';
     });
-    const montoTotal  = comboSubs.reduce((acc, x) => acc + (Number(x.monto) || 0), 0);
+    const montoTotal  = comboSubs.reduce((acc, x) => acc + montoVigente(x), 0);
     const first       = comboSubs[0] || s;
     const platNomFirst = (PLATAFORMAS||[]).find(p => p.codigo === first.plat)?.nombre || first.plat;
     abrirWA(
@@ -10232,7 +10233,7 @@ async function reenviarAccesos(subId) {
   } else {
     // Individual
     const platNom = (PLATAFORMAS||[]).find(p => p.codigo === s.plat)?.nombre || s.plat;
-    const monto   = Number(s.monto).toFixed(2);
+    const monto   = Number(montoVigente(s)).toFixed(2);
     let linkRenv = '';
     if (s.plat === 'IP') {
       const cuentaIdRenv = s.perfil && s.perfil !== '—' ? s.perfil.slice(0, -1) : null;
