@@ -11918,11 +11918,11 @@ function vctCopiarWA(idx) {
     key in vars ? vars[key] : `{${key}}`
   );
   let msg;
-  if (d >= 3) {
+  if (d >= 2) {
     const plantilla = buscarPlantilla('por vencer');
     msg = plantilla ? sustituir(plantilla, { nombre, plataforma: plat, fecha_vcto: fecha, monto, dias: d })
       : `🍿 Hola ${nombre}, tu ${plat} vence el ${fecha} (en ${d} días).\nRenueva a tiempo para mantener tu precio actual de $${monto}.\n💳 Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Envía comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.`;
-  } else if (d === 1 || d === 2) {
+  } else if (d === 1) {
     const plantilla = buscarPlantilla('vence mañana');
     msg = plantilla ? sustituir(plantilla, { nombre, plataforma: plat, fecha_vcto: fecha, monto })
       : `🔴 Hola ${nombre}, tu ${plat} vence MAÑANA ${fecha}.\n¡Renueva hoy para conservar tu precio de $${monto}!\n💳 Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.`;
