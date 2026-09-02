@@ -3492,6 +3492,11 @@ const WA={
     if (plantilla) return sustituirWA(plantilla, { nombre:n, plataforma:p, monto:m, fecha_vcto: ctx?.fecha_vcto || '—' });
     return `Hola <span class="wav">${n}</span> 👋\n\nTu <span class="wav">${p}</span> vence <strong>hoy</strong>.\nMonto: <span class="wav">$${m}</span>\n\nDatos de pago:\n<span class="wav">Banco General · Yappy: 6639-2725</span>\n\nEnvíanos tu comprobante 🙏`;
   },
+  vencido:(n,p,m,ctx)=>{
+    const plantilla = buscarPlantillaWA('vencido');
+    if (plantilla) return sustituirWA(plantilla, { nombre:n, plataforma:p, monto:m, fecha_vcto: ctx?.fecha_vcto || '—' });
+    return `Hola <span class="wav">${n}</span> 🚨\n\nTu <span class="wav">${p}</span> VENCIÓ.\nMonto: <span class="wav">$${m}</span>\n\nDatos de pago:\n<span class="wav">Banco General · Yappy: 6639-2725</span>\n\nEnvíanos tu comprobante para reactivar 🙏`;
+  },
   '3d':(n,p,m,ctx)=>{
     const plantilla = buscarPlantillaWA('por vencer');
     if (plantilla) return sustituirWA(plantilla, { nombre:n, plataforma:p, monto:m, fecha_vcto: ctx?.fecha_vcto || '—' });
@@ -4320,7 +4325,7 @@ async function tabCob(el,id){
         <td style="font-size:11px;white-space:nowrap">${_pin1V} <button class="btn btn-sm btn-ic" title="Copiar PIN perfil 1" onclick="navigator.clipboard.writeText('${_pin1V}').then(()=>toast('PIN copiado ✓','ok'))"><i class="ti ti-copy"></i></button></td>
         <td><span class="b br">Hace ${diasText}</span></td>
         <td class="tda">
-          <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${platNombre(s.plat)}','${montoVigente(s).toFixed(2)}','vencimiento',{fecha_vcto:'${s.fVcto||''}'})"><i class="ti ti-brand-whatsapp"></i>WA</button>
+          <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${platNombre(s.plat)}','${montoVigente(s).toFixed(2)}','vencido',{fecha_vcto:'${s.fVcto||''}'})"><i class="ti ti-brand-whatsapp"></i>WA</button>
           <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
           <button class="btn btn-sm btn-ic" title="Abrir cuenta en Chrome" onclick="fetch('http://localhost:9999/chrome?plat=${_platRealCob}&nombre=${encodeURIComponent(nombreChromeCob)}').then(()=>toast('Chrome abierto ✓','ok')).catch(()=>toast('Servidor no disponible','error'))"><i class="ti ti-brand-chrome"></i></button>
           ${s.clavePendiente ? `<button class="btn btn-sm btn-ic" style="color:#f5c842" title="Notificar cambio de clave" onclick="notificarClaveActualizada(${s.id})"><i class="ti ti-key"></i></button>` : ''}
@@ -4339,7 +4344,7 @@ async function tabCob(el,id){
       <td>${s.fVcto}</td>
       <td><div class="rdots"><div class="rd p"></div><span class="rl">3d</span><div class="rd p" style="margin-left:3px"></div><span class="rl">1d</span><div class="rd ${s.diasVcto===0?'s':'p'}" style="margin-left:3px"></div><span class="rl">hoy</span></div></td>
       <td class="tda">
-        <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${platNombre(s.plat)}','${montoVigente(s).toFixed(2)}','${s.diasVcto===0?'vencimiento':s.diasVcto===1?'1d':'3d'}',{fecha_vcto:'${s.fVcto||''}'})"><i class="ti ti-brand-whatsapp"></i>WA</button>
+        <button class="btn btn-sm btn-a" onclick="abrirWA('${s.nombre}','${platNombre(s.plat)}','${montoVigente(s).toFixed(2)}','${s.diasVcto===0?'vencimiento':s.diasVcto===1?'1d':s.diasVcto<0?'vencido':'3d'}',{fecha_vcto:'${s.fVcto||''}'})"><i class="ti ti-brand-whatsapp"></i>WA</button>
         <button class="btn btn-sm btn-s" onclick="openModal('m-pago');selClientePago('${s.clienteId}','${s.nombre}','${s.tel}')"><i class="ti ti-cash"></i>Pago</button>
         ${s.clavePendiente ? `<button class="btn btn-sm btn-ic" style="color:#f5c842" title="Notificar cambio de clave" onclick="notificarClaveActualizada(${s.id})"><i class="ti ti-key"></i></button>` : ''}
       </td></tr>`;
