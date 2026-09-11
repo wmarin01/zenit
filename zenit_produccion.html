@@ -1461,6 +1461,8 @@ function closeSidebarMobile() {
       <div class="tab on" id="rpts-tab-activas" onclick="tabRpts(this,'rpts-activas')">Activas por plataforma</div>
       <div class="tab" onclick="tabRpts(this,'rpts-nuevos')">Clientes nuevos</div>
       <div class="tab" onclick="tabRpts(this,'rpts-perdidos')">Clientes perdidos</div>
+      <div class="tab" onclick="tabRpts(this,'rpts-clientes-activos')">Activos</div>
+      <div class="tab" onclick="tabRpts(this,'rpts-clientes-vencidos')">Vencidos / sin renovar / inactivos</div>
       <div class="tab" onclick="tabRpts(this,'rpts-retencion')">Tasa de retención</div>
       <div class="tab" onclick="tabRpts(this,'rpts-comparativo');rptsComparativoGenerar()">Comparativo</div>
       <div class="tab" onclick="tabRpts(this,'rpts-perfiles');rptsPerfilesGenerar()">Perfiles</div>
@@ -1512,6 +1514,32 @@ function closeSidebarMobile() {
         <button onclick="rptExportarPanel('rpts-perdidos-res','Clientes_perdidos','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
       </div>
       <div id="rpts-perdidos-res"></div>
+    </div>
+
+    <!-- Sub-tab: Clientes activos -->
+    <div class="pp" id="rpts-clientes-activos" style="display:none">
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rpts-clientes-activos-cuerpo','Clientes_activos','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rpts-clientes-activos-cuerpo','Clientes_activos','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rpts-clientes-activos-cuerpo','Clientes_activos','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rpts-clientes-activos-cuerpo','Clientes_activos','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+      </div>
+      <div id="rpts-clientes-activos-cuerpo">
+        <div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- Sub-tab: Clientes vencidos / sin renovar / inactivos -->
+    <div class="pp" id="rpts-clientes-vencidos" style="display:none">
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <button onclick="rptExportarPanel('rpts-clientes-vencidos-cuerpo','Clientes_vencidos','excel')" style="background:#1D6F42;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-table-export"></i>Excel</button>
+        <button onclick="rptExportarPanel('rpts-clientes-vencidos-cuerpo','Clientes_vencidos','pdf')" style="background:#DC2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-type-pdf"></i>PDF</button>
+        <button onclick="rptExportarPanel('rpts-clientes-vencidos-cuerpo','Clientes_vencidos','print')" style="background:#6B7280;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-printer"></i>Imprimir</button>
+        <button onclick="rptExportarPanel('rpts-clientes-vencidos-cuerpo','Clientes_vencidos','word')" style="background:#2B579A;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px"><i class="ti ti-file-word"></i>Word</button>
+      </div>
+      <div id="rpts-clientes-vencidos-cuerpo">
+        <div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Cargando...</div>
+      </div>
     </div>
 
     <!-- Sub-tab 4: Tasa de retención -->
@@ -10703,6 +10731,12 @@ function normalizarCombo(plataformas) {
   return parts.join('+');
 }
 
+// Descompone un código de plataforma (simple o combo) en sus códigos individuales.
+// "NF" → ["NF"] · "NF+DS" → ["NF","DS"]
+function platformasDe(plat) {
+  return (plat || '').split('+').map(s => s.trim()).filter(Boolean);
+}
+
 let comboSelIdx = -1;
 
 // ── COBROS ────────────────────────────────────────────────────
@@ -12385,6 +12419,95 @@ function tabRpts(el, id) {
   const panel = document.getElementById(id);
   if (panel) { panel.classList.add('on'); panel.style.display = 'block'; }
   if (id === 'rpts-activas') rptsRenderActivas();
+  if (id === 'rpts-clientes-activos') rptsClientesActivosGenerar();
+  if (id === 'rpts-clientes-vencidos') rptsClientesVencidosGenerar();
+}
+
+// ═══════════════════════════════════════════════════════════
+// REPORTES — SUSCRIPCIONES: CLIENTES ACTIVOS / VENCIDOS-SIN RENOVAR-INACTIVOS
+// Snapshot desde SUBS_FULL[] ya cargado en memoria (sin queries nuevas).
+// Todo monto usa montoVigente(s) — nunca s.monto directo — para no
+// reintroducir el bug de precio de promoción congelado.
+// ═══════════════════════════════════════════════════════════
+
+function rptsResumen3(clientes, filas, valor, colorValor) {
+  const fmt = n => '$' + n.toFixed(2);
+  const porPlat = {};
+  let totalPlats = 0;
+  filas.forEach(r => {
+    platformasDe(r.plat).forEach(cod => {
+      const nom = platNombre(cod);
+      porPlat[nom] = (porPlat[nom]||0) + 1;
+      totalPlats++;
+    });
+  });
+  const desglose = Object.entries(porPlat).sort((a,b)=>b[1]-a[1]).map(([nom,cnt]) => `${nom}: ${cnt}`).join(' · ') || '—';
+  return `<div class="g3" style="margin-bottom:14px">
+    <div class="mc" style="--mc-c:var(--accent2)"><div class="ml">Total de clientes</div><div class="mv">${clientes}</div></div>
+    <div class="mc" style="--mc-c:var(--purple)"><div class="ml">Total de plataformas</div><div class="mv">${totalPlats}</div><div class="ms">${desglose}</div></div>
+    <div class="mc" style="--mc-c:${colorValor}"><div class="ml">Total en valor</div><div class="mv" style="color:${colorValor}">${fmt(valor)}</div></div>
+  </div>`;
+}
+
+function rptsClientesActivosGenerar() {
+  const cuerpo = document.getElementById('rpts-clientes-activos-cuerpo');
+  if (!cuerpo) return;
+
+  const filas = SUBS_FULL.filter(s => s.est === 'activo');
+  const totalValor = filas.reduce((s, r) => s + montoVigente(r), 0);
+
+  const porCliente = new Map();
+  filas.forEach(s => {
+    if (!porCliente.has(s.clienteId)) porCliente.set(s.clienteId, []);
+    porCliente.get(s.clienteId).push(s);
+  });
+
+  const resumenHtml = rptsResumen3(porCliente.size, filas, totalValor, 'var(--green)');
+
+  const rows = [...porCliente.values()].map(grupo => {
+    const r0 = grupo[0];
+    const plats  = grupo.map(r => platNombre(r.plat)).join(', ');
+    const montos = grupo.map(r => '$' + montoVigente(r).toFixed(2)).join(', ');
+    const vctos  = grupo.map(r => r.fVcto).join(', ');
+    return `<tr><td>${r0.nombre}</td><td>${formatTel(r0.tel)}</td><td>${plats}</td><td>${montos}</td><td>${vctos}</td></tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:16px">Sin clientes activos</td></tr>';
+
+  cuerpo.innerHTML = `${resumenHtml}<div class="card"><div class="tw"><table><thead><tr><th>Nombre y Apellido</th><th>Teléfono</th><th>Plataformas activas</th><th>Pago mensual</th><th>F. Vencimiento</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+function rptsClientesVencidosGenerar() {
+  const cuerpo = document.getElementById('rpts-clientes-vencidos-cuerpo');
+  if (!cuerpo) return;
+
+  // Mismo criterio de conversión de fecha que rptsPerdidosGenerar() (:12449-12452)
+  const vctoISO = s => {
+    const p = (s.fVcto||'').split('/');
+    return (p.length===3 && p[2]) ? `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}` : '';
+  };
+
+  // 1. Clientes con alguna suscripción activa → excluidos por completo del reporte
+  const clientesConActiva = new Set(SUBS_FULL.filter(s => s.est === 'activo').map(s => s.clienteId));
+
+  // 2. Filas candidatas: sin_renovar/inactivo, de clientes sin ninguna activa
+  const filas = SUBS_FULL.filter(s =>
+    (s.est === 'sin_renovar' || s.est === 'inactivo') && !clientesConActiva.has(s.clienteId)
+  );
+  const totalValor = filas.reduce((s, r) => s + montoVigente(r), 0);
+
+  // 4. Una fila por cliente: la de fVcto más reciente (última suscripción antes de vencer)
+  const ultimaPorCliente = new Map();
+  filas.forEach(s => {
+    const actual = ultimaPorCliente.get(s.clienteId);
+    if (!actual || vctoISO(s) > vctoISO(actual)) ultimaPorCliente.set(s.clienteId, s);
+  });
+
+  const resumenHtml = rptsResumen3(ultimaPorCliente.size, filas, totalValor, 'var(--red)');
+
+  const rows = [...ultimaPorCliente.values()].map(s =>
+    `<tr><td>${s.nombre}</td><td>${formatTel(s.tel)}</td><td>${platNombre(s.plat)}</td><td>$${montoVigente(s).toFixed(2)}</td><td>${s.fVcto}</td></tr>`
+  ).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:16px">Sin clientes vencidos / sin renovar / inactivos</td></tr>';
+
+  cuerpo.innerHTML = `${resumenHtml}<div class="card"><div class="tw"><table><thead><tr><th>Nombre y Apellido</th><th>Teléfono</th><th>Última plataforma activa</th><th>Último monto a pagar</th><th>Última F. Vencimiento</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
 function rptsRenderActivas() {
