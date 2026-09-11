@@ -13347,11 +13347,19 @@ async function rptfDiarioGenerar() {
     const totalGeneral = cobros.reduce((s,c) => s + (parseFloat(c.monto)||0), 0);
     const fmt = n => '$' + n.toFixed(2);
 
+    // 'YYYY-MM-DD' → Date a medianoche LOCAL. new Date('YYYY-MM-DD') la interpreta como
+    // medianoche UTC, y fechaAISO() lee campos locales: en husos negativos (Panamá UTC-5)
+    // eso restaba un día entero al construir la fecha equivalente del período anterior.
+    const fechaLocal = s => new Date(s + 'T00:00:00');
+    const sumarDias = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
+
     let iniAnt, finAnt;
     if (periodo === 'personalizado') {
-      const dur = Math.round((new Date(fin) - new Date(ini)) / 86400000);
-      finAnt = fechaAISO(new Date(new Date(ini).getTime() - 86400000));
-      iniAnt = fechaAISO(new Date(new Date(finAnt).getTime() - dur*86400000));
+      const iniD = fechaLocal(ini), finD = fechaLocal(fin);
+      const dur = Math.round((finD - iniD) / 86400000);
+      const finAntD = sumarDias(iniD, -1);
+      finAnt = fechaAISO(finAntD);
+      iniAnt = fechaAISO(sumarDias(finAntD, -dur));
     } else {
       ({ ini: iniAnt, fin: finAnt } = rptGetRangoAnterior(periodo));
     }
@@ -13361,12 +13369,34 @@ async function rptfDiarioGenerar() {
     const pct = totalAnt === 0 ? null : ((totalGeneral - totalAnt) / Math.abs(totalAnt) * 100);
     const tendHtml = pct === null ? '' : `<i class="ti ${pct>=0?'ti-trending-up':'ti-trending-down'}" style="color:${pct>=0?'var(--green)':'var(--red)'};margin-right:3px"></i>${pct>=0?'+':''}${pct.toFixed(1)}% vs período anterior`;
 
-    let html = `<div class="card" style="margin-bottom:16px"><div class="ml">Total del período</div><div class="mv" style="color:var(--green);font-size:26px">${fmt(totalGeneral)}</div><div class="ms">${tendHtml || cobros.length+' cobros'}</div></div>`;
-
     const porDiaAnt = {};
     cobrosAnt.forEach(c => { porDiaAnt[c.fecha] = (porDiaAnt[c.fecha]||0) + (parseFloat(c.monto)||0); });
-    const iniDate = new Date(ini);
-    const iniAntDate = new Date(iniAnt);
+    const iniDate = fechaLocal(ini);
+    const iniAntDate = fechaLocal(iniAnt);
+    // día D del período actual ↔ día D del período anterior (mismo desplazamiento desde el inicio)
+    const equivAnt = f => fechaAISO(sumarDias(iniAntDate, Math.round((fechaLocal(f) - iniDate) / 86400000)));
+
+    // ── Tarjeta "Total del período": monto y diferencia en $ contra el período anterior ──
+    const ddmm = s => { const [, m, d] = s.split('-'); return d + '/' + m; };
+    const difLinea = (etiqueta, montoAnt, conPct) => {
+      const dif = totalGeneral - montoAnt;
+      const col = dif >= 0 ? 'var(--green)' : 'var(--red)';
+      const p = (!conPct || montoAnt === 0) ? '' : ` <span style="color:${col}">(${dif>=0?'+':''}${(dif/Math.abs(montoAnt)*100).toFixed(1)}%)</span>`;
+      return `<div class="ms" style="margin-top:4px">${etiqueta}: <b>${fmt(montoAnt)}</b> · Diferencia: <b style="color:${col}">${dif>=0?'+':'-'}${fmt(Math.abs(dif))}</b>${p}</div>`;
+    };
+    let cmpHtml = difLinea(`Período anterior (${ddmm(iniAnt)}–${ddmm(finAnt)})`, totalAnt, false);
+    // Comparación acotada al mismo número de días transcurridos (ej. Sep 01-10 vs Ago 01-10)
+    const diasConDatos = Object.keys(RPTF_DIARIO_DATA).sort();
+    if (diasConDatos.length) {
+      const finAntEquiv = equivAnt(diasConDatos[diasConDatos.length - 1]);
+      if (finAntEquiv < finAnt) {
+        const totalAntRango = cobrosAnt.reduce((s,c) => s + (c.fecha <= finAntEquiv ? (parseFloat(c.monto)||0) : 0), 0);
+        cmpHtml += difLinea(`Mismo rango (${ddmm(iniAnt)}–${ddmm(finAntEquiv)})`, totalAntRango, true);
+      }
+    }
+
+    let html = `<div class="card" style="margin-bottom:16px"><div class="ml">Total del período</div><div class="mv" style="color:var(--green);font-size:26px">${fmt(totalGeneral)}</div><div class="ms">${tendHtml || cobros.length+' cobros'}</div>${cmpHtml}</div>`;
+
     const varColHtml = (act, ant) => {
       if (!ant) return '<span style="color:var(--text3)">—</span>';
       const v = (act-ant)/ant*100;
@@ -13380,8 +13410,7 @@ async function rptfDiarioGenerar() {
       const items = RPTF_DIARIO_DATA[f];
       const total = items.reduce((s,c) => s + (parseFloat(c.monto)||0), 0);
       const [yy,mm,dd] = f.split('-');
-      const offsetDias = Math.round((new Date(f) - iniDate) / 86400000);
-      const fechaAntEquiv = fechaAISO(new Date(iniAntDate.getTime() + offsetDias*86400000));
+      const fechaAntEquiv = equivAnt(f);
       const totalAntDia = porDiaAnt[fechaAntEquiv] || 0;
       return `<tr style="cursor:pointer" onclick="rptfDiarioToggle('${f}')">
         <td>${dd}/${mm}/${yy}</td>
