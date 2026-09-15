@@ -10112,6 +10112,7 @@ async function guardarEdicionSub() {
       estado, tipo_cliente: tipoCliente,
       fecha_inicio: fIni || undefined,
       fecha_vcto:   fVcto || undefined,
+      precio_tras_promo: null,
     }).eq('id', id);
 
     if (error) throw error;
@@ -10141,6 +10142,7 @@ async function guardarEdicionSub() {
       SUBS_FULL[idx] = {
         ...SUBS_FULL[idx],
         correo, usuario, pin, monto, est: estado, tipoCliente,
+        precioTrasPromo: null,
         fIni:  toDisplay(fIni),
         fVcto: toDisplay(fVcto),
         dias: (() => {
