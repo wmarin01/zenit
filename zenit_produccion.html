@@ -5196,6 +5196,8 @@ async function confirmarPago() {
 
   try {
     const plats = normalizarCombo(Array.from(checkboxes).map(cb => cb.dataset.plat).join('+'));
+    const correos = Array.from(checkboxes).map(cb => pagoSubsActuales[parseInt(cb.dataset.idx)]?.correo || '—');
+    const correoPago = [...new Set(correos)].join(' / ');
 
     // Analizar combos: qué plataformas están seleccionadas vs no
     const comboAnalysis = new Map(); // comboKey → { checked: [], unchecked: [] }
@@ -5209,7 +5211,7 @@ async function confirmarPago() {
     const fechaPago = document.getElementById('pago-fecha')?.value || hoyPanama();
     const cobroId = await dbGuardarCobro({
       tipo: 'Renovación', clienteId, nombre, tel: normalizeTel(tel), plat: plats,
-      correo: '', usuario: '', monto, banco, forma: forma || 'Yappy', doc: comp,
+      correo: correoPago, usuario: '', monto, banco, forma: forma || 'Yappy', doc: comp,
       fechaIni: fechaPago,
       operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
       dupAutorizado: false
@@ -5515,6 +5517,7 @@ async function confirmarCambio(){
   const vcto            = document.getElementById('cambio-vcto-ant')?.value || '';
   const motivo          = document.getElementById('sel-motivo')?.value || '—';
   const nota            = document.querySelector('#m-cambio textarea')?.value?.trim() || '';
+  const correoSaliente  = document.getElementById('acceso-correo-val')?.value || '—';
 
   // Validación bloqueante: el PIN nuevo debe tener la cantidad de dígitos que exige la cuenta nueva
   const digitosEfectivos = cambioData.digitosPinNuevo;
@@ -5581,7 +5584,7 @@ async function confirmarCambio(){
     // 2. Registrar en historial
     await dbGuardarHistorial(
       'Cambio de cuenta',
-      cambioData.clienteNombre + ' · ' + subPerfil + ' → ' + perfilNuevoCod + ' · ' + motivo + (nota?' · '+nota:''),
+      cambioData.clienteNombre + ' · ' + subPerfil + ' (' + correoSaliente + ') → ' + perfilNuevoCod + ' (' + (correoNuevo || '—') + ') · ' + motivo + (nota?' · '+nota:''),
       'var(--accent)'
     );
 
@@ -7719,7 +7722,7 @@ async function renderSubsPago(clienteId) {
           vcto: s.fVcto || '—', precio: (s.precioTrasPromo != null ? s.precioTrasPromo : s.monto) || 0,
           precioTrasPromo: s.precioTrasPromo ?? null,
           dias: s.dias || 0, esCombo: true, comboKey: key,
-          comboSubIds, comboPlats
+          comboSubIds, comboPlats, correo: s.correo || '—'
         });
       });
     } else {
@@ -7729,7 +7732,7 @@ async function renderSubsPago(clienteId) {
         vcto: s.fVcto || '—', precio: (s.precioTrasPromo != null ? s.precioTrasPromo : s.monto) || 0,
         precioTrasPromo: s.precioTrasPromo ?? null,
         dias: s.dias || 0, esCombo: false, comboKey: null,
-        comboSubIds: JSON.stringify([s.id]), comboPlats: JSON.stringify([s.plat])
+        comboSubIds: JSON.stringify([s.id]), comboPlats: JSON.stringify([s.plat]), correo: s.correo || '—'
       });
     }
   }
