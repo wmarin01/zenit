@@ -1157,7 +1157,7 @@ function closeSidebarMobile() {
     <div class="card">
       <div class="ct"><i class="ti ti-alert-triangle" style="color:var(--amber)"></i>Alertas proveedores</div>
       <div id="dash-alertas-resumen" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
-      <div class="tw"><table><thead><tr><th>Cuenta</th><th>Proveedor</th><th>Clientes</th><th>Vence</th><th></th></tr></thead><tbody id="dash-alertas-prov"><tr><td colspan="5" style="text-align:center;color:var(--text3);padding:12px">Cargando...</td></tr></tbody></table></div>
+      <div class="tw"><table><thead><tr><th>Cuenta</th><th>Proveedor</th><th>Clientes</th><th>Vence</th><th>Días vencida</th><th></th></tr></thead><tbody id="dash-alertas-prov"><tr><td colspan="6" style="text-align:center;color:var(--text3);padding:12px">Cargando...</td></tr></tbody></table></div>
       <div style="margin-top:12px">
         <div class="ct" style="margin-bottom:8px"><i class="ti ti-device-tv" style="color:var(--accent)"></i>Inventario por plataforma</div>
         <div id="dash-inventario" style="display:flex;flex-direction:column;gap:5px">Cargando...</div>
@@ -3793,12 +3793,17 @@ async function renderDashboard() {
   if (apTbody) {
     await cargarInventario();
     DASH_ALERTAS_GRUPOS = {};
-    const proximasVctoTotal = (INV_CACHE || [])
+    const _alertasBase = (INV_CACHE || [])
       .filter(c => esActivo(c.estado) && c.fecha_vcto_prov)
       .map(c => ({ ...c, _diasR: _diasVctoProv(c.fecha_vcto_prov) }))
       .filter(c => c._diasR !== null && c._diasR <= 2)
-      .map(c => ({ ...c, _clientesCount: SUBS_FULL.filter(s => s.est === 'activo' && s.perfil && s.perfil !== '—' && s.perfil.slice(0,-1) === c.id).length }))
-      // Vencidas sin ningún cliente activo afectado no aportan valor operativo — se excluyen antes de agrupar.
+      .map(c => ({ ...c, _clientesCount: SUBS_FULL.filter(s => esActivo(s.est) && s.perfil && s.perfil !== '—' && s.perfil.slice(0,-1) === c.id).length }));
+    // Vencidas sin ningún cliente activo afectado van en su propio grupo (VENCIDAS SIN CLIENTE), separado del de urgencias.
+    const vencidasSinClienteList = _alertasBase
+      .filter(c => c._diasR < 0 && c._clientesCount === 0)
+      .sort((a,b) => a._diasR - b._diasR || a.id.localeCompare(b.id));
+    const vencidasSinCliente = vencidasSinClienteList.length;
+    const proximasVctoTotal = _alertasBase
       .filter(c => c._diasR >= 0 || c._clientesCount > 0)
       .sort((a,b) => a._diasR - b._diasR || a.id.localeCompare(b.id));
 
@@ -3812,18 +3817,24 @@ async function renderDashboard() {
         const porPlat = {};
         proximasVctoTotal.forEach(c => { porPlat[c.plataforma] = (porPlat[c.plataforma]||0) + 1; });
         const desglose = Object.entries(porPlat).map(([p,n]) => `${p}: ${n}`).join(', ');
-        elResumen.textContent = `Total: ${proximasVctoTotal.length} cuenta${proximasVctoTotal.length!==1?'s':''} — ${totalVencidas} vencida${totalVencidas!==1?'s':''}, ${totalPorVencer} por vencer (hoy/mañana/pasado mañana) — ${desglose}`;
+        elResumen.textContent = `Total: ${proximasVctoTotal.length} cuenta${proximasVctoTotal.length!==1?'s':''} — ${totalVencidas} vencida${totalVencidas!==1?'s':''} (con cliente), ${totalPorVencer} por vencer (hoy/mañana/pasado mañana) — ${desglose}`;
+      }
+      if (vencidasSinCliente > 0) {
+        const elSinCliente = document.createElement('div');
+        elSinCliente.textContent = `+${vencidasSinCliente} vencida${vencidasSinCliente!==1?'s':''} sin cliente asignado`;
+        elResumen.appendChild(elSinCliente);
       }
     }
 
-    if (!proximasVctoTotal.length) {
-      apTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:12px">Sin cuentas vencidas ni próximas a vencer (hoy, mañana o pasado mañana)</td></tr>';
+    if (!proximasVctoTotal.length && !vencidasSinClienteList.length) {
+      apTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:12px">Sin cuentas vencidas ni próximas a vencer (hoy, mañana o pasado mañana)</td></tr>';
     } else {
       const gruposDef = [
         { key: 'vencidas', dias: null, label: 'VENCIDAS',     bg: 'rgba(185,28,28,.15)',  color: '#b91c1c'       },
         { key: 'hoy',      dias: 0,    label: 'HOY',           bg: 'rgba(240,77,77,.08)',  color: 'var(--red)'    },
         { key: 'manana',   dias: 1,    label: 'MAÑANA',        bg: 'rgba(245,166,35,.08)', color: 'var(--amber)'  },
-        { key: 'pasman',   dias: 2,    label: 'PASADO MAÑANA', bg: 'rgba(108,143,255,.08)',color: 'var(--accent)' }
+        { key: 'pasman',   dias: 2,    label: 'PASADO MAÑANA', bg: 'rgba(108,143,255,.08)',color: 'var(--accent)' },
+        { key: 'vencsc',   dias: null, label: 'VENCIDAS SIN CLIENTE', bg: 'rgba(107,114,128,.15)', color: 'var(--text2)' }
       ];
       const fmtFechaOffset = diasOffset => {
         const d = new Date(hoyPanamaDate()); d.setDate(d.getDate() + diasOffset);
@@ -3832,24 +3843,25 @@ async function renderDashboard() {
       let html = '';
       gruposDef.forEach(g => {
         let cuentasGrupo;
-        if (g.key === 'vencidas') {
-          cuentasGrupo = proximasVctoTotal.filter(c => c._diasR < 0);
+        if (g.dias === null) {
+          cuentasGrupo = g.key === 'vencsc' ? vencidasSinClienteList : proximasVctoTotal.filter(c => c._diasR < 0);
+          const pref = _dashAlertPrefijoSubrango(g.key);
           DASH_ALERTAS_SUBRANGOS.forEach(sr => {
-            DASH_ALERTAS_GRUPOS[sr.key] = cuentasGrupo.filter(c => sr.test(Math.abs(c._diasR)));
+            DASH_ALERTAS_GRUPOS[pref + sr.key] = cuentasGrupo.filter(c => sr.test(Math.abs(c._diasR)));
           });
         } else {
           cuentasGrupo = proximasVctoTotal.filter(c => c._diasR === g.dias);
           DASH_ALERTAS_GRUPOS[g.key] = cuentasGrupo;
         }
         if (!cuentasGrupo.length) return;
-        const fechaSufijo = g.key === 'vencidas' ? '' : ` (${fmtFechaOffset(g.dias)})`;
+        const fechaSufijo = g.dias === null ? '' : ` (${fmtFechaOffset(g.dias)})`;
         html += `<tr style="cursor:pointer" onclick="dashAlertToggle('${g.key}')">
-          <td colspan="5" style="background:${g.bg};color:${g.color};font-weight:600;font-size:11px;padding:6px 11px;display:flex;align-items:center;justify-content:space-between">
+          <td colspan="6" style="background:${g.bg};color:${g.color};font-weight:600;font-size:11px;padding:6px 11px;display:flex;align-items:center;justify-content:space-between">
             <span>${g.label}${fechaSufijo} · ${cuentasGrupo.length} cuenta${cuentasGrupo.length!==1?'s':''}</span>
             <i class="ti ti-chevron-down" id="dash-al-chev-${g.key}"></i>
           </td>
         </tr>
-        <tr id="dash-al-det-${g.key}" style="display:none"><td colspan="5" style="padding:0;background:var(--bg3)"><table style="width:100%;border-collapse:collapse"><tbody id="dash-al-cont-${g.key}"></tbody></table></td></tr>`;
+        <tr id="dash-al-det-${g.key}" style="display:none"><td colspan="6" style="padding:0;background:var(--bg3)"><table style="width:100%;border-collapse:collapse"><tbody id="dash-al-cont-${g.key}"></tbody></table></td></tr>`;
       });
       apTbody.innerHTML = html;
     }
@@ -3904,22 +3916,28 @@ function _dashAlertFilaCuenta(c) {
     <td style="font-size:12px">${c.proveedor||'—'}</td>
     <td style="text-align:center">${c._clientesCount}</td>
     <td style="font-size:12px">${vctoFmt}</td>
+    <td style="text-align:center;font-size:12px">${c._diasR < 0 ? Math.abs(c._diasR) : '—'}</td>
     <td class="tda"><button class="btn btn-sm btn-ic" title="Ver en Inventario" onclick="irACuentaInventario('${c.id}')"><i class="ti ti-server"></i></button></td>
   </tr>`;
 }
 
+// Los sub-rangos de 'vencsc' (vencidas sin cliente) usan claves con prefijo para no pisar los de 'vencidas'.
+function _dashAlertPrefijoSubrango(key) { return key === 'vencsc' ? 'sc_' : ''; }
+
 function _dashAlertRenderContenido(key) {
-  if (key === 'vencidas') {
+  if (key === 'vencidas' || key === 'vencsc') {
+    const pref = _dashAlertPrefijoSubrango(key);
     return DASH_ALERTAS_SUBRANGOS.map(sr => {
-      const cuentas = DASH_ALERTAS_GRUPOS[sr.key] || [];
+      const k = pref + sr.key;
+      const cuentas = DASH_ALERTAS_GRUPOS[k] || [];
       if (!cuentas.length) return '';
-      return `<tr style="cursor:pointer" onclick="dashAlertToggle('${sr.key}')">
-        <td colspan="5" style="background:${sr.bg};color:${sr.color};font-weight:600;font-size:11px;padding:6px 11px;display:flex;align-items:center;justify-content:space-between">
+      return `<tr style="cursor:pointer" onclick="dashAlertToggle('${k}')">
+        <td colspan="6" style="background:${sr.bg};color:${sr.color};font-weight:600;font-size:11px;padding:6px 11px;display:flex;align-items:center;justify-content:space-between">
           <span>${sr.label} · ${cuentas.length} cuenta${cuentas.length!==1?'s':''}</span>
-          <i class="ti ti-chevron-down" id="dash-al-chev-${sr.key}"></i>
+          <i class="ti ti-chevron-down" id="dash-al-chev-${k}"></i>
         </td>
       </tr>
-      <tr id="dash-al-det-${sr.key}" style="display:none"><td colspan="5" style="padding:0"><table style="width:100%;border-collapse:collapse"><tbody id="dash-al-cont-${sr.key}"></tbody></table></td></tr>`;
+      <tr id="dash-al-det-${k}" style="display:none"><td colspan="6" style="padding:0"><table style="width:100%;border-collapse:collapse"><tbody id="dash-al-cont-${k}"></tbody></table></td></tr>`;
     }).join('');
   }
   const cuentas = DASH_ALERTAS_GRUPOS[key] || [];
@@ -5011,7 +5029,7 @@ async function verDatosAccesoVenta(){
   const canal = document.getElementById('v-canal')?.value || 'WhatsApp';
 
   // Guardar todo lo calculado para usarlo en confirmarVentaDesdeModal()
-  window._ventaPendingData = { tipo, plats, entries, usuarios, pins, fIniVal, fVctoVal, fIniStr, vctoStr, montoCobrado, monto, banco, forma, doc, canal, precioTrasPromo: ventaData.planPrecioTrasPromo || null };
+  window._ventaPendingData = { tipo, plats, entries, usuarios, pins, fIniVal, fVctoVal, fIniStr, vctoStr, montoCobrado, monto, banco, forma, doc, canal, precioTrasPromo: ventaData.planPrecioTrasPromo || null, desglose: ventaData.planDesglose || null };
 
   const datosArray = [];
   for (const entry of entries) {
@@ -5035,7 +5053,7 @@ async function verDatosAccesoVenta(){
 async function confirmarVentaDesdeModal(){
   const pd = window._ventaPendingData;
   if (!pd) { toast('No hay datos pendientes de venta', 'error'); return; }
-  const { entries, usuarios, pins, fIniVal, fVctoVal, fIniStr, vctoStr, montoCobrado, monto, banco, forma, doc, canal, tipo, plats, precioTrasPromo } = pd;
+  const { entries, usuarios, pins, fIniVal, fVctoVal, fIniStr, vctoStr, montoCobrado, monto, banco, forma, doc, canal, tipo, plats, precioTrasPromo, desglose } = pd;
 
   const comboId  = plats.length > 1 && new Set(plats).size > 1
     ? normalizarCombo(plats.join('+')) : '—';
@@ -5058,7 +5076,10 @@ async function confirmarVentaDesdeModal(){
     if (!okVenta) throw new Error('No se pudo guardar la venta');
 
     const platsKeyVenta  = normalizarCombo([...new Set(plats)].join('+'));
-    const desgloseVenta  = PLANES_DESGLOSE[platsKeyVenta + '|' + entries.length];
+    // Combo: usar el desglose propio del plan seleccionado (pd.desglose), no un lookup
+    // compartido por combinación de plataformas — evita mezclar el desglose de dos planes
+    // distintos que compartan el mismo combo de plataformas.
+    const desgloseVenta  = tipo === 'combo' ? desglose : PLANES_DESGLOSE[platsKeyVenta + '|' + entries.length];
     const desgloseValido = Array.isArray(desgloseVenta) && desgloseVenta.length === entries.length;
 
     for (const {p, key, perf, idxEnPlat} of entries) {
@@ -6559,7 +6580,8 @@ async function cargarPlanesPrecios() {
         desglose: p.desglose || plats.join(' + '),
         perfiles: p.perfiles || plats.map(() => '1').join('+'),
         notas: p.notas || '',
-        precioTrasPromo: p.precio_tras_promo || null
+        precioTrasPromo: p.precio_tras_promo || null,
+        desgloseJson: p.desglose_json || null
       });
     });
 
@@ -7161,6 +7183,7 @@ function updPerfilesVenta() {
     ventaData.planPerfiles = 1;
     ventaData.plats = [];
     ventaData.planPrecioTrasPromo = null;
+    ventaData.planDesglose = null;
     return;
   }
 
@@ -7188,6 +7211,9 @@ function updPerfilesVenta() {
     ventaData.plats = combo.plats;
     ventaData.comboId = combo.id;
     ventaData.planPrecioTrasPromo = combo.precioTrasPromo != null ? parseFloat(combo.precioTrasPromo) : null;
+    // Desglose propio de ESTE plan específico (no un lookup compartido por combinación
+    // de plataformas) — evita mezclar el desglose de dos planes con el mismo combo.
+    ventaData.planDesglose = combo.desgloseJson || null;
     if (prev) {
       const nombres = combo.plats.map(p => platNombre(p)).join(' + ');
       prev.textContent = `${nombres} — $${combo.precio.toFixed(2)} (${combo.desglose})`;
