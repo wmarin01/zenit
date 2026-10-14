@@ -7,8 +7,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
 // ── CONFIGURACIÓN SUPABASE ────────────────────────────────────
-const SUPA_URL = 'https://epsmeemrqgihkqrwbfrm.supabase.co';
-const SUPA_KEY = 'sb_publishable_aG1RDYX0Vgq3_C23MGkbOA_bMJMxu7C';
+const SUPA_URL = 'https://gqnvocozmdtghuaojfgo.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxbnZvY296bWR0Z2h1YW9qZmdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNTYzNDYsImV4cCI6MjA5NTkzMjM0Nn0.hLEoqJbtpdemEAK4J780QUyz5o11lTvlm8Q7cGqzI4A';
 const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ── HELPERS DE BASE DE DATOS ──────────────────────────────────
@@ -1817,6 +1817,7 @@ function closeSidebarMobile() {
     <div class="tab" onclick="tabParam(this,'pp-contactos')">Tipos contacto</div>
     <div class="tab" onclick="tabParam(this,'pp-motivos')">Motivos cambio</div>
     <div class="tab" onclick="tabParam(this,'pp-tarifas-pin')">Tarifas Pin</div>
+    <div class="tab" onclick="tabParam(this,'pp-sistema')">Sistema</div>
   </div>
   <div class="pp on" id="pp-plat">
     <div style="display:flex;justify-content:flex-end;margin-bottom:11px"><button class="btn btn-p btn-sm" onclick="openModal('m-param-form','Nueva plataforma')"><i class="ti ti-plus"></i>Nueva plataforma</button></div>
@@ -1898,6 +1899,20 @@ function closeSidebarMobile() {
     <div style="display:flex;justify-content:flex-end;margin-bottom:11px"><button class="btn btn-p btn-sm" onclick="abrirModalNuevoMotivo()"><i class="ti ti-plus"></i>Nuevo motivo</button></div>
     <div class="card"><div class="tw"><table><thead><tr><th>Motivo</th><th>Tipo de cambio</th><th>Estado</th><th></th></tr></thead><tbody id="tb-motivos"><tr id="motivos-loading"><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">Cargando...</td></tr>
     </tbody></table></div></div>
+  </div>
+  <div class="pp" id="pp-sistema">
+    <div class="card">
+      <div class="ct"><i class="ti ti-calendar" style="color:var(--accent)"></i>Vencimiento en nueva venta</div>
+      <div class="fg" style="max-width:440px">
+        <label>Regla de cálculo</label>
+        <select id="cfg-regla-vcto" onchange="guardarReglaVctoVenta(this.value)" disabled>
+          <option value="pares">Cálculo actual (redondeo a día par)</option>
+          <option value="fijo29">30 días fijos (sin redondeo)</option>
+        </select>
+        <div class="hint">30 días fijos: compra + (30 × meses − 1) días; si cae en día 31 pasa al día 1 del mes siguiente. Solo afecta la fecha sugerida en Nueva Venta — las renovaciones no cambian.</div>
+        <div class="hint" id="cfg-regla-vcto-estado" style="color:var(--amber)"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -7577,8 +7592,11 @@ function calcVctoVenta() {
   const ini = document.getElementById('v-fecha-ini')?.value;
   const meses = parseInt(document.getElementById('v-meses')?.value) || 1;
   if (!ini) return;
-  // calcFechaVcto devuelve dd/mm/yyyy — convertir a YYYY-MM-DD para input type="date"
-  const vctoFmt = calcFechaVcto(ini, meses); // "04/07/2026"
+  // calcFechaVcto / calcFechaVctoFijo29 devuelven dd/mm/yyyy — convertir a YYYY-MM-DD para input type="date"
+  // La regla activa se elige en Parámetros → Sistema (config_sistema.regla_vcto_venta_nueva)
+  const vctoFmt = reglaVctoVentaNueva() === 'fijo29'
+    ? calcFechaVctoFijo29(ini, meses)
+    : calcFechaVcto(ini, meses); // "04/07/2026"
   const [dd, mm, yy] = vctoFmt.split('/');
   const vctoISO = yy + '-' + mm + '-' + dd; // "2026-07-04"
   const el = document.getElementById('v-fecha-vcto');
@@ -7602,6 +7620,57 @@ function calcFechaVcto(fechaIni, meses) {
   const mm = String(d.getMonth()+1).padStart(2,'0');
   const yy = d.getFullYear();
   return `${dd}/${mm}/${yy}`;
+}
+
+// ── CÁLCULO FECHA VENCIMIENTO FIJO: +(30×meses − 1) días, sin redondeo ──
+// Excepción: si el resultado cae en día 31, se corre al día 1 del mes siguiente.
+function calcFechaVctoFijo29(fechaIni, meses) {
+  const [_yIni, _mIni, _dIni] = fechaIni.split('-').map(Number);
+  const d = new Date(_yIni, _mIni - 1, _dIni);
+  d.setDate(d.getDate() + (30 * meses - 1));
+  if (d.getDate() === 31) d.setDate(d.getDate() + 1);
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yy = d.getFullYear();
+  return `${dd}/${mm}/${yy}`;
+}
+
+// ── CONFIGURACIÓN DEL SISTEMA (tabla config_sistema: clave/valor) ──
+// Se llena en cargarParametros(). Si la tabla no se pudo leer, se usa el cálculo actual ('pares').
+let CONFIG_SISTEMA = {};
+let CONFIG_SISTEMA_OK = false;
+const REGLAS_VCTO_VENTA = { pares: 'Cálculo actual (redondeo a día par)', fijo29: '30 días fijos (sin redondeo)' };
+
+function reglaVctoVentaNueva() {
+  return CONFIG_SISTEMA.regla_vcto_venta_nueva === 'fijo29' ? 'fijo29' : 'pares';
+}
+
+function renderConfigSistema() {
+  const sel = document.getElementById('cfg-regla-vcto');
+  const est = document.getElementById('cfg-regla-vcto-estado');
+  if (!sel) return;
+  sel.value = reglaVctoVentaNueva();
+  sel.disabled = !CONFIG_SISTEMA_OK;
+  if (est) est.textContent = CONFIG_SISTEMA_OK ? '' : 'No se pudo leer la tabla config_sistema — se usa el cálculo actual (redondeo a día par).';
+}
+
+async function guardarReglaVctoVenta(valor) {
+  if (!REGLAS_VCTO_VENTA[valor]) return;
+  const anterior = reglaVctoVentaNueva();
+  if (valor === anterior) return;
+  const sel = document.getElementById('cfg-regla-vcto');
+  if (sel) sel.disabled = true;
+  try {
+    const { error } = await supa.from('config_sistema').upsert({ clave: 'regla_vcto_venta_nueva', valor, actualizado: new Date().toISOString() }, { onConflict: 'clave' });
+    if (error) throw error;
+    CONFIG_SISTEMA.regla_vcto_venta_nueva = valor;
+    toast('Regla de vencimiento actualizada ✓', 'ok');
+    await dbGuardarHistorial('Cambiar regla vencimiento venta nueva', REGLAS_VCTO_VENTA[anterior] + ' → ' + REGLAS_VCTO_VENTA[valor], 'var(--accent)');
+  } catch(e) {
+    toast('Error al guardar: ' + (e.message || e), 'err');
+  } finally {
+    renderConfigSistema();
+  }
 }
 
 // ── FLUJO REGISTRAR PAGO ─────────────────────────────────────
@@ -14125,6 +14194,16 @@ async function cargarParametros() {
       }).join('');
     }
   } catch(e) {}
+
+  // Configuración del sistema (clave/valor)
+  try {
+    const {data, error} = await supa.from('config_sistema').select('clave,valor');
+    if (error) throw error;
+    CONFIG_SISTEMA = {};
+    (data || []).forEach(r => { CONFIG_SISTEMA[r.clave] = r.valor; });
+    CONFIG_SISTEMA_OK = true;
+  } catch(e) { CONFIG_SISTEMA_OK = false; }
+  renderConfigSistema();
 
   renderPlantillasWA();
 }
