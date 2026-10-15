@@ -108,6 +108,8 @@ async function dbGuardarSuscripcion(sub) {
     tipo_cliente: sub.tipoCliente,
     estado: 'activo',
     precio_tras_promo: sub.precioTrasPromo || null,
+    // Solo se envía si existe: una venta individual sigue funcionando aunque la columna aún no exista en la BD
+    ...(sub.ventaGrupoId ? { venta_grupo_id: sub.ventaGrupoId } : {}),
     created_at: new Date().toISOString()
   }, { onConflict: 'cliente_id,perfil_id' });
   if (error) { console.error('Error guardando suscripción:', error); throw error; }
@@ -516,6 +518,7 @@ async function dbCargarSuscripciones() {
         tipo: s.tipo || 'Individual',
         plat: s.plataforma,
         combo: s.combo_id && s.combo_id !== 'undefined' ? s.combo_id : '—',
+        ventaGrupoId: s.venta_grupo_id || null,
         est: s.estado,
         cuentaBloqueada: (cuentaId && esBloqueado(_estadoMap[cuentaId]) && s.estado === 'activo'),
         cuentaEstado: cuentaId ? (_estadoMap[cuentaId] || '') : '',
@@ -5072,6 +5075,9 @@ async function confirmarVentaDesdeModal(){
 
   const comboId  = plats.length > 1 && new Set(plats).size > 1
     ? normalizarCombo(plats.join('+')) : '—';
+  // Id único de ESTA venta, compartido por todas las filas del combo (combo_id solo dice qué
+  // plataformas son, y se repite entre dos combos iguales del mismo cliente)
+  const ventaGrupoId = comboId !== '—' ? generarVentaGrupoId() : null;
 
   const btnConf = document.getElementById('exito-wa-btn');
   if (btnConf) { btnConf.disabled = true; btnConf.innerHTML = '<i class="ti ti-loader"></i> Guardando...'; }
@@ -5115,7 +5121,7 @@ async function confirmarVentaDesdeModal(){
       const precioTrasPromoEntry = precioTrasPromo != null ? +(precioTrasPromo * ratioEntry).toFixed(2) : null;
       const subParams = {
         clienteId: ventaData.clienteId, plat: p, tipo: tipo==='combo'?'Combo':'Individual',
-        combo: comboId, correo: perf?.correo||'—',
+        combo: comboId, ventaGrupoId, correo: perf?.correo||'—',
         usuario: usuarios[key]||'—', pin: pins[key]||'—',
         perfilId: perf?.codigo||null,
         fIni: fIniStr, fVcto: vctoStr, monto: montoEntry, tipoCliente: 'Nuevo',
@@ -5327,7 +5333,10 @@ async function confirmarPago() {
     }
 
     // Plataformas de combo NO seleccionadas → sin_renovar
+    // Solo en combos con al menos una plataforma renovada (renovación parcial). Un combo sin
+    // ninguna casilla marcada no se paga hoy y se deja intacto, igual que una individual.
     for (const [, cg] of comboAnalysis) {
+      if (!cg.checked.length) continue;
       for (const r of cg.unchecked) {
         const { error: eCombo } = await supa.from('suscripciones').update({ estado: 'sin_renovar' }).eq('id', r.subId);
         if (eCombo) { console.error('[COMBO] Error marcando sin_renovar:', eCombo.message); toast('⚠️ Error actualizando plataforma no renovada del combo (id ' + r.subId + '). Verifica manualmente.', 'error'); }
@@ -7760,6 +7769,7 @@ async function renderSubsPago(clienteId) {
         tipo:        s.tipo || 'Individual',
         plat:        s.plataforma,
         combo:       s.combo_id && s.combo_id !== 'undefined' ? s.combo_id : '—',
+        ventaGrupoId: s.venta_grupo_id || null,
         est:         s.estado,
         tipoCliente: s.tipo_cliente || 'Nuevo',
         precioTrasPromo: s.precio_tras_promo != null ? parseFloat(s.precio_tras_promo) : null,
@@ -7769,9 +7779,13 @@ async function renderSubsPago(clienteId) {
 
   // Agrupar combos (misma lógica de dedup)
   const grupoMap = new Map();
+  // Llave: id de la venta/conversión si existe; si no (filas históricas), combo_id + vencimiento,
+  // para no fusionar dos combos con las mismas plataformas del mismo cliente.
   subsRaw.forEach(s => {
     let key;
-    if (s.combo && s.combo !== '—') key = 'combo_' + normalizarCombo(s.combo);
+    const esComboSub = (s.combo && s.combo !== '—') || (s.tipo || '').toLowerCase() === 'combo';
+    if (esComboSub && s.ventaGrupoId) key = 'grp_' + s.ventaGrupoId;
+    else if (s.combo && s.combo !== '—') key = 'combo_' + normalizarCombo(s.combo) + '|' + (s.fVcto || '');
     else if ((s.tipo || '').toLowerCase() === 'combo') key = 'comboplat_' + (s.plat || s.id);
     else key = 'ind_' + s.id;
     if (!grupoMap.has(key)) {
@@ -9876,9 +9890,10 @@ async function confirmarCombo(){
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
 
   let errores = 0;
+  const ventaGrupoId = generarVentaGrupoId();
   for (const s of seleccionadas) {
     const { error } = await supa.from('suscripciones').update({
-      tipo: 'Combo', combo_id: comboId, monto: s.monto
+      tipo: 'Combo', combo_id: comboId, monto: s.monto, venta_grupo_id: ventaGrupoId
     }).eq('id', s.id);
     if (error) {
       console.error('[COMBO] Error actualizando suscripción', s.id, error.message);
@@ -9886,7 +9901,7 @@ async function confirmarCombo(){
       errores++;
     } else {
       const memIdx = SUBS_FULL.findIndex(x => x.id == s.id);
-      if (memIdx !== -1) { SUBS_FULL[memIdx].tipo = 'Combo'; SUBS_FULL[memIdx].combo = comboId; SUBS_FULL[memIdx].monto = s.monto; }
+      if (memIdx !== -1) { SUBS_FULL[memIdx].tipo = 'Combo'; SUBS_FULL[memIdx].combo = comboId; SUBS_FULL[memIdx].monto = s.monto; SUBS_FULL[memIdx].ventaGrupoId = ventaGrupoId; }
     }
   }
 
@@ -10829,6 +10844,12 @@ function normalizarCombo(plataformas) {
     return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
   });
   return parts.join('+');
+}
+
+// Id único para agrupar las filas creadas en una misma venta/conversión a combo (suscripciones.venta_grupo_id).
+function generarVentaGrupoId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return 'vg-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 }
 
 // Descompone un código de plataforma (simple o combo) en sus códigos individuales.
