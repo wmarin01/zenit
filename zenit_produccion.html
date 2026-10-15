@@ -445,7 +445,13 @@ async function _confirmarEliminarVenta(id) {
 }
 
 // Cargar suscripciones al iniciar
-async function dbCargarSuscripciones() {
+// Hora (reloj local) en que empezó la última recarga EXITOSA de SUBS_FULL. Realtime la usa para no
+// recargar otra vez cambios que esa recarga ya incluye (ver iniciarRealtime).
+let _subsCargaInicio = 0;
+// cuentasPre (opcional): filas de cuentas_inventario (o la promesa que las trae) ya pedidas en esta
+// misma carga (iniciarApp), para no volver a pedirlas; si es null se consultan aquí.
+async function dbCargarSuscripciones(cuentasPre) {
+  const _inicioCarga = Date.now();
   // Paginación: traer todos los registros en bloques de 1000
   let allSubs = [];
   let page = 0;
@@ -463,7 +469,7 @@ async function dbCargarSuscripciones() {
 
   let cuentasClaves = [];
   try {
-    cuentasClaves = await fetchTodasLasFilas('cuentas_inventario', 'codigo,clave,link,proveedor,estado,clave_actualizada_en,fecha_vcto_proveedor');
+    cuentasClaves = (cuentasPre ? await cuentasPre : null) || await fetchTodasLasFilas('cuentas_inventario', 'codigo,clave,link,proveedor,estado,clave_actualizada_en,fecha_vcto_proveedor');
   } catch (error) { console.warn('Error cargando cuentas_inventario para _claveMap:', error); }
 
   // Mapa código_cuenta → clave para enriquecer suscripciones sin clave
@@ -529,6 +535,8 @@ async function dbCargarSuscripciones() {
         precioTrasPromo: s.precio_tras_promo != null ? parseFloat(s.precio_tras_promo) : null
       });
     });
+    _subsCargaInicio = _inicioCarga;
+    recalcularInvSubsMap();
     // Poblar plats y dias en CLIENTES desde suscripciones activas
     sincronizarPlatsClientes();
   }
@@ -3809,7 +3817,8 @@ async function renderDashboard() {
   // ── Alertas proveedores (vencidas + próximas a vencer: hoy / mañana / pasado mañana) ────
   const apTbody = document.getElementById('dash-alertas-prov');
   if (apTbody) {
-    await cargarInventario();
+    // INV_CACHE se mantiene al día con Realtime (cuentas_inventario) y SUBS_FULL; solo se carga si aún no existe
+    if (!INV_CACHE.length) await cargarInventario();
     DASH_ALERTAS_GRUPOS = {};
     const _alertasBase = (INV_CACHE || [])
       .filter(c => esActivo(c.estado) && c.fecha_vcto_prov)
@@ -6544,9 +6553,12 @@ function cerrarSesion() {
 
 // Carga precios reales desde Supabase y actualiza PLATS + PRECIOS_IND + COMBOS + dropdowns de ventas
 let PLANES_DESGLOSE = {};
-async function cargarPlanesPrecios() {
+// vigentesPre (opcional, desde iniciarApp): planes vigentes ya traídos por cargarParametros().
+async function cargarPlanesPrecios(vigentesPre) {
   try {
-    const {data, error} = await supa.from('planes_precios').select('*').eq('estado','vigente').order('plataformas');
+    const {data, error} = vigentesPre
+      ? { data: vigentesPre, error: null }
+      : await supa.from('planes_precios').select('*').eq('estado','vigente').order('plataformas');
     if (error) throw error;
     if (!data || !data.length) {
       console.warn('[PLATS] Sin planes vigentes en Supabase — se usan valores por defecto');
@@ -6651,12 +6663,16 @@ let PERFILES_DISP = {};
 
 // Carga perfiles disponibles desde Supabase y puebla PERFILES_DISP para el modal de Nueva Venta.
 // Disponible = perfil de cuenta activa sin suscripción activa asociada.
-async function dbCargarPerfilesDisp() {
+// pre (opcional, solo desde iniciarApp): { cuentas, perfilesOcupados } ya cargados en esta misma
+// carga. Fuera del arranque se consulta siempre la BD: un perfil ocupado no puede verse disponible.
+async function dbCargarPerfilesDisp(pre) {
   try {
     const ESTADOS_EXCLUIDOS = ['bloqueada', 'suspendida', 'inactiva'];
 
     // 1. Traer cuentas con estado='activo' (excluye bloqueado/suspendida/inactivo)
-    const cuentas = await fetchTodasLasFilas('cuentas_inventario', 'codigo, plataforma, correo, clave, estado, link, fecha_vcto_proveedor, digitos_pin', q => q.eq('estado', 'activo'));
+    const cuentas = pre?.cuentas
+      ? pre.cuentas.filter(c => c.estado === 'activo')
+      : await fetchTodasLasFilas('cuentas_inventario', 'codigo, plataforma, correo, clave, estado, link, fecha_vcto_proveedor, digitos_pin', q => q.eq('estado', 'activo'));
     const cuentaMap = {};
     (cuentas || []).forEach(c => {
       if (!ESTADOS_EXCLUIDOS.includes((c.estado || '').toLowerCase())) {
@@ -6665,8 +6681,9 @@ async function dbCargarPerfilesDisp() {
     });
 
     // 2. Traer perfil_id de suscripciones activas para excluirlos
-    const subs = await fetchTodasLasFilas('suscripciones', 'perfil_id', q => q.eq('estado', 'activo'));
-    const ocupados = new Set((subs || []).map(s => (s.perfil_id || '').trim()).filter(Boolean));
+    const ocupados = pre?.perfilesOcupados || new Set(
+      ((await fetchTodasLasFilas('suscripciones', 'perfil_id', q => q.eq('estado', 'activo'))) || [])
+        .map(s => (s.perfil_id || '').trim()).filter(Boolean));
 
     // 3. Traer perfiles disponibles (listos para asignar)
     const perfs = await fetchTodasLasFilas('perfiles', 'id, inventario_id, numero', q => q.eq('estado', 'disponible'));
@@ -6711,26 +6728,23 @@ const NEXT_CODIGO = {NF:'NF0001', DS:'DS0001', HB:'HB0001', PV:'PV0001'};
 let NEXT_CLI_ID = 1; // Se actualiza al cargar clientes desde Supabase
 
 // Cargar siguiente código disponible desde Supabase para cada plataforma
-async function dbCargarNextCodigos() {
+// Una sola consulta de códigos (antes: una por plataforma, en serie); cuentasPre la evita en el arranque.
+async function dbCargarNextCodigos(cuentasPre) {
   const plats = (PLATAFORMAS||[]).filter(p => !esInactivo(p.estado)).map(p => p.codigo);
+  let codigos = null;
+  try {
+    codigos = (cuentasPre || await fetchTodasLasFilas('cuentas_inventario', 'codigo')).map(c => c.codigo || '');
+  } catch(e) { /* Si la tabla no existe aún, usar fallback */ }
   for (const p of plats) {
-    try {
-      const { data } = await supa
-        .from('cuentas_inventario')
-        .select('codigo')
-        .ilike('codigo', p + '%')
-        .order('codigo', { ascending: false })
-        .limit(1);
-      if (data && data.length > 0) {
-        const ultimo = data[0].codigo; // ej: NF0012
-        const numStr = ultimo.replace(/[^0-9]/g, '');
-        const num = parseInt(numStr) || 0;
-        NEXT_CODIGO[p] = p + String(num + 1).padStart(4, '0');
-      } else {
-        NEXT_CODIGO[p] = p + '0001';
-      }
-    } catch(e) {
-      // Si la tabla no existe aún, usar fallback
+    // Mismo criterio que el antiguo .ilike(p + '%').order('codigo', desc).limit(1)
+    const ultimo = (codigos || [])
+      .filter(c => c.toUpperCase().startsWith(p.toUpperCase()))
+      .sort().pop(); // ej: NF0012
+    if (ultimo) {
+      const numStr = ultimo.replace(/[^0-9]/g, '');
+      const num = parseInt(numStr) || 0;
+      NEXT_CODIGO[p] = p + String(num + 1).padStart(4, '0');
+    } else {
       NEXT_CODIGO[p] = p + '0001';
     }
   }
@@ -11532,14 +11546,28 @@ renderC(CLIENTES);
 // REALTIME — suscripciones Supabase a cambios en tiempo real
 // ═══════════════════════════════════════════════════════════
 let RT_CHANNELS = [];
+const RT_DEBOUNCE_MS = 1500;
+const RT_DEBOUNCE_MAX_MS = 5000;
+const RT_ULTIMO_EVENTO = {}; // tabla → Date.now() del último evento recibido
 
 function iniciarRealtime() {
   RT_CHANNELS.forEach(ch => { try { supa.removeChannel(ch); } catch(e) {} });
   RT_CHANNELS = [];
 
+  // Debounce por tabla: Realtime emite un evento POR FILA (un pago combo = 4 eventos). Se espera
+  // RT_DEBOUNCE_MS sin eventos nuevos y se recarga UNA vez; RT_DEBOUNCE_MAX_MS evita posponer
+  // indefinidamente si los cambios no paran.
   function rtSub(tabla, callback) {
+    let timer = null, primerEvento = 0;
     const ch = supa.channel('rt-' + tabla)
-      .on('postgres_changes', { event: '*', schema: 'public', table: tabla }, callback)
+      .on('postgres_changes', { event: '*', schema: 'public', table: tabla }, () => {
+        const ahora = Date.now();
+        RT_ULTIMO_EVENTO[tabla] = ahora;
+        if (!primerEvento) primerEvento = ahora;
+        clearTimeout(timer);
+        const espera = Math.max(0, Math.min(RT_DEBOUNCE_MS, primerEvento + RT_DEBOUNCE_MAX_MS - ahora));
+        timer = setTimeout(() => { primerEvento = 0; timer = null; callback(); }, espera);
+      })
       .subscribe();
     RT_CHANNELS.push(ch);
   }
@@ -11550,22 +11578,34 @@ function iniciarRealtime() {
   });
 
   rtSub('suscripciones', () => {
+    // Si una recarga exitosa EMPEZÓ después del último evento recibido, ya incluye esos cambios
+    // (ej. confirmarPago() recarga por su cuenta tras sus propios UPDATE): no repetirla.
+    if (_subsCargaInicio > (RT_ULTIMO_EVENTO.suscripciones || 0)) {
+      console.log('[RT] cambio en suscripciones — ya incluido en la última recarga, se omite');
+      return;
+    }
     console.log('[RT] cambio en suscripciones');
     (async () => {
       await dbCargarSuscripciones();
       if (document.getElementById('v-suscripciones')?.classList.contains('on')) _aplicarFiltrosSubs();
+      if (document.getElementById('v-inventario')?.classList.contains('on')) filtrarInventario();
       renderDashboard();
     })();
   });
 
   rtSub('cuentas_inventario', () => {
     console.log('[RT] cambio en cuentas_inventario');
-    if (document.getElementById('v-inventario')?.classList.contains('on')) cargarInventario();
+    // Siempre: INV_CACHE alimenta también las alertas del Dashboard (renderDashboard ya no lo recarga)
+    (async () => {
+      await cargarInventario();
+      if (document.getElementById('v-dashboard')?.classList.contains('on')) renderDashboard();
+    })();
   });
 
   rtSub('clientes', () => {
     console.log('[RT] cambio en clientes');
-    dbCargarClientes();
+    // dbCargarClientes() reconstruye CLIENTES con plats/días vacíos: volver a cruzarlos con SUBS_FULL
+    dbCargarClientes().then(() => sincronizarPlatsClientes());
   });
 
   rtSub('cobros', () => {
@@ -11661,20 +11701,41 @@ async function iniciarApp() {
     }
   } catch(_) {}
   try {
-    await verificarConexion();
-    await cargarPlanesPrecios();
-    await cargarParametros(); // 🚀 Inyectamos los Bancos y Formas de pago reales a los formularios
-    await cargarPlataformas();
-    await dbCargarClientes();
-    await dbCargarCobros();
-    await dbCargarVentas();
-    await dbCargarSuscripciones();
-    await dbCargarNextCodigos();
-    await dbCargarPerfilesDisp();
-    await cargarUsuariosSistema();
-    await cargarProveedoresAbbr();
-    await cargarMotivosCambio();
-    await cargarPlantillasWA();
+    // Tanda 1 — independientes entre sí. cargarParametros() ya trae planes_precios (todos) y
+    // motivos_cambio (vía cargarMotivosCambio), así que no se vuelven a pedir abajo.
+    await Promise.all([
+      verificarConexion(),
+      cargarPlataformas(),
+      cargarUsuariosSistema(),
+      cargarParametros(), // 🚀 Inyectamos los Bancos y Formas de pago reales a los formularios
+      cargarProveedoresAbbr(),
+      cargarPlantillasWA()
+    ]);
+    // Necesita PLATAFORMAS (antes corría antes que cargarPlataformas y PRECIOS_IND quedaba sin inicializar)
+    await cargarPlanesPrecios(PLANES_PRECIOS.length ? PLANES_PRECIOS.filter(p => p.estado === 'vigente') : undefined);
+
+    // Tanda 2 — datos principales en paralelo; cuentas_inventario se pide UNA vez para todos
+    const pCuentas = fetchTodasLasFilas('cuentas_inventario', COLS_CUENTAS_INIT, q => q.order('plataforma').order('codigo'))
+      .catch(e => { console.warn('[APP] Error cargando cuentas_inventario (cada función la pedirá por su cuenta):', e); return null; });
+    await Promise.all([
+      dbCargarClientes(),
+      dbCargarCobros(),
+      dbCargarVentas(),
+      dbCargarSuscripciones(pCuentas) // sus páginas corren en paralelo con pCuentas; la espera solo al final
+    ]);
+    // Clientes y suscripciones cargaron en paralelo: cruzarlos ahora que están los dos
+    sincronizarPlatsClientes();
+
+    // Tanda 3 — derivados: reusan cuentas y SUBS_FULL recién cargados en vez de volver a pedirlos
+    const cuentasInit = await pCuentas;
+    const perfilesOcupados = new Set(SUBS_FULL
+      .filter(s => s.est === 'activo' && s.perfil && s.perfil !== '—')
+      .map(s => s.perfil.trim()));
+    await Promise.all([
+      dbCargarNextCodigos(cuentasInit || undefined),
+      dbCargarPerfilesDisp(cuentasInit && SUBS_FULL.length ? { cuentas: cuentasInit, perfilesOcupados } : undefined),
+      cargarInventario(cuentasInit || undefined)
+    ]);
     renderDashboard();
     if (typeof activarBotonesReutilizar === 'function') activarBotonesReutilizar();
     _aplicarFiltrosSubs();
@@ -14173,9 +14234,10 @@ async function cargarParametros() {
     }
   } catch(e) {}
 
-  // Motivos cambio
+  // Motivos cambio (misma consulta que cargarMotivosCambio(), que además llena MOTIVOS_CACHE y #sel-motivo)
   try {
-    const {data} = await supa.from('motivos_cambio').select('*').eq('estado','activo').order('motivo');
+    await cargarMotivosCambio();
+    const data = [...MOTIVOS_CACHE].sort((a, b) => (a.motivo||'').localeCompare(b.motivo||''));
     if (data && data.length) {
       document.getElementById('tb-motivos').innerHTML = data.map(m=>`
         <tr>
@@ -14402,15 +14464,35 @@ const platNombre = codigo => (PLATAFORMAS||[]).find(p=>p.codigo===codigo)?.nombr
 let INV_CACHE = [];
 let INV_SUBS_MAP = {}; // { cuenta_id: perfiles_ocupados }
 
-async function cargarInventario() {
+// Columnas de cuentas_inventario que necesitan, juntas, cargarInventario(), dbCargarSuscripciones()
+// y dbCargarPerfilesDisp(): iniciarApp() las pide UNA vez y se las pasa a las tres.
+const COLS_CUENTAS_INIT = 'codigo,plataforma,correo,clave,max_perfiles,fecha_compra,fecha_vcto_proveedor,costo_proveedor,proveedor,estado,notas,link,digitos_pin,clave_actualizada_en';
+
+// Perfiles ocupados por cuenta, calculado desde SUBS_FULL (que ya trae todas las suscripciones)
+// en vez de volver a descargar la tabla suscripciones.
+function recalcularInvSubsMap() {
+  INV_SUBS_MAP = {};
+  SUBS_FULL.forEach(s => {
+    const raw = (s.perfil && s.perfil !== '—' ? s.perfil : '').trim();
+    if (!raw) return;
+    const cuentaId = raw.slice(0, -1);
+    if (!INV_SUBS_MAP[cuentaId]) INV_SUBS_MAP[cuentaId] = 0;
+    if ((s.est||'').toLowerCase() === 'activo') INV_SUBS_MAP[cuentaId]++;
+  });
+}
+
+// cuentasPre (opcional): filas ya traídas con COLS_CUENTAS_INIT, ordenadas por plataforma y código.
+async function cargarInventario(cuentasPre) {
   try {
     let all = [];
     let page = 0;
     while(true) {
-      const {data, error} = await supa.from('cuentas_inventario')
+      let data, error;
+      if (cuentasPre) { data = cuentasPre; error = null; }
+      else ({data, error} = await supa.from('cuentas_inventario')
         .select('codigo,plataforma,correo,clave,max_perfiles,fecha_compra,fecha_vcto_proveedor,costo_proveedor,proveedor,estado,notas,link,digitos_pin')
         .order('plataforma').order('codigo')
-        .range(page*1000, page*1000+999);
+        .range(page*1000, page*1000+999));
       if (error) throw error;
       if (!data || !data.length) break;
       all = all.concat(data.map(c => ({
@@ -14428,10 +14510,13 @@ async function cargarInventario() {
         link: c.link,
         digitos_pin: c.digitos_pin ?? null
       })));
-      if (data.length < 1000) break;
+      if (cuentasPre || data.length < 1000) break;
       page++;
     }
     INV_CACHE = all;
+
+    // Disp./Ocup.: si SUBS_FULL ya está cargado, se calcula desde ahí (sin otra descarga)
+    if (SUBS_FULL.length) { recalcularInvSubsMap(); filtrarInventario(); return; }
 
     // Cargar suscripciones para calcular Disp./Ocup.
     // El perfil tiene formato: DS00022 → cuenta DS0002 (primeros 6 chars)
