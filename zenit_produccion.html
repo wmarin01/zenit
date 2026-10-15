@@ -67,9 +67,53 @@ async function dbGuardarCobro(cobro) {
     dup_autorizado: cobro.dupAutorizado || false
   }).select('id').single();
   if (error) { console.error('Error guardando cobro:', error); return null; }
+  // Ayuda visual al día sin esperar Realtime (la validación real es buscarComprobanteExistente)
+  const docUC = normalizarComprobante(cobro.doc);
+  if (docUC && !UC.includes(docUC)) UC.push(docUC);
   // Devuelve el id de la fila creada (truthy) en vez de solo true/false — los
   // call sites existentes usan !resultado, así que siguen funcionando igual.
   return data?.id ?? null;
+}
+
+// ── Comprobante duplicado ──
+// Misma normalización que la validación en vivo: el input fuerza mayúsculas y valComp hace trim.
+function normalizarComprobante(doc) { return (doc || '').trim().toUpperCase(); }
+
+// Cobros que ya usan ese comprobante, consultados en la BASE (no en UC). Lanza error si no se pudo consultar.
+async function buscarComprobanteExistente(doc) {
+  const d = normalizarComprobante(doc);
+  if (!d) return [];
+  // ilike sin comodines = igualdad sin distinguir mayúsculas; se escapan los comodines de LIKE
+  const patron = d.replace(/[\\%_]/g, m => '\\' + m);
+  const { data, error } = await supa.from('cobros')
+    .select('id, fecha, nombre, cliente_id, monto, tipo, dup_autorizado')
+    .ilike('documento', patron)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+// Un solo guardado de cobro a la vez, compartido por Venta nueva y Registrar Pago
+let _guardandoCobro = false;
+
+// Valida el comprobante UNA vez antes de toda la operación (todos sus cobros heredan el resultado).
+// estado.dupAutorizado guarda el NÚMERO autorizado (no true): si el operador cambia el número,
+// hay que autorizar de nuevo. Devuelve { ok, dupAutorizado }.
+async function validarComprobanteAntesDeGuardar(flujo, doc) {
+  const estado = flujo === 'pago' ? pagoData : ventaData;
+  const d = normalizarComprobante(doc);
+  let existentes;
+  try {
+    existentes = await buscarComprobanteExistente(d);
+  } catch (e) {
+    console.error('[COMPROBANTE] Error verificando duplicado:', e);
+    toast('No se pudo verificar si el comprobante ya existe. No se guardó nada; intenta de nuevo.', 'error');
+    return { ok: false };
+  }
+  if (!existentes.length) return { ok: true, dupAutorizado: false };
+  if (estado.dupAutorizado === d) return { ok: true, dupAutorizado: true };
+  const autorizo = await mostrarAvisoDuplicado(flujo, d, existentes);
+  return autorizo ? { ok: true, dupAutorizado: true } : { ok: false };
 }
 
 // Guardar venta
@@ -204,8 +248,12 @@ async function dbCargarClientes() {
 
 // Cargar cobros al iniciar
 async function dbCargarCobros() {
-  const { data, error } = await supa.from('cobros').select('*').order('created_at', { ascending: false }).limit(1000);
-  if (error) { console.error('Error cargando cobros:', error); return; }
+  // Todas las filas (antes .limit(1000) dejaba fuera los más viejos y UC no los veía como duplicados).
+  // id desempata created_at repetidos para que la paginación no salte ni repita filas.
+  let data;
+  try {
+    data = await fetchTodasLasFilas('cobros', '*', q => q.order('created_at', { ascending: false }).order('id', { ascending: false }));
+  } catch (error) { console.error('Error cargando cobros:', error); return; }
   if (data && data.length > 0) {
     COBROS.length = 0;
     data.forEach(c => {
@@ -231,7 +279,8 @@ async function dbCargarCobros() {
         est: c.estado
       });
       // Registrar comprobante en UC
-      if (c.documento && !UC.includes(c.documento)) UC.push(c.documento);
+      const docUC = normalizarComprobante(c.documento);
+      if (docUC && !UC.includes(docUC)) UC.push(docUC);
     });
     console.log('Cobros cargados desde Supabase:', data.length);
   }
@@ -240,9 +289,10 @@ async function dbCargarCobros() {
 // Cargar ventas desde Supabase
 const VENTAS_DB = [];
 async function dbCargarVentas() {
-  const { data, error } = await supa.from('ventas')
-    .select('*').order('created_at', { ascending: false }).limit(1000);
-  if (error) { console.error('Error cargando ventas:', error); return; }
+  let data;
+  try {
+    data = await fetchTodasLasFilas('ventas', '*', q => q.order('created_at', { ascending: false }).order('id', { ascending: false }));
+  } catch (error) { console.error('Error cargando ventas:', error); return; }
   if (data && data.length > 0) {
     VENTAS_DB.length = 0;
     data.forEach(v => VENTAS_DB.push(v));
@@ -3516,7 +3566,7 @@ function closeSidebarMobile() {
 const CLIENTES=[];
 const PC={NF:'var(--nf)',DS:'var(--ds)',HB:'var(--hb)',PV:'var(--pv)'};
 const CI={WhatsApp:'<i class="ti ti-brand-whatsapp" style="color:#25D366"></i>',Email:'<i class="ti ti-mail" style="color:var(--accent)"></i>',Instagram:'<i class="ti ti-brand-instagram" style="color:#E1306C"></i>',Telegram:'<i class="ti ti-brand-telegram" style="color:#229ED9"></i>',Facebook:'<i class="ti ti-brand-facebook" style="color:#1877F2"></i>',TikTok:'<i class="ti ti-brand-tiktok"></i>'};
-const UC=['00838','00839','00840','00841'];
+const UC=[]; // comprobantes ya usados (normalizados); solo ayuda visual, se llena desde cobros
 let waCtx={n:'',p:'',m:''};
 // Motor de sustitución compartido por todo el objeto WA — mismo criterio (nombre
 // exacto, case-insensitive) que ya usa vctCopiarWA(), para que Parámetros → Plantillas
@@ -4653,7 +4703,7 @@ async function notificarClaveActualizada(subId) {
 }
 
 function valComp(input,hid){
-  const v=input.value.trim();
+  const v=normalizarComprobante(input.value);
   const h=document.getElementById(hid);
   if(!h)return;
   if(v.length<4){
@@ -4663,8 +4713,14 @@ function valComp(input,hid){
     input.dataset.valid='false';
     return;
   }
-  if(UC.includes(v)){
-    h.innerHTML='⚠ Comprobante ya registrado — <span style="color:var(--accent);cursor:pointer;text-decoration:underline;font-weight:600" onclick="abrirRevisionDuplicado()">Revisar</span> para ver opciones.';
+  const autorizadoV = (input.id === 'pago-comp' ? pagoData : ventaData).dupAutorizado === v;
+  if(UC.includes(v) && autorizadoV){
+    h.textContent='⚠ Duplicado autorizado';
+    h.className='hint w';
+    input.style.borderColor='var(--amber)';
+    input.dataset.valid='true';
+  } else if(UC.includes(v)){
+    h.innerHTML='⚠ Comprobante ya registrado — <span style="color:var(--accent);cursor:pointer;text-decoration:underline;font-weight:600" onclick="abrirRevisionDuplicado(\''+input.id+'\')">Revisar</span> para ver opciones.';
     h.className='hint w';
     input.style.borderColor='var(--amber)';
     input.dataset.valid='false';
@@ -5088,10 +5144,20 @@ async function confirmarVentaDesdeModal(){
   // plataformas son, y se repite entre dos combos iguales del mismo cliente)
   const ventaGrupoId = comboId !== '—' ? generarVentaGrupoId() : null;
 
+  if (_guardandoCobro) return;
+  _guardandoCobro = true;
   const btnConf = document.getElementById('exito-wa-btn');
   if (btnConf) { btnConf.disabled = true; btnConf.innerHTML = '<i class="ti ti-loader"></i> Guardando...'; }
 
+  let escrituraHecha = false; // true desde el primer insert: un error posterior ya no permite reintentar
   try {
+    // Comprobante: UNA validación contra la base antes de la primera escritura de la venta
+    const chkComp = await validarComprobanteAntesDeGuardar('venta', doc);
+    if (!chkComp.ok) {
+      if (btnConf) btnConf.innerHTML = '<i class="ti ti-check"></i> Confirmar venta';
+      return;
+    }
+
     const correos = entries.map(e => e.perf?.correo || '—');
     const correo2 = [...new Set(correos)].join(' / ');
     const usuario2= entries.map(e => usuarios[e.key] || '—').join(' / ');
@@ -5104,6 +5170,10 @@ async function confirmarVentaDesdeModal(){
       fechaIni: fIniVal, fechaFin: fVctoVal, monto, canal
     });
     if (!okVenta) throw new Error('No se pudo guardar la venta');
+    // Ya hay datos guardados: limpiar lo pendiente para que esta venta no se pueda volver a enviar
+    escrituraHecha = true;
+    window._ventaPendingData = null;
+    ventaData.dupAutorizado = false;
 
     const platsKeyVenta  = normalizarCombo([...new Set(plats)].join('+'));
     // Combo: usar el desglose propio del plan seleccionado (pd.desglose), no un lookup
@@ -5146,7 +5216,7 @@ async function confirmarVentaDesdeModal(){
       monto: montoCobrado, banco, forma, doc,
       fechaIni: fIniVal,
       operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
-      dupAutorizado: ventaData.dupAutorizado || false
+      dupAutorizado: chkComp.dupAutorizado
     });
     if (!okCobro) throw new Error('No se pudo guardar el cobro');
 
@@ -5218,8 +5288,21 @@ async function confirmarVentaDesdeModal(){
 
   } catch(e) {
     console.error('[VENTA] Error:', e);
-    toast('Error al guardar la venta: ' + (e.message || e), 'error');
+    if (escrituraHecha) {
+      // No reabrir el botón con los mismos datos: la venta ya quedó (al menos en parte) en la base
+      toast('⚠️ La venta YA se guardó, pero falló un paso posterior: ' + (e.message || e) + '. NO la registres de nuevo; revisa Ventas, Suscripciones y Cobros.', 'error');
+      const _ov = document.getElementById('m-exito-venta');
+      if (_ov) _ov.style.display = 'none';
+      document.body.style.overflow = '';
+      closeModal('m-venta');
+      dbCargarVentas();
+      dbCargarCobros().then(() => { if (typeof updMetricasCobros === 'function') updMetricasCobros(); });
+      refrescarVistaActiva({ subs: true, perfilesDisp: true }).catch(err => console.error('[VENTA] Error refrescando:', err));
+    } else {
+      toast('Error al guardar la venta: ' + (e.message || e), 'error');
+    }
   } finally {
+    _guardandoCobro = false;
     if (btnConf) { btnConf.disabled = false; }
   }
 }
@@ -5242,10 +5325,17 @@ async function confirmarPago() {
       if (!monto)  { toast('Ingresa el monto', 'error'); return; }
       if (!comp || comp.length < 4) { toast('El Nro. de comprobante es obligatorio', 'warn'); return; }
 
+      if (_guardandoCobro) return;
+      _guardandoCobro = true;
       const btn = document.getElementById('btn-registrar-pago');
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
 
+  let cobroGuardado = false; // true tras el insert: un error posterior ya no permite reintentar
   try {
+    // Comprobante: UNA validación contra la base para todo el pago (un combo genera un solo cobro)
+    const chkComp = await validarComprobanteAntesDeGuardar('pago', comp);
+    if (!chkComp.ok) return;
+
     const plats = normalizarCombo(Array.from(checkboxes).map(cb => cb.dataset.plat).join('+'));
     const correos = Array.from(checkboxes).map(cb => pagoSubsActuales[parseInt(cb.dataset.idx)]?.correo || '—');
     const correoPago = [...new Set(correos)].join(' / ');
@@ -5265,9 +5355,14 @@ async function confirmarPago() {
       correo: correoPago, usuario: '', monto, banco, forma: forma || 'Yappy', doc: comp,
       fechaIni: fechaPago,
       operador: USUARIO_ACTIVO?.nombre || USUARIO_ACTIVO?.usuario || 'Sistema',
-      dupAutorizado: false
+      dupAutorizado: chkComp.dupAutorizado
     });
     if (!cobroId) throw new Error('Error al guardar cobro');
+    // Cobro guardado: limpiar lo pendiente de inmediato (la autorización y el número ya se usaron)
+    cobroGuardado = true;
+    pagoData.dupAutorizado = false;
+    const _compEl = document.getElementById('pago-comp');
+    if (_compEl) _compEl.value = '';
 
     // Actualizar suscripciones seleccionadas
     // Agrupar checkboxes MARCADOS por su combosubids — cada grupo se procesa UNA sola vez
@@ -5386,30 +5481,48 @@ async function confirmarPago() {
     }
     toast('Pago registrado correctamente ✓', 'ok');
 
-    // Reset completo del formulario
-    ['pago-monto','pago-fecha','pago-comp','pago-neto',
-     'pago-doc','pago-comprobante','pago-notas'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
-    });
-    const fvReset = document.getElementById('pago-fecha-vcto');
-    if (fvReset) fvReset.textContent = '—';
-    const supsLista = document.getElementById('pago-subs-lista');
-    if (supsLista) supsLista.innerHTML = '';
-    const mesesLista = document.getElementById('pago-meses-lista');
-    if (mesesLista) mesesLista.innerHTML = '';
-    const resumen = document.getElementById('pago-resumen');
-    if (resumen) resumen.innerHTML = '';
-    pagoData = { clienteId: '', clienteNombre: '' };
-    pagoSubsActuales = [];
+    limpiarFormularioPago();
 
   } catch(e) {
     console.error('Error registrando pago:', e);
-    toast('Error al registrar: ' + (e.message || e), 'error');
+    if (cobroGuardado) {
+      // No dejar el modal abierto con los mismos datos: el cobro ya está en la base
+      toast('⚠️ El cobro (comprobante ' + comp + ') YA se guardó, pero falló un paso posterior: ' + (e.message || e) + '. NO lo registres de nuevo; revisa la suscripción del cliente.', 'error');
+      closeModal('m-pago');
+      limpiarFormularioPago();
+      dbCargarCobros().then(() => { if (typeof updMetricasCobros === 'function') updMetricasCobros(); });
+      refrescarVistaActiva({ subs: true }).catch(err => console.error('[PAGO] Error refrescando:', err));
+    } else {
+      toast('Error al registrar: ' + (e.message || e), 'error');
+    }
   } finally {
+    _guardandoCobro = false;
     const btnF = document.getElementById('btn-registrar-pago');
     if (btnF) { btnF.disabled = false; btnF.innerHTML = '<i class="ti ti-check"></i>Registrar pago'; }
   }
+}
+
+// Reset completo del formulario de Registrar Pago (tras guardar, o tras un error posterior al insert)
+function limpiarFormularioPago() {
+  ['pago-monto','pago-fecha','pago-comp','pago-neto',
+   'pago-doc','pago-comprobante','pago-notas'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const hcp = document.getElementById('hcp');
+  if (hcp) { hcp.textContent = 'Validación en tiempo real'; hcp.className = 'hint'; }
+  const compEl = document.getElementById('pago-comp');
+  if (compEl) { compEl.style.borderColor = ''; compEl.dataset.valid = ''; }
+  const fvReset = document.getElementById('pago-fecha-vcto');
+  if (fvReset) fvReset.textContent = '—';
+  const supsLista = document.getElementById('pago-subs-lista');
+  if (supsLista) supsLista.innerHTML = '';
+  const mesesLista = document.getElementById('pago-meses-lista');
+  if (mesesLista) mesesLista.innerHTML = '';
+  const resumen = document.getElementById('pago-resumen');
+  if (resumen) resumen.innerHTML = '';
+  pagoData = { clienteId: '', clienteNombre: '' };
+  pagoSubsActuales = [];
 }
 function mostrarResumenCambio() {
   if (!cambioData.clienteId) { toast('Selecciona un cliente primero','warn'); return; }
@@ -6965,15 +7078,16 @@ function ventaPaso5() {
   const docInpV = document.querySelector('#m-venta input[oninput*="valComp"]');
   const alertaDup = document.getElementById('v-alerta-dup');
   if (docInpV) {
-    const docValV = docInpV.value.trim();
+    const docValV = normalizarComprobante(docInpV.value);
     if (docValV.length < 4) {
       toast('Ingresa el número de comprobante','warn');
       docInpV.focus();
       return;
     }
-    if (UC.includes(docValV) && !ventaData.dupAutorizado) {
+    // Aviso temprano con UC; la validación definitiva contra la base va en confirmarVentaDesdeModal()
+    if (UC.includes(docValV) && ventaData.dupAutorizado !== docValV) {
       if (alertaDup) {
-        const cobroAnt = COBROS.find(c => c.doc === docValV);
+        const cobroAnt = COBROS.find(c => normalizarComprobante(c.doc) === docValV);
         const numEl    = document.getElementById('v-dup-num');
         const fechaEl  = document.getElementById('v-dup-fecha');
         const cliEl    = document.getElementById('v-dup-cliente');
@@ -7721,6 +7835,7 @@ function buscarClientePago(q) {
 async function selClientePago(id, nombre, tel) {
   pagoData.clienteId = id;
   pagoData.clienteNombre = nombre;
+  pagoData.dupAutorizado = false; // una autorización de duplicado no pasa de un cliente a otro
   const cont = document.getElementById('pago-resultados');
   const sel = document.getElementById('pago-cli-sel');
   const txt = document.getElementById('pago-cli-txt');
@@ -7738,6 +7853,7 @@ async function selClientePago(id, nombre, tel) {
 
 function limpiarClientePago() {
   pagoData.clienteId = '';
+  pagoData.dupAutorizado = false;
   document.getElementById('pago-cli-sel').style.display = 'none';
   document.getElementById('pago-subs-sec').style.display = 'none';
   document.getElementById('btn-registrar-pago').style.display = 'none';
@@ -8355,6 +8471,7 @@ function openModal(id, title) {
   }
   // Reset pago
   if (id === 'm-pago') {
+    pagoData.dupAutorizado = false;
     const inp = document.getElementById('pago-busq');
     if (inp) inp.value = '';
     const sel = document.getElementById('pago-cli-sel');
@@ -8983,7 +9100,10 @@ const EGRESOS_DB = [];
 async function dbCargarEgresos() {
   const tbody = document.getElementById('tb-egresos');
   if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Cargando...</td></tr>';
-  const { data, error } = await supa.from('egresos').select('*').order('fecha', { ascending: false }).limit(1000);
+  let data, error;
+  try {
+    data = await fetchTodasLasFilas('egresos', '*', q => q.order('fecha', { ascending: false }).order('id', { ascending: false }));
+  } catch (e) { error = e; }
   if (error) { if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:20px">Error cargando egresos</td></tr>'; return; }
   EGRESOS_DB.length = 0;
   (data || []).forEach(e => EGRESOS_DB.push(e));
@@ -9005,7 +9125,8 @@ function actualizarMetricasEgresos() {
   const totalCom = esteMes.reduce((s,e) => s + parseFloat(e.comision||0), 0);
   const totalIng = COBROS.filter(c => {
     const parts = (c.fecha||'').split('/');
-    return parts.length >= 2 && parseInt(parts[1]) === mesActual;
+    // Con todos los cobros cargados, sin el año sumaría el mismo mes de años anteriores
+    return parts.length >= 2 && parseInt(parts[1]) === mesActual && parseInt(parts[2]||anioActual) === anioActual;
   }).reduce((s,c) => s + c.monto, 0);
   const ganancia = totalIng - totalEgr;
   const margen = totalIng > 0 ? Math.round((ganancia/totalIng)*100) : 0;
@@ -11310,63 +11431,77 @@ function updMetricasCobros() {
 
 
 // ── GESTIÓN COMPROBANTE DUPLICADO ─────────────────────────────
-async function abrirRevisionDuplicado() {
-  const comp = document.querySelector('input[oninput*="valComp"]')?.value?.trim()
-    || document.getElementById('pago-comp')?.value?.trim();
+// Enlace "Revisar" del aviso en vivo. inputId = 'pago-comp' (Registrar Pago) o 'v-comp' (Venta nueva).
+async function abrirRevisionDuplicado(inputId) {
+  const flujo = inputId === 'pago-comp' ? 'pago' : 'venta';
+  const comp = normalizarComprobante(document.getElementById(inputId || 'v-comp')?.value);
   if (!comp) return;
 
-  const existing = document.getElementById('mini-dup-modal');
-  if (existing) existing.remove();
-
-  const { data } = await supa
-    .from('cobros')
-    .select('fecha, nombre, monto, tipo')
-    .eq('documento', comp)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!data) {
+  let existentes;
+  try {
+    existentes = await buscarComprobanteExistente(comp);
+  } catch (e) {
+    toast('No se pudo consultar el comprobante: ' + (e.message || e), 'error');
+    return;
+  }
+  if (!existentes.length) {
     toast('No se encontró el comprobante en la base de datos', 'warn');
     return;
   }
+  await mostrarAvisoDuplicado(flujo, comp, existentes);
+}
 
-  const fechaDisplay = data.fecha
-    ? data.fecha.split('-').reverse().join('/')
-    : '—';
+// Aviso de duplicado con los cobros existentes. Resuelve true si el operador autoriza
+// (la autorización queda ligada a ESTE número y a ESTE flujo), false si cancela.
+function mostrarAvisoDuplicado(flujo, comp, existentes) {
+  return new Promise(resolve => {
+    const existing = document.getElementById('mini-dup-modal');
+    if (existing) existing.remove();
 
-  const info = `<div style="margin:10px 0;font-size:13px;line-height:1.8">
-    <span style="color:var(--text3)">Fecha:</span> <strong>${fechaDisplay}</strong><br>
-    <span style="color:var(--text3)">Cliente:</span> <strong>${data.nombre || '—'}</strong><br>
-    <span style="color:var(--text3)">Monto:</span> <strong>$${typeof data.monto === 'number' ? data.monto.toFixed(2) : data.monto || '—'}</strong><br>
-    <span style="color:var(--text3)">Tipo:</span> <strong>${data.tipo || '—'}</strong>
-  </div>`;
+    const filas = existentes.slice(0, 5).map(c => {
+      const fechaDisplay = c.fecha ? (c.fecha.includes('/') ? c.fecha : c.fecha.split('-').reverse().join('/')) : '—';
+      const montoTxt = c.monto != null && !isNaN(parseFloat(c.monto)) ? parseFloat(c.monto).toFixed(2) : '—';
+      return `<div style="margin:8px 0;padding-top:8px;border-top:1px solid var(--border);font-size:13px;line-height:1.7">
+        <span style="color:var(--text3)">Fecha:</span> <strong>${fechaDisplay}</strong><br>
+        <span style="color:var(--text3)">Cliente:</span> <strong>${c.nombre || '—'}</strong> <span style="color:var(--text3)">${c.cliente_id || ''}</span><br>
+        <span style="color:var(--text3)">Monto:</span> <strong>$${montoTxt}</strong> · <span style="color:var(--text3)">${c.tipo || '—'}</span>
+      </div>`;
+    }).join('');
+    const mas = existentes.length > 5 ? `<div style="font-size:12px;color:var(--text3)">… y ${existentes.length - 5} más</div>` : '';
 
-  const el = document.createElement('div');
-  el.id = 'mini-dup-modal';
-  el.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)';
-  el.innerHTML = `
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.4)">
-      <div style="font-weight:600;font-size:14px;color:var(--amber);margin-bottom:6px">⚠ Comprobante duplicado</div>
-      <div style="font-size:12px;color:var(--text2)">El comprobante <strong style="color:var(--text)">${comp}</strong> ya fue registrado:</div>
-      ${info}
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-        <button class="btn btn-sm" id="mini-dup-cancel">Cancelar</button>
-        <button class="btn btn-sm" id="mini-dup-ok" style="background:var(--amber);color:#000;border-color:var(--amber)"><i class="ti ti-check"></i> Continuar de todas formas</button>
-      </div>
-    </div>`;
-  document.body.appendChild(el);
+    const el = document.createElement('div');
+    el.id = 'mini-dup-modal';
+    el.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)';
+    el.innerHTML = `
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px;max-width:380px;width:90%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+        <div style="font-weight:600;font-size:14px;color:var(--amber);margin-bottom:6px">⚠ Comprobante duplicado</div>
+        <div style="font-size:12px;color:var(--text2)">El comprobante <strong style="color:var(--text)">${comp}</strong> ya fue registrado ${existentes.length} ${existentes.length === 1 ? 'vez' : 'veces'}:</div>
+        ${filas}${mas}
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+          <button class="btn btn-sm" id="mini-dup-cancel">Cancelar</button>
+          <button class="btn btn-sm" id="mini-dup-ok" style="background:var(--amber);color:#000;border-color:var(--amber)"><i class="ti ti-check"></i> Autorizar duplicado</button>
+        </div>
+      </div>`;
+    document.body.appendChild(el);
 
-  document.getElementById('mini-dup-cancel').onclick = () => el.remove();
-  document.getElementById('mini-dup-ok').onclick = () => {
-    const inp = document.querySelector('input[oninput*="valComp"]');
-    if (inp) { inp.dataset.valid = 'true'; inp.style.borderColor = 'var(--amber)'; }
-    ventaData.dupAutorizado = true;
-    const h = document.getElementById('hcv');
-    if (h) { h.textContent = '⚠ Duplicado autorizado'; h.className = 'hint w'; }
-    el.remove();
-    toast('Duplicado autorizado — quedará en el historial', 'warn');
-  };
+    document.getElementById('mini-dup-cancel').onclick = () => { el.remove(); resolve(false); };
+    document.getElementById('mini-dup-ok').onclick = () => {
+      autorizarComprobante(flujo, comp);
+      el.remove();
+      toast('Duplicado autorizado — quedará marcado en el cobro', 'warn');
+      resolve(true);
+    };
+  });
+}
+
+// Marca la autorización en el flujo correcto (pago o venta), ligada al número normalizado
+function autorizarComprobante(flujo, comp) {
+  (flujo === 'pago' ? pagoData : ventaData).dupAutorizado = normalizarComprobante(comp);
+  const inp = document.getElementById(flujo === 'pago' ? 'pago-comp' : 'v-comp');
+  if (inp) { inp.dataset.valid = 'true'; inp.style.borderColor = 'var(--amber)'; }
+  const h = document.getElementById(flujo === 'pago' ? 'hcp' : 'hcv');
+  if (h) { h.textContent = '⚠ Duplicado autorizado'; h.className = 'hint w'; }
+  if (flujo === 'venta') { const ad = document.getElementById('v-alerta-dup'); if (ad) ad.style.display = 'none'; }
 }
 
 function rechazarDuplicado() {
@@ -11381,12 +11516,8 @@ function rechazarDuplicado() {
 }
 
 function autorizarDuplicado() {
-  // Marcar como autorizado y saltar directamente al paso 5 sin re-validar comprobante
-  ventaData.dupAutorizado = true;
-  const alerta = document.getElementById('v-alerta-dup');
-  if (alerta) alerta.style.display = 'none';
-  const inp = document.querySelector('#m-venta input[oninput*="valComp"]');
-  if (inp) inp.style.borderColor = 'var(--amber)';
+  // Marcar como autorizado (solo para el número escrito ahora) y saltar al paso 5
+  autorizarComprobante('venta', document.querySelector('#m-venta input[oninput*="valComp"]')?.value);
   // Ir directo al paso 5 sin pasar por la validación de ventaPaso5
   ['vpaso1','vpaso2','vpaso3','vpaso4','vpaso5'].forEach((id,i) =>
     document.getElementById(id).style.display = i===4?'block':'none');
