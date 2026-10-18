@@ -1445,7 +1445,7 @@ function closeSidebarMobile() {
 <div class="view" id="v-reportes">
   <div class="tabs" id="rpt-tabs">
     <div class="tab on" onclick="tabRpt(this,'rpt-resumen')">Resumen</div>
-    <div class="tab" onclick="tabRpt(this,'rpt-vencimientos')">Vencimientos</div>
+    <div class="tab" id="rpt-tab-vencimientos" onclick="tabRpt(this,'rpt-vencimientos')">Vencimientos</div>
     <div class="tab" onclick="tabRpt(this,'rpt-suscripciones');tabRpts(document.getElementById('rpts-tab-activas'),'rpts-activas')">Suscripciones</div>
     <div class="tab" onclick="tabRpt(this,'rpt-inventario');tabRpti(document.getElementById('rpti-tab-perfiles'),'rpti-perfiles')">Inventario</div>
     <div class="tab" id="rpt-tab-financiero" style="display:none" onclick="tabRpt(this,'rpt-financiero');tabRptf(document.getElementById('rptf-tab-ingresos'),'rptf-ingresos')">Financiero</div>
@@ -6595,7 +6595,7 @@ async function cargarUsuariosSistema() {
       const esMaster = USUARIO_ACTIVO.rol === 'Master';
 
       // 1. Ocultar menús no permitidos para operadores
-      const vistasOperador = ['dashboard', 'clientes', 'ventas', 'cobros', 'suscripciones', 'cobranza', 'inventario', 'accesos', 'codigos', 'ayuda'];
+      const vistasOperador = ['dashboard', 'clientes', 'ventas', 'cobros', 'suscripciones', 'cobranza', 'inventario', 'reportes', 'accesos', 'codigos', 'ayuda'];
       
       document.querySelectorAll('.ni').forEach(item => {
         const onclickVal = item.getAttribute('onclick') || '';
@@ -12130,6 +12130,12 @@ function vctInit() {
     (PLATAFORMAS || []).map(p => `<option value="${p.codigo}">${p.nombre || p.codigo}</option>`).join('');
   const finTab = document.getElementById('rpt-tab-financiero');
   if (finTab) finTab.style.display = USUARIO_ACTIVO?.rol === 'Master' ? '' : 'none';
+  // Operador: en Reportes solo Vencimientos — se ocultan las demás pestañas y se activa esa
+  if (USUARIO_ACTIVO?.rol !== 'Master') {
+    const vencTab = document.getElementById('rpt-tab-vencimientos');
+    document.querySelectorAll('#rpt-tabs .tab').forEach(t => { t.style.display = t === vencTab ? '' : 'none'; });
+    if (vencTab) tabRpt(vencTab, 'rpt-vencimientos');
+  }
 }
 
 function vctSplitTel(tel) {
@@ -12514,6 +12520,11 @@ function rptsPerfilesExportar(formato) {
 // ═══════════════════════════════════════════════════════════
 
 function tabRpt(el, id) {
+  // Operador: cualquier otro panel de Reportes se redirige a Vencimientos
+  if (USUARIO_ACTIVO?.rol !== 'Master' && id !== 'rpt-vencimientos') {
+    id = 'rpt-vencimientos';
+    el = document.getElementById('rpt-tab-vencimientos') || el;
+  }
   document.getElementById('rpt-tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
   el.classList.add('on');
   document.querySelectorAll('#v-reportes .pp').forEach(p => { p.classList.remove('on'); p.style.display = 'none'; });
