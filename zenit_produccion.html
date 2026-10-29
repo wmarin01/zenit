@@ -3547,15 +3547,7 @@ function closeSidebarMobile() {
   <div class="mh"><div class="mico" style="background:#128C7E"><i class="ti ti-brand-whatsapp"></i></div><div><div class="mtit" id="wa-tit">Mensaje WhatsApp</div><div class="msub" id="wa-sub"></div></div><button class="mcl" onclick="closeModal('m-wa')"><i class="ti ti-x"></i></button></div>
   <div class="mb">
     <div class="fg" style="margin-bottom:12px"><label>Plantilla</label>
-      <select onchange="cambPlant(this.value)">
-        <option value="vencimiento">Recordatorio — vence hoy</option>
-        <option value="3d">Recordatorio — 3 días</option>
-        <option value="1d">Recordatorio — 1 día</option>
-        <option value="pago">Confirmación de pago</option>
-        <option value="entrega">Entrega de cuenta</option>
-        <option value="cambio">Cambio de cuenta</option>
-        <option value="clave">Cambio de contraseña</option>
-      </select>
+      <select id="wa-plantilla" onchange="cambPlant(this.value)"><!-- opciones desde PLANTILLAS_WA, ver poblarSelectPlantillasWA() --></select>
     </div>
     <div class="wab" id="wa-txt"></div>
     <div class="ab i" style="margin-top:10px;margin-bottom:0"><i class="ti ti-info-circle"></i>Las variables <span class="wav">{en azul}</span> se reemplazan con datos reales del cliente.</div>
@@ -3575,9 +3567,17 @@ function buscarPlantillaWA(nombre) {
   const target = nombre.trim().toLowerCase();
   return (PLANTILLAS_WA||[]).find(t => t.nombre?.trim().toLowerCase() === target);
 }
+// {monto} siempre sale como "$X.XX", con UN solo "$": se quita cualquier "$" escrito justo antes
+// de {monto} en la plantilla ("${monto}", "$${monto}", "$ {monto}") y el valor lleva su "$".
+function formatearMontoWA(m) {
+  const s = String(m ?? '').trim().replace(/^\$+\s*/, '');
+  return isNaN(parseFloat(s.replace(',', '.'))) ? (s || '—') : '$' + s;
+}
 function sustituirWA(plantilla, vars) {
-  return plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
-    key in vars ? `<span class="wav">${vars[key]}</span>` : `{${key}}`
+  const contenido = plantilla.contenido.replace(/\$+\s*\{monto\}/g, '{monto}');
+  const v = 'monto' in vars ? { ...vars, monto: formatearMontoWA(vars.monto) } : vars;
+  return contenido.replace(/\{(\w+)\}/g, (_, key) =>
+    key in v ? `<span class="wav">${v[key]}</span>` : `{${key}}`
   );
 }
 // Inyecta la línea de link después de "👤 Usuario" cuando hay link real y la
@@ -4640,13 +4640,71 @@ window.addEventListener('popstate', function() {
   }
 });
 
+// Plantilla (por nombre, en minúsculas) que usa cada tipo fijo de WA[...] — los mismos nombres que buscan esas funciones
+const WA_TIPO_PLANTILLA = { vencimiento:'vence hoy', vencido:'vencido', '3d':'por vencer', '1d':'vence mañana', pago:'confirmación de pago', entrega:'entrega de cuenta nueva', cambio:'cambio de cuenta / plataforma', clave:'cambio de contraseña', reenvio_accesos:'entrega de cuenta nueva' };
+
+// Nombre de la plantilla que corresponde al tipo con que se abre el modal (variante IPTV si aplica), o null si no existe
+function plantillaInicialWA(tipo, p, ctx) {
+  const base = WA_TIPO_PLANTILLA[tipo] || WA_TIPO_PLANTILLA.vencimiento;
+  const esIP = ctx?.platCod === 'IP' || p === 'IPTV' || p === 'IP' || (ctx?.plats?.length === 1 && ctx.plats[0] === 'IP');
+  if (esIP && (base === 'entrega de cuenta nueva' || base === 'cambio de cuenta / plataforma')) {
+    const ip = buscarPlantillaWA(base + ' — iptv');
+    if (ip) return ip.nombre;
+  }
+  return buscarPlantillaWA(base)?.nombre || null;
+}
+
+// Opciones del selector desde PLANTILLAS_WA (activas), agrupadas por tipo y ordenadas por nombre
+function poblarSelectPlantillasWA(sel) {
+  sel.innerHTML = '';
+  const porTipo = {};
+  (PLANTILLAS_WA || []).forEach(t => {
+    if (!t?.nombre) return;
+    const tipo = t.tipo || 'Otras';
+    (porTipo[tipo] = porTipo[tipo] || []).push(t);
+  });
+  Object.keys(porTipo).sort((a, b) => a.localeCompare(b, 'es')).forEach(tipo => {
+    const og = document.createElement('optgroup');
+    og.label = tipo;
+    porTipo[tipo].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')).forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.nombre; o.textContent = t.nombre;
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  });
+}
+
+// Días entre hoy y una fecha dd/mm/yyyy (valor absoluto, para {dias}); '—' si no hay fecha
+function diasHastaWA(f) {
+  const [d, m, y] = (f || '').split('/').map(Number);
+  if (!d || !m || !y) return '—';
+  return Math.abs(Math.round((new Date(y, m - 1, d) - hoyPanamaDate()) / 86400000));
+}
+
 function abrirWA(n,p,m,tipo,ctx,meta){
-  waCtx={n,p,m,ctx,meta};
+  waCtx={n,p,m,ctx,meta,tipo};
   document.getElementById('wa-tit').textContent='Mensaje para '+n;
   document.getElementById('wa-sub').textContent=p+' · '+m;
-  const sel=document.querySelector('#m-wa select');if(sel)sel.value=tipo;
-  const fn = WA[tipo]||WA.vencimiento;
-  const _waHtml = fn(n,p,m,ctx);
+  const _btnWA=document.querySelector('#m-wa .btn-p');
+  if (_btnWA) _btnWA.innerHTML='<i class="ti ti-copy"></i>Copiar y marcar enviado'; // Reportes lo deja en "Copiar"
+  // Selector reconstruido en cada apertura: refleja plantillas creadas/editadas sin recargar
+  const sel=document.getElementById('wa-plantilla');
+  waCtx.plantillaInicial = plantillaInicialWA(tipo, p, ctx);
+  if (sel) {
+    poblarSelectPlantillasWA(sel);
+    if (waCtx.plantillaInicial) sel.value = waCtx.plantillaInicial;
+    else if (sel.options.length) sel.selectedIndex = 0;
+  }
+  let _waHtml;
+  if (!waCtx.plantillaInicial && sel && sel.options.length) {
+    // La plantilla de este tipo no existe: se usa la primera disponible
+    cambPlant(sel.value);
+    _waHtml = document.getElementById('wa-txt').innerHTML;
+  } else {
+    const fn = WA[tipo]||WA.vencimiento;
+    _waHtml = fn(n,p,m,ctx);
+  }
   document.getElementById('wa-txt').innerHTML = _waHtml;
   // textContent sobre div desconectado preserva \n reales sin depender del layout CSS
   const _tmpDiv = document.createElement('div');
@@ -4654,16 +4712,53 @@ function abrirWA(n,p,m,tipo,ctx,meta){
   guardarMensajeWA(meta?.clienteId||'', n, meta?.tel||'', tipo, _tmpDiv.textContent);
   openModal('m-wa');
 }
-function cambPlant(v){const ctx=waCtx.ctx||{};document.getElementById('wa-txt').innerHTML=(WA[v]||WA.vencimiento)(waCtx.n,waCtx.p,waCtx.m,ctx);}
+function cambPlant(v){
+  const ctx=waCtx.ctx||{};
+  const el=document.getElementById('wa-txt');
+  const porTipoFijo = k => (WA[k]||WA.vencimiento)(waCtx.n,waCtx.p,waCtx.m,ctx);
+  // Reportes (soloCopia): siempre plantilla + motor compartido (con {dias}), sin las funciones WA[...]
+  const fijos = !waCtx.soloCopia;
+  // La plantilla con que se abrió: mismo texto que al abrir (WA[tipo], con su lógica de combos/IPTV)
+  if (fijos && v && v === waCtx.plantillaInicial) { el.innerHTML = porTipoFijo(waCtx.tipo); return; }
+  const plantilla = buscarPlantillaWA(v || '');
+  if (!plantilla) { el.innerHTML = fijos ? porTipoFijo(waCtx.tipo) : (waCtx.respaldoHtml || ''); return; }
+  // Plantilla de uno de los tipos fijos: su función de WA (mismo resultado que el selector anterior)
+  const nom = plantilla.nombre.trim().toLowerCase();
+  const key = Object.keys(WA_TIPO_PLANTILLA).find(k => k !== 'reenvio_accesos' && WA_TIPO_PLANTILLA[k] === nom);
+  if (fijos && key) { el.innerHTML = porTipoFijo(key); return; }
+  // Cualquier otra plantilla (ej. "Vencido (Anterior)"): motor compartido con las variables del cliente
+  const link = ctx.link || (PLATAFORMAS||[]).find(x => x.codigo === ctx.platCod)?.link || '';
+  const fv = ctx.fecha_vcto || ctx.vcto || '';
+  const vars = {
+    nombre: waCtx.n, plataforma: waCtx.p, monto: waCtx.m,
+    fecha_vcto: fv || '—', vcto: fv || '—', dias: ctx.dias ?? diasHastaWA(fv),
+    correo: ctx.correo || '—', clave: ctx.clave || '—', clave_nueva: ctx.clave || '—',
+    usuario: ctx.usuario || '—', perfil: ctx.perfil || '—', pin: ctx.pin || '—',
+    link: link || '—', servidor: link || ctx.correo || '—'
+  };
+  el.innerHTML = inyectarLinkWA(sustituirWA(plantilla, vars), plantilla.contenido, link) + (waCtx.notaFinal || '');
+}
 function copiarWA(){
-  navigator.clipboard.writeText(document.getElementById('wa-txt').innerText).then(()=>{
+  const texto=document.getElementById('wa-txt').innerText;
+  const listo=()=>{
     const b=document.querySelector('#m-wa .btn-p');const o=b.innerHTML;
     b.innerHTML='<i class="ti ti-check"></i>¡Copiado!';b.style.background='var(--green2)';
     setTimeout(()=>{
       b.innerHTML=o;b.style.background='';
       closeModal('m-wa');
     },1500);
-  }).catch(()=>toast('No se pudo copiar','warn'));
+  };
+  navigator.clipboard.writeText(texto).then(listo).catch(()=>{
+    if (!waCtx.soloCopia) { toast('No se pudo copiar','warn'); return; }
+    // Reportes: mismo respaldo de copia que tenía vctCopiarWA()
+    const ta=document.createElement('textarea');
+    ta.value=texto;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    listo();
+  });
 }
 
 // Notifica a un cliente puntual el cambio de clave de su cuenta de inventario:
@@ -12271,42 +12366,42 @@ function vctCopiarWA(idx) {
   const fecha  = r.fVcto;
   const monto  = Number(r.tienePromoPendiente ? r.montoTrasPromo : r.monto).toFixed(2);
   const d      = r.dias;
-  const buscarPlantilla = nombre => (PLANTILLAS_WA||[]).find(t => t.nombre?.trim().toLowerCase() === nombre);
-  const sustituir = (plantilla, vars) => plantilla.contenido.replace(/\{(\w+)\}/g, (_, key) =>
-    key in vars ? vars[key] : `{${key}}`
-  );
-  let msg;
+  // Plantilla que se elige por días (preseleccionada en el selector) y su texto de respaldo si no hay plantillas
+  let nomPlantilla, msg;
   if (d >= 2) {
-    const plantilla = buscarPlantilla('por vencer');
-    msg = plantilla ? sustituir(plantilla, { nombre, plataforma: plat, fecha_vcto: fecha, monto, dias: d })
-      : `🍿 Hola ${nombre}, tu ${plat} vence el ${fecha} (en ${d} días).\nRenueva a tiempo para mantener tu precio actual de $${monto}.\n💳 Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Envía comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.`;
+    nomPlantilla = 'por vencer';
+    msg = `🍿 Hola ${nombre}, tu ${plat} vence el ${fecha} (en ${d} días).\nRenueva a tiempo para mantener tu precio actual de $${monto}.\n💳 Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Envía comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.`;
   } else if (d === 1) {
-    const plantilla = buscarPlantilla('vence mañana');
-    msg = plantilla ? sustituir(plantilla, { nombre, plataforma: plat, fecha_vcto: fecha, monto })
-      : `🔴 Hola ${nombre}, tu ${plat} vence MAÑANA ${fecha}.\n¡Renueva hoy para conservar tu precio de $${monto}!\n💳 Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.`;
+    nomPlantilla = 'vence mañana';
+    msg = `🔴 Hola ${nombre}, tu ${plat} vence MAÑANA ${fecha}.\n¡Renueva hoy para conservar tu precio de $${monto}!\n💳 Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n⚠️ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas a tiempo, perderás el precio promocional y al reactivar se aplicará la tarifa vigente.`;
   } else if (d === 0) {
-    const plantilla = buscarPlantilla('vence hoy');
-    msg = plantilla ? sustituir(plantilla, { nombre, plataforma: plat, fecha_vcto: fecha, monto })
-      : `🚨 Hola ${nombre}, tu ${plat} VENCE HOY ${fecha}.\n⏰ Es tu último día para renovar y mantener tu acceso.\n💳 $${monto} · Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas hoy, tu cuenta será suspendida y perderás el precio promocional.`;
+    nomPlantilla = 'vence hoy';
+    msg = `🚨 Hola ${nombre}, tu ${plat} VENCE HOY ${fecha}.\n⏰ Es tu último día para renovar y mantener tu acceso.\n💳 $${monto} · Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. Sin reembolsos.\n📌 Si no renuevas hoy, tu cuenta será suspendida y perderás el precio promocional.`;
   } else {
-    const plantilla = buscarPlantilla('vencido');
-    msg = plantilla ? sustituir(plantilla, { nombre, plataforma: plat, fecha_vcto: fecha, monto })
-      : `🚨 Hola ${nombre}, tu ${plat} VENCIÓ el ${fecha} y será SUSPENDIDA.\n⚠️ Renueva ahora para recuperar tu acceso antes de que sea eliminada.\n💳 $${monto} · Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. Sin reembolsos.\n📌 Al reactivar fuera de tiempo se aplicará la tarifa vigente, no el precio anterior.`;
+    nomPlantilla = 'vencido';
+    msg = `🚨 Hola ${nombre}, tu ${plat} VENCIÓ el ${fecha} y será SUSPENDIDA.\n⚠️ Renueva ahora para recuperar tu acceso antes de que sea eliminada.\n💳 $${monto} · Yappy: 6639-2725 · Transferencia/depósito (ref: tu nombre)\n📲 Comprobante al 6478-9745\n❗ Sin comprobante no se procesa. Sin reembolsos.\n📌 Al reactivar fuera de tiempo se aplicará la tarifa vigente, no el precio anterior.`;
   }
+  let nota = '';
   if (r.tienePromoPendiente && Math.abs(r.montoTrasPromo - Number(monto)) > 0.001) {
-    msg += `\n💡 Nota: esta es tu última renovación con precio promocional. Desde la próxima, el precio será $${r.montoTrasPromo.toFixed(2)}.`;
+    nota = `\n💡 Nota: esta es tu última renovación con precio promocional. Desde la próxima, el precio será $${r.montoTrasPromo.toFixed(2)}.`;
   }
-  navigator.clipboard.writeText(msg)
-    .then(() => toast('Mensaje copiado ✓', 'ok'))
-    .catch(() => {
-      const ta = document.createElement('textarea');
-      ta.value = msg;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      toast('Mensaje copiado ✓', 'ok');
-    });
+  // Modal #m-wa en modo solo-copia: mismo selector y motor que Cobranza, sin registrar en mensajes_wa
+  waCtx = { n: nombre, p: plat, m: monto, ctx: { fecha_vcto: fecha, dias: Math.abs(d) },
+            soloCopia: true, notaFinal: nota, respaldoHtml: msg + nota, plantillaInicial: null };
+  document.getElementById('wa-tit').textContent = 'Mensaje para ' + r.nombre;
+  document.getElementById('wa-sub').textContent = plat + ' · $' + monto;
+  const sel = document.getElementById('wa-plantilla');
+  if (sel) {
+    poblarSelectPlantillasWA(sel);
+    const ini = buscarPlantillaWA(nomPlantilla);
+    if (ini) sel.value = ini.nombre;
+    else if (sel.options.length) sel.selectedIndex = 0;
+  }
+  if (sel && sel.options.length) cambPlant(sel.value);
+  else document.getElementById('wa-txt').innerHTML = waCtx.respaldoHtml;
+  const btn = document.querySelector('#m-wa .btn-p');
+  if (btn) btn.innerHTML = '<i class="ti ti-copy"></i>Copiar';
+  openModal('m-wa');
 }
 
 function vctCopiarTel(num, btn) {
