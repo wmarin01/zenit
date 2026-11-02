@@ -3333,10 +3333,10 @@ function closeSidebarMobile() {
     <div id="cambio-contenido" style="display:none">
     <div class="fsec"><div class="fst">Tipo de cambio y motivo</div>
       <div class="fr c2">
-        <div class="fg"><label>Tipo<span class="req">*</span></label><select id="tipo-cambio" onchange="updTipoCambio(this.value)"><option value="misma">Misma plataforma (NF → NF)</option><option value="distinta">Distinta plataforma (NF → DS)</option></select></div>
+        <div class="fg"><label>Tipo<span class="req">*</span></label><select id="tipo-cambio" onchange="updTipoCambio(this.value)"><option value="misma">Misma plataforma</option><option value="distinta">Distinta plataforma</option></select></div>
         <div class="fg"><label>Motivo<span class="req">*</span></label><select id="sel-motivo"><option>Cuenta dañada</option><option>Cuenta eliminada</option><option>Códigos Netflix consumidos</option></select></div>
       </div>
-      <div id="av-precio" class="ab s" style="display:none"><i class="ti ti-info-circle"></i>El cliente conserva el precio pagado (<strong>$10.00</strong>) hasta su vencimiento. Al renovar se aplica el precio de la nueva plataforma.</div>
+      <div id="av-precio" class="ab s" style="display:none"><i class="ti ti-info-circle"></i>Vencimiento se mantiene.</div>
     </div>
     <div class="g2">
       <div><div class="fst" style="color:var(--red);margin-bottom:8px">Cuenta anterior — se libera</div>
@@ -3353,7 +3353,7 @@ function closeSidebarMobile() {
       </div>
       <div><div class="fst" style="color:var(--green);margin-bottom:8px">Cuenta nueva — se asigna</div>
         <div style="background:rgba(62,207,142,.05);border:1px solid rgba(62,207,142,.2);border-radius:var(--r);padding:12px 14px">
-          <div class="fg" id="plat-nueva-grp" style="display:none;margin-bottom:8px"><label>Nueva plataforma<span class="req">*</span></label><select id="plat-nueva-sel"></select></div>
+          <div class="fg" id="plat-nueva-grp" style="display:none;margin-bottom:8px"><label>Nueva plataforma<span class="req">*</span></label><select id="plat-nueva-sel" onchange="recargarPerfilesCambio()"></select></div>
           <div class="fg" style="margin-bottom:8px"><label>Seleccionar perfil disponible<span class="req">*</span></label>
             <div style="margin-top:5px">
               <input type="text" id="cambio-perfil-busq" placeholder="Buscar perfil o cuenta..." style="margin-bottom:6px;font-size:12px" oninput="filtrarPerfilesCambio(this.value)">
@@ -4694,17 +4694,17 @@ function abrirWA(n,p,m,tipo,ctx,meta){
   if (sel) {
     poblarSelectPlantillasWA(sel);
     if (waCtx.plantillaInicial) sel.value = waCtx.plantillaInicial;
-    else if (sel.options.length) sel.selectedIndex = 0;
+    else {
+      // La plantilla de este tipo no existe: texto predeterminado de WA[tipo] (nunca otra plantilla
+      // cualquiera, ej. la variante IPTV para un cambio a Disney+). cambPlant('') vuelve a este texto.
+      const o = document.createElement('option');
+      o.value = ''; o.textContent = 'Mensaje predeterminado';
+      sel.insertBefore(o, sel.firstChild);
+      sel.value = '';
+    }
   }
-  let _waHtml;
-  if (!waCtx.plantillaInicial && sel && sel.options.length) {
-    // La plantilla de este tipo no existe: se usa la primera disponible
-    cambPlant(sel.value);
-    _waHtml = document.getElementById('wa-txt').innerHTML;
-  } else {
-    const fn = WA[tipo]||WA.vencimiento;
-    _waHtml = fn(n,p,m,ctx);
-  }
+  const fn = WA[tipo]||WA.vencimiento;
+  const _waHtml = fn(n,p,m,ctx);
   document.getElementById('wa-txt').innerHTML = _waHtml;
   // textContent sobre div desconectado preserva \n reales sin depender del layout CSS
   const _tmpDiv = document.createElement('div');
@@ -4729,11 +4729,13 @@ function cambPlant(v){
   // Cualquier otra plantilla (ej. "Vencido (Anterior)"): motor compartido con las variables del cliente
   const link = ctx.link || (PLATAFORMAS||[]).find(x => x.codigo === ctx.platCod)?.link || '';
   const fv = ctx.fecha_vcto || ctx.vcto || '';
+  // Plantillas "— IPTV": usuario = correo de la cuenta, mismo criterio que WA.cambio / WA.entrega
+  const esPlantIP = nom.endsWith('— iptv');
   const vars = {
     nombre: waCtx.n, plataforma: waCtx.p, monto: waCtx.m,
     fecha_vcto: fv || '—', vcto: fv || '—', dias: ctx.dias ?? diasHastaWA(fv),
     correo: ctx.correo || '—', clave: ctx.clave || '—', clave_nueva: ctx.clave || '—',
-    usuario: ctx.usuario || '—', perfil: ctx.perfil || '—', pin: ctx.pin || '—',
+    usuario: (esPlantIP ? ctx.correo || ctx.usuario : ctx.usuario) || '—', perfil: ctx.perfil || '—', pin: ctx.pin || '—',
     link: link || '—', servidor: link || ctx.correo || '—'
   };
   el.innerHTML = inyectarLinkWA(sustituirWA(plantilla, vars), plantilla.contenido, link) + (waCtx.notaFinal || '');
@@ -4869,6 +4871,7 @@ function updTipoCambio(v){
   }else{
     if(av)av.style.display='none';if(pg)pg.style.display='none';
   }
+  if (cambioData.clienteId) recargarPerfilesCambio();
 }
 
 function updRolPreview(v){
@@ -5621,8 +5624,17 @@ function limpiarFormularioPago() {
 }
 function mostrarResumenCambio() {
   if (!cambioData.clienteId) { toast('Selecciona un cliente primero','warn'); return; }
+  if (cambioPlataformaBloqueado()) { toast(MSG_COMBO_CAMBIO_PLAT,'warn'); return; }
   const perfilNuevoEl = document.querySelector('#cambio-perfiles-lista .pi.on');
   if (!perfilNuevoEl) { toast('Selecciona un perfil nuevo','warn'); return; }
+  const esDistintaR = document.getElementById('tipo-cambio')?.value === 'distinta';
+  if (esDistintaR && perfilNuevoEl.dataset.plat === cambioData.platOrigen) {
+    toast('En "Distinta plataforma" el perfil nuevo debe ser de otra plataforma','warn'); return;
+  }
+  const precioNuevoR = esDistintaR ? precioIndVigente(perfilNuevoEl.dataset.plat) : null;
+  if (esDistintaR && precioNuevoR == null) {
+    toast(platNombre(perfilNuevoEl.dataset.plat) + ' no tiene precio individual vigente. Regístralo en Parámetros antes del cambio.','error'); return;
+  }
 
   const subSel = document.getElementById('acceso-sub-sel');
   const parts = (subSel?.value || '').split('|');
@@ -5643,6 +5655,10 @@ function mostrarResumenCambio() {
     { l:'Vencimiento',     v: vcto },
     { l:'Motivo',          v: motivo },
   ];
+  if (esDistintaR) {
+    rows.push({ l:'Plataforma',      v: platNombre(cambioData.platOrigen) + ' → ' + platNombre(perfilNuevoEl.dataset.plat) });
+    rows.push({ l:'Precio (próxima renovación)', v: '$' + precioNuevoR.toFixed(2) });
+  }
   if (nota) rows.push({ l:'Nota', v: nota });
 
   document.getElementById('cambio-resumen-body').innerHTML = rows.map((r,i) =>
@@ -5653,20 +5669,21 @@ function mostrarResumenCambio() {
   ).join('');
 
   const _platCodR = perfilNuevoCod.substring(0,2);
+  const _platCodAntR = perfilAnterior !== '—' ? perfilAnterior.substring(0,2) : (cambioData.platOrigen || _platCodR);
   const _correoAntR = correoAnterior !== '—' ? correoAnterior : '';
   const _correoNuevoR = correoNuevo !== '—' ? correoNuevo : '';
   const _cuentaAntCod = perfilAnterior !== '—' ? perfilAnterior.substring(0,6) : '';
   const _cuentaNuevoCod = perfilNuevoCod !== '—' ? perfilNuevoCod.substring(0,6) : '';
   const _fetchProvAnt = _cuentaAntCod ? supa.from('cuentas_inventario').select('proveedor,clave').eq('codigo',_cuentaAntCod).maybeSingle() : Promise.resolve({data:null});
   const _fetchProvNuevo = _cuentaNuevoCod ? supa.from('cuentas_inventario').select('proveedor,clave').eq('codigo',_cuentaNuevoCod).maybeSingle() : Promise.resolve({data:null});
-  const _fetchPin1Ant = obtenerPin1(_correoAntR, _platCodR);
+  const _fetchPin1Ant = obtenerPin1(_correoAntR, _platCodAntR);
   const _fetchPin1Nuevo = obtenerPin1(_correoNuevoR, _platCodR);
   Promise.all([_fetchProvAnt, _fetchProvNuevo, _fetchPin1Ant, _fetchPin1Nuevo]).then(([_rAnt, _rNuevo, _pin1Ant, _pin1Nuevo]) => {
     const _pAnt = PROVEEDORES_ABBR[_rAnt?.data?.proveedor] || (_rAnt?.data?.proveedor||'').substring(0,3).toUpperCase();
     const _pNuevo = PROVEEDORES_ABBR[_rNuevo?.data?.proveedor] || (_rNuevo?.data?.proveedor||'').substring(0,3).toUpperCase();
     const _claveAnt = _rAnt?.data?.clave || '';
     const _claveNuevo = _rNuevo?.data?.clave || perfilNuevoEl.dataset.clave || '';
-    const _nombreChromeAnt = calcularNombreChrome(_platCodR, _correoAntR, _pAnt, _rAnt?.data?.proveedor, _cuentaAntCod);
+    const _nombreChromeAnt = calcularNombreChrome(_platCodAntR, _correoAntR, _pAnt, _rAnt?.data?.proveedor, _cuentaAntCod);
     const _nombreChromeNuevo = calcularNombreChrome(_platCodR, _correoNuevoR, _pNuevo, _rNuevo?.data?.proveedor, _cuentaNuevoCod);
     const _chromeSec = document.getElementById('cambio-chrome-btns');
     if (_chromeSec) {
@@ -5693,7 +5710,7 @@ function mostrarResumenCambio() {
                 <span style="font-size:14px;font-weight:700;letter-spacing:2px;color:var(--accent)">${pinClienteAnterior}</span>
               </div>
             </div>
-            <div style="margin-top:10px">${zenitChromeBtn(_platCodR, _correoAntR, _pAnt, _claveAnt, _nombreChromeAnt, 'Abrir perfil anterior (' + perfilAnterior + ')')}</div>
+            <div style="margin-top:10px">${zenitChromeBtn(_platCodAntR, _correoAntR, _pAnt, _claveAnt, _nombreChromeAnt, 'Abrir perfil anterior (' + perfilAnterior + ')')}</div>
           </div>
 
           <div class="card" style="padding:14px;border-color:var(--green)">
@@ -5781,6 +5798,18 @@ async function confirmarCambio(){
   const nota            = document.querySelector('#m-cambio textarea')?.value?.trim() || '';
   const correoSaliente  = document.getElementById('acceso-correo-val')?.value || '—';
 
+  // Cambio a otra plataforma: bloqueado en combos; exige precio individual vigente de la nueva plataforma
+  const esDistinta   = document.getElementById('tipo-cambio')?.value === 'distinta';
+  const platOrigen   = cambioData.platOrigen || '';
+  const platNuevaCod = perfilNuevoCod ? perfilNuevoCod.substring(0, 2) : '';
+  let precioNuevo = null;
+  if (esDistinta) {
+    if (cambioPlataformaBloqueado()) { toast(MSG_COMBO_CAMBIO_PLAT, 'warn'); return; }
+    if (!platNuevaCod || platNuevaCod === platOrigen) { toast('En "Distinta plataforma" el perfil nuevo debe ser de otra plataforma', 'warn'); return; }
+    precioNuevo = precioIndVigente(platNuevaCod);
+    if (precioNuevo == null) { toast(platNombre(platNuevaCod) + ' no tiene precio individual vigente. Regístralo en Parámetros antes del cambio.', 'error'); return; }
+  }
+
   // Validación bloqueante: el PIN nuevo debe tener la cantidad de dígitos que exige la cuenta nueva
   const digitosEfectivos = cambioData.digitosPinNuevo;
   const digitosActuales  = pinNuevo.trim().length;
@@ -5817,18 +5846,28 @@ async function confirmarCambio(){
     }
   }
 
+  if (esDistinta && esSubCombo(subActual)) { toast(MSG_COMBO_CAMBIO_PLAT, 'warn'); return; }
+
   const btn = document.getElementById('btn-confirmar-definitivo');
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Guardando...';
 
   try {
     // 1. Actualizar suscripción con nuevo perfil y correo
+    //    (distinta plataforma: también plataforma, monto = precio vigente nuevo y se limpia la promo pendiente)
+    const updSub = {
+      perfil_id: perfilNuevoCod,
+      correo:    correoNuevo,
+      pin:       pinNuevo || subActual.pin,
+      estado:    'activo'
+    };
+    if (esDistinta) Object.assign(updSub, { plataforma: platNuevaCod, monto: precioNuevo, precio_tras_promo: null });
+    // Desde IPTV, usuario guardaba el correo de la cuenta IPTV: pasa al nombre del cliente (mismo formato que Nueva Venta)
+    if (esDistinta && platOrigen === 'IP') {
+      const cliU = CLIENTES.find(c => c.id === cambioData.clienteId);
+      updSub.usuario = title_case((cliU ? (cliU.n + ' ' + (cliU.a || '')) : (cambioData.clienteNombre || '')).trim()) || subActual.usuario;
+    }
     const { error: subErr } = await supa.from('suscripciones')
-      .update({
-        perfil_id: perfilNuevoCod,
-        correo:    correoNuevo,
-        pin:       pinNuevo || subActual.pin,
-        estado:    'activo'
-      })
+      .update(updSub)
       .eq('id', subActual.id);
     if (subErr) throw subErr;
 
@@ -5845,8 +5884,10 @@ async function confirmarCambio(){
 
     // 2. Registrar en historial
     await dbGuardarHistorial(
-      'Cambio de cuenta',
-      cambioData.clienteNombre + ' · ' + subPerfil + ' (' + correoSaliente + ') → ' + perfilNuevoCod + ' (' + (correoNuevo || '—') + ') · ' + motivo + (nota?' · '+nota:''),
+      esDistinta ? 'Cambio de plataforma' : 'Cambio de cuenta',
+      cambioData.clienteNombre + ' · ' + subPerfil + ' (' + correoSaliente + ') → ' + perfilNuevoCod + ' (' + (correoNuevo || '—') + ')' +
+        (esDistinta ? ' · ' + platOrigen + ' → ' + platNuevaCod + ' · precio $' + Number(subActual.monto || 0).toFixed(2) + ' → $' + precioNuevo.toFixed(2) : '') +
+        ' · ' + motivo + (nota?' · '+nota:''),
       'var(--accent)'
     );
 
@@ -5857,6 +5898,12 @@ async function confirmarCambio(){
       SUBS_FULL[idx].correo  = correoNuevo;
       SUBS_FULL[idx].clave   = claveNueva;
       SUBS_FULL[idx].pin     = pinNuevo || subActual.pin;
+      if (esDistinta) {
+        SUBS_FULL[idx].plat  = platNuevaCod;
+        SUBS_FULL[idx].monto = precioNuevo;
+        SUBS_FULL[idx].precioTrasPromo = null;
+        if (updSub.usuario) SUBS_FULL[idx].usuario = updSub.usuario;
+      }
     }
 
     // 4. Quitar perfil nuevo de PERFILES_DISP (usar plataforma real del código de perfil)
@@ -5886,14 +5933,15 @@ async function confirmarCambio(){
     toast('Cambio registrado correctamente ✓', 'ok');
 
     // 5. Abrir WA con datos reales (nombre capturado antes del reset; plataforma real del perfil nuevo)
-    const monto = subActual.monto || 0;
+    const monto = esDistinta ? precioNuevo : (subActual.monto || 0);
     const platNom = platNombre(perfilNuevoPlat);
     setTimeout(() => abrirWA(clienteNombreWA, platNom, monto.toFixed(2), 'cambio', {
       correo:  correoNuevo,
       clave:   claveNueva,
       link:    perfilNuevoEl.dataset.link || '',
       perfil:  perfilNuevoCod,
-      usuario: subActual.usuario || '—',
+      // Desde IPTV: el usuario nuevo (nombre del cliente), no el correo de la cuenta IPTV anterior
+      usuario: (updSub.usuario || subActual.usuario) || '—',
       pin:     pinNuevo || subActual.pin,
       vcto:    vcto,
       platCod: perfilNuevoPlat
@@ -6807,7 +6855,7 @@ async function cargarPlanesPrecios(vigentesPre) {
       PRECIOS_IND[k].sort((a, b) => a.perfiles - b.perfiles);
       // Si quedó vacío (plataforma sin plan en Supabase), usar fallback desde PLATS
       if (!PRECIOS_IND[k].length && PLATS[k]) {
-        PRECIOS_IND[k] = [{ perfiles: 1, precio: PLATS[k].precio_ind }];
+        PRECIOS_IND[k] = [{ perfiles: 1, precio: PLATS[k].precio_ind, porDefecto: true }];
       }
     });
 
@@ -9791,6 +9839,86 @@ function poblarPerfilesDisponiblesCambio(plat) {
   ).join('');
 }
 
+// Plataforma de la que salen los perfiles del modal de cambio: la de la suscripción
+// seleccionada ("misma") o la elegida en Nueva plataforma ("distinta").
+function platDestinoCambio() {
+  const tipo = document.getElementById('tipo-cambio')?.value;
+  if (tipo !== 'distinta') return cambioData.platOrigen || '';
+  return document.getElementById('plat-nueva-sel')?.value || '';
+}
+
+// Nueva plataforma: solo activas distintas a la de origen; conserva la elegida si sigue válida.
+function poblarPlatNuevaCambio() {
+  const sel = document.getElementById('plat-nueva-sel');
+  if (!sel) return;
+  const previa = sel.value;
+  const opciones = PLATAFORMAS.filter(p => esActivo(p.estado) && p.codigo !== cambioData.platOrigen);
+  sel.innerHTML = opciones.map(p => `<option value="${p.codigo}">${p.nombre} (${p.codigo})</option>`).join('');
+  if (opciones.some(p => p.codigo === previa)) sel.value = previa;
+  else if (opciones.length) sel.selectedIndex = 0;
+}
+
+function actualizarEtiquetasTipoCambio() {
+  const opts = document.getElementById('tipo-cambio')?.options;
+  if (!opts || opts.length < 2) return;
+  const o = cambioData.platOrigen || '';
+  const d = document.getElementById('plat-nueva-sel')?.value || '';
+  opts[0].text = 'Misma plataforma' + (o ? ` (${o} → ${o})` : '');
+  opts[1].text = 'Distinta plataforma' + (o && d ? ` (${o} → ${d})` : '');
+}
+
+// Precio vigente del plan individual de 1 perfil (misma fuente que Nueva Venta: PRECIOS_IND,
+// armado desde planes_precios vigente). null si la plataforma no tiene plan vigente.
+function precioIndVigente(cod) {
+  const plan = (PRECIOS_IND[cod] || []).find(p => p.perfiles === 1 && !p.porDefecto);
+  return plan && plan.precio > 0 ? plan.precio : null;
+}
+
+// Mismo criterio de combo que la agrupación de suscripciones (combo_id / tipo Combo / venta_grupo_id).
+function esSubCombo(s) {
+  return !!s && ((s.combo && s.combo !== '—') || (s.tipo || '').toLowerCase() === 'combo' || !!s.ventaGrupoId);
+}
+
+const MSG_COMBO_CAMBIO_PLAT = 'Esta suscripción es parte de un combo: el cambio de plataforma no está disponible';
+
+function cambioPlataformaBloqueado() {
+  return document.getElementById('tipo-cambio')?.value === 'distinta' && esSubCombo(cambioData.subOrigen);
+}
+
+function actualizarAvisoPrecioCambio() {
+  const av = document.getElementById('av-precio');
+  if (!av) return;
+  const aviso = (cls, icono, texto) => { av.className = 'ab ' + cls; av.innerHTML = `<i class="ti ${icono}"></i>${texto}`; };
+  if (cambioPlataformaBloqueado()) return aviso('w', 'ti-alert-triangle', MSG_COMBO_CAMBIO_PLAT);
+  const plat = document.getElementById('plat-nueva-sel')?.value || '';
+  if (!plat) return aviso('w', 'ti-alert-triangle', 'Vencimiento se mantiene. No hay otra plataforma activa.');
+  const precio = precioIndVigente(plat);
+  if (precio == null) return aviso('w', 'ti-alert-triangle', `Vencimiento se mantiene. ${platNombre(plat)} no tiene precio individual vigente: el cambio no se podrá guardar.`);
+  aviso('s', 'ti-info-circle', `Vencimiento se mantiene. Desde la próxima renovación el precio será <strong>$${precio.toFixed(2)}</strong> (precio vigente de ${platNombre(plat)})`);
+}
+
+// Reconstruye la lista de perfiles con la plataforma correcta y limpia el perfil elegido.
+function recargarPerfilesCambio() {
+  poblarPlatNuevaCambio();
+  actualizarEtiquetasTipoCambio();
+  actualizarAvisoPrecioCambio();
+  cambioData.perfilNuevo = cambioData.correoNuevo = cambioData.claveNueva = undefined;
+  cambioData.digitosPinNuevo = undefined;
+  const correoEl = document.getElementById('cambio-correo-nuevo');
+  if (correoEl) correoEl.value = '';
+  const hintNuevo = document.getElementById('cambio-pin-nuevo-hint');
+  if (hintNuevo) hintNuevo.style.display = 'none';
+  const plat = platDestinoCambio();
+  const bloqueado = cambioPlataformaBloqueado();
+  if (!plat || bloqueado) {
+    const lista = document.getElementById('cambio-perfiles-lista');
+    if (lista) lista.innerHTML = '<div style="color:var(--amber);font-size:12px;padding:8px">' + (bloqueado ? MSG_COMBO_CAMBIO_PLAT : 'No hay otra plataforma activa para el cambio') + '</div>';
+    return;
+  }
+  poblarPerfilesDisponiblesCambio(plat);
+  filtrarPerfilesCambio(document.getElementById('cambio-perfil-busq')?.value || '');
+}
+
 function filtrarPerfilesCambio(q) {
   const lista = document.getElementById('cambio-perfiles-lista');
   if (!lista) return;
@@ -9862,15 +9990,17 @@ function selClienteCambio(id, nombre, tel) {
         const sel = subs.find(s => s.perfil === parts[2] && s.plat === parts[1]);
         if (!sel) return;
         poblarCamposAntCambio(sel);
+        cambioData.subOrigen = sel;
         // Extraer plataforma real del código de perfil (ej: DS00037 → DS)
-        const platBase = sel.perfil ? sel.perfil.substring(0, 2) : (sel.plat||'').split('+')[0];
-        poblarPerfilesDisponiblesCambio(platBase);
+        cambioData.platOrigen = sel.perfil ? sel.perfil.substring(0, 2) : (sel.plat||'').split('+')[0];
+        recargarPerfilesCambio();
       };
       // Poblar con la primera suscripción
       if (subs.length) {
         poblarCamposAntCambio(subs[0]);
-        const platBase0 = subs[0].perfil ? subs[0].perfil.substring(0, 2) : (subs[0].plat||'').split('+')[0];
-        poblarPerfilesDisponiblesCambio(platBase0);
+        cambioData.subOrigen = subs[0];
+        cambioData.platOrigen = subs[0].perfil ? subs[0].perfil.substring(0, 2) : (subs[0].plat||'').split('+')[0];
+        recargarPerfilesCambio();
       }
       subSel.innerHTML = subs.map(s => {
         const platNom = platNombre(s.plat);
@@ -9917,6 +10047,7 @@ function resetModalCambio() {
   // Selector de tipo y motivo
   const tipoCambio = document.getElementById('tipo-cambio');
   if (tipoCambio) tipoCambio.selectedIndex = 0;
+  actualizarEtiquetasTipoCambio();
   const avPrecio = document.getElementById('av-precio');
   if (avPrecio) avPrecio.style.display = 'none';
 
